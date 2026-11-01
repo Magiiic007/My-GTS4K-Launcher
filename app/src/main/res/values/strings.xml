@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">My Launcher</string>
+    <string name="app_name">Magiic TV</string>
     <string name="open_failed">Could not open this app</string>
     <string name="no_apps">No apps found</string>
+
+    <string name="choose_country">Choose your country</string>
+    <string name="choose_city">Choose your city</string>
+    <string name="egypt">Egypt</string>
+    <string name="saudi">Saudi Arabia</string>
+    <string name="weather_pick">Choose your city for the weather</string>
+    <string name="weather_unavailable">Weather unavailable</string>
+
+    <string name="w_clear">Clear</string>
+    <string name="w_partly">Partly cloudy</string>
+    <string name="w_cloudy">Cloudy</string>
+    <string name="w_fog">Fog</string>
+    <string name="w_drizzle">Drizzle</string>
+    <string name="w_rain">Rain</string>
+    <string name="w_snow">Snow</string>
+    <string name="w_showers">Showers</string>
+    <string name="w_storm">Thunderstorm</string>
 </resources>

@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">لانشري</string>
+    <string name="app_name">Magiic TV</string>
     <string name="open_failed">تعذّر فتح هذا التطبيق</string>
     <string name="no_apps">لا توجد تطبيقات</string>
+
+    <string name="choose_country">اختر دولتك</string>
+    <string name="choose_city">اختر مدينتك</string>
+    <string name="egypt">مصر</string>
+    <string name="saudi">السعودية</string>
+    <string name="weather_pick">اختر مدينتك لعرض الطقس</string>
+    <string name="weather_unavailable">الطقس غير متاح</string>
+
+    <string name="w_clear">صافٍ</string>
+    <string name="w_partly">غائم جزئيًا</string>
+    <string name="w_cloudy">غائم</string>
+    <string name="w_fog">ضباب</string>
+    <string name="w_drizzle">رذاذ</string>
+    <string name="w_rain">مطر</string>
+    <string name="w_snow">ثلج</string>
+    <string name="w_showers">زخات مطر</string>
+    <string name="w_storm">عاصفة رعدية</string>
 </resources>

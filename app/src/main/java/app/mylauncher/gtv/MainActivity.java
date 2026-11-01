@@ -1,7 +1,11 @@
 package app.mylauncher.gtv;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -23,10 +27,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.text.Collator;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -46,6 +53,18 @@ public class MainActivity extends Activity {
     private GridView grid;
     private TextView empty;
     private AppAdapter adapter;
+
+    private static final String PREFS = "magiic";
+    private static final long WEATHER_EVERY_MS = 30L * 60L * 1000L;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private TextView weatherView;
+    private final Runnable weatherTick = new Runnable() {
+        @Override
+        public void run() {
+            loadWeather();
+            handler.postDelayed(this, WEATHER_EVERY_MS);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle state) {
@@ -67,6 +86,26 @@ public class MainActivity extends Activity {
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 28);
         header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        // The weather. Reach it with the remote's arrows and press OK to change the city.
+        weatherView = new TextView(this);
+        weatherView.setTextColor(Color.WHITE);
+        weatherView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        weatherView.setGravity(Gravity.CENTER);
+        weatherView.setPadding(dp(16), dp(8), dp(16), dp(8));
+        weatherView.setBackgroundResource(R.drawable.weather_bg);
+        weatherView.setFocusable(true);
+        weatherView.setClickable(true);
+        weatherView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                chooseCountry();
+            }
+        });
+        LinearLayout.LayoutParams weatherLp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        weatherLp.setMarginEnd(dp(32));
+        header.addView(weatherView, weatherLp);
 
         LinearLayout when = new LinearLayout(this);
         when.setOrientation(LinearLayout.VERTICAL);
@@ -131,6 +170,120 @@ public class MainActivity extends Activity {
         super.onResume();
         loadApps();
         grid.requestFocus();
+        handler.removeCallbacks(weatherTick);
+        handler.post(weatherTick);
+    }
+
+    @Override
+    protected void onPause() {
+        handler.removeCallbacks(weatherTick);
+        super.onPause();
+    }
+
+    private SharedPreferences prefs() {
+        return getSharedPreferences(PREFS, MODE_PRIVATE);
+    }
+
+    private boolean isArabic() {
+        return "ar".equals(Locale.getDefault().getLanguage());
+    }
+
+    /** The city chosen on this device, or null the first time. */
+    private Cities.City selectedCity() {
+        return Cities.find(prefs().getString("city", null));
+    }
+
+    /** Step 1 of choosing a city: the country. */
+    private void chooseCountry() {
+        String[] countries = {getString(R.string.egypt), getString(R.string.saudi)};
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.choose_country)
+            .setItems(countries, new android.content.DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(android.content.DialogInterface dialog, int which) {
+                    chooseCity(which == 0 ? Cities.EGYPT : Cities.SAUDI);
+                }
+            })
+            .show();
+    }
+
+    /** Step 2: the city, listed alphabetically in the TV's language. */
+    private void chooseCity(Cities.City[] all) {
+        final boolean arabic = isArabic();
+        final List<Cities.City> sorted = new ArrayList<>();
+        Collections.addAll(sorted, all);
+        final Collator collator = Collator.getInstance();
+        Collections.sort(sorted, new Comparator<Cities.City>() {
+            @Override
+            public int compare(Cities.City a, Cities.City b) {
+                return collator.compare(a.name(arabic), b.name(arabic));
+            }
+        });
+        String[] names = new String[sorted.size()];
+        for (int i = 0; i < names.length; i++) names[i] = sorted.get(i).name(arabic);
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.choose_city)
+            .setItems(names, new android.content.DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(android.content.DialogInterface dialog, int which) {
+                    prefs().edit().putString("city", sorted.get(which).key()).apply();
+                    loadWeather();
+                }
+            })
+            .show();
+    }
+
+    /** Shows the last saved weather at once, then asks for a fresh one. */
+    private void loadWeather() {
+        final Cities.City city = selectedCity();
+        if (city == null) {
+            weatherView.setText(R.string.weather_pick);
+            return;
+        }
+        SharedPreferences p = prefs();
+        if (city.key().equals(p.getString("w_key", null))) {
+            showWeather(city, p.getInt("w_temp", 0), p.getInt("w_code", 0));
+        } else {
+            weatherView.setText(city.name(isArabic()));
+        }
+        Weather.fetch(city, new Weather.Callback() {
+            @Override
+            public void onResult(int tempC, int code) {
+                prefs().edit().putString("w_key", city.key()).putInt("w_temp", tempC).putInt("w_code", code).apply();
+                // The city may have been changed while this was loading; show it only if it is still the one.
+                Cities.City now = selectedCity();
+                if (now != null && now.key().equals(city.key())) showWeather(city, tempC, code);
+            }
+
+            @Override
+            public void onError() {
+                // Keep what is on screen; if nothing was shown yet, say so.
+                if (!city.key().equals(prefs().getString("w_key", null))) {
+                    weatherView.setText(city.name(isArabic()) + "\n" + getString(R.string.weather_unavailable));
+                }
+            }
+        });
+    }
+
+    private void showWeather(Cities.City city, int tempC, int code) {
+        String degrees = NumberFormat.getIntegerInstance().format(tempC) + "°";
+        weatherView.setText(degrees + "  " + conditionText(code) + "\n" + city.name(isArabic()));
+    }
+
+    /** WMO weather code to words. */
+    private String conditionText(int code) {
+        int res;
+        if (code == 0) res = R.string.w_clear;
+        else if (code <= 2) res = R.string.w_partly;
+        else if (code == 3) res = R.string.w_cloudy;
+        else if (code == 45 || code == 48) res = R.string.w_fog;
+        else if (code >= 51 && code <= 57) res = R.string.w_drizzle;
+        else if ((code >= 61 && code <= 67)) res = R.string.w_rain;
+        else if ((code >= 71 && code <= 77) || code == 85 || code == 86) res = R.string.w_snow;
+        else if (code >= 80 && code <= 82) res = R.string.w_showers;
+        else if (code >= 95) res = R.string.w_storm;
+        else res = R.string.w_cloudy;
+        return getString(res);
     }
 
     /** Reads the installed TV apps (or, on a device with none, every launchable app), sorted by name. */
