@@ -18,6 +18,7 @@ import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextClock;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -55,12 +56,42 @@ public class MainActivity extends Activity {
         root.setBackgroundColor(Color.parseColor("#FF0F1720"));
         root.setPadding(dp(48), dp(32), dp(48), dp(24));
 
+        // Header: the name on the start side, the clock and date on the end side. In Arabic (right-to-left)
+        // the start side is the right, so the layout mirrors by itself.
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+
         TextView title = new TextView(this);
         title.setText(R.string.app_name);
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 28);
-        root.addView(title, new LinearLayout.LayoutParams(
+        header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        LinearLayout when = new LinearLayout(this);
+        when.setOrientation(LinearLayout.VERTICAL);
+        when.setGravity(Gravity.END);
+
+        // The clock follows the TV's own 12/24-hour setting and updates itself every minute.
+        TextClock clock = new TextClock(this);
+        clock.setTextColor(Color.WHITE);
+        clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 36);
+        when.addView(clock, new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // The date, in the TV's language: for example "الأحد 1 نوفمبر 2026" or "Sunday 1 November 2026".
+        TextClock date = new TextClock(this);
+        date.setFormat12Hour("EEEE d MMMM yyyy");
+        date.setFormat24Hour("EEEE d MMMM yyyy");
+        date.setTextColor(Color.parseColor("#FFB8C4D0"));
+        date.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        when.addView(date, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        header.addView(when, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(header, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         grid = new GridView(this);
         grid.setNumColumns(5);
