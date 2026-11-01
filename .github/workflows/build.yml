@@ -21,10 +21,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Install Android platform
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      # The GitHub runner already has the Android SDK; the original Afnon project builds the same way.
 
       - name: Build
         run: |
