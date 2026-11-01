@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">My Launcher</string>
+    <string name="open_failed">Could not open this app</string>
+    <string name="no_apps">No apps found</string>
+</resources>

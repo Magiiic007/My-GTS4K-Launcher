@@ -1,0 +1,48 @@
+name: Build APK
+
+# Builds the app in GitHub's cloud and publishes the APK as a release called "latest",
+# so it can be downloaded from the phone or the TV with one link.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Keep the APK as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-launcher-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish the APK as release "latest"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk my-launcher.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest my-launcher.apk \
+            --title "Latest build" \
+            --notes "Built from commit ${GITHUB_SHA::7}"
