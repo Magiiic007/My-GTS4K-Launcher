@@ -115,6 +115,12 @@ public class RadioService extends Service {
         c.startForegroundService(new Intent(c, RadioService.class).setAction(ACTION_PLAY).putExtra("station", index));
     }
 
+    /** The station played last (the first one if the radio was never used). */
+    static int lastStation(Context c) {
+        int i = c.getSharedPreferences("magiic", MODE_PRIVATE).getInt("radio_station", 0);
+        return Math.max(0, Math.min(STATIONS.length - 1, i));
+    }
+
     static void stop(Context c) {
         if (state == OFF) return;
         c.startService(new Intent(c, RadioService.class).setAction(ACTION_STOP));
@@ -150,6 +156,7 @@ public class RadioService extends Service {
             return START_NOT_STICKY;
         }
         stationIndex = Math.max(0, Math.min(STATIONS.length - 1, intent.getIntExtra("station", 0)));
+        getSharedPreferences("magiic", MODE_PRIVATE).edit().putInt("radio_station", stationIndex).apply();
         goForeground();
         wanted = true;
         failures = 0;
