@@ -59,4 +59,10 @@
     <string name="iqama_at">Iqama %1$s</string>
     <string name="test_iqama_item">Test the iqama in 1 minute</string>
     <string name="test_fajr_item">Test the Fajr adhan in 1 minute</string>
+    <string name="radio_btn">Radio</string>
+    <string name="radio_title">Holy Quran Radio</string>
+    <string name="radio_on">Radio · %1$s</string>
+    <string name="radio_connecting">Radio · connecting %1$s…</string>
+    <string name="radio_paused">Radio · paused for the adhan</string>
+    <string name="radio_stop">Stop the radio</string>
 </resources>

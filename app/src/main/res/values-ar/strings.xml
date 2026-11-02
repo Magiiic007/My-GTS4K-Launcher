@@ -59,4 +59,10 @@
     <string name="iqama_at">الإقامة %1$s</string>
     <string name="test_iqama_item">تجربة الإقامة بعد دقيقة</string>
     <string name="test_fajr_item">تجربة أذان الفجر بعد دقيقة</string>
+    <string name="radio_btn">الراديو</string>
+    <string name="radio_title">إذاعة القرآن الكريم</string>
+    <string name="radio_on">الراديو · %1$s</string>
+    <string name="radio_connecting">الراديو · جارٍ الاتصال %1$s…</string>
+    <string name="radio_paused">الراديو · متوقف أثناء الأذان</string>
+    <string name="radio_stop">إيقاف الراديو</string>
 </resources>

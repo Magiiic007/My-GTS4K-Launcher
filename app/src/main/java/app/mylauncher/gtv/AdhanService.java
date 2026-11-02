@@ -143,7 +143,8 @@ public class AdhanService extends Service {
     /** Takes the audio from other apps; if something was playing, presses Pause on it as well. */
     private void takeAudio() {
         if (audio == null) return;
-        boolean wasPlaying = audio.isMusicActive();
+        // The radio steps aside by itself when it loses the focus; pressing Pause on it would do nothing useful.
+        boolean wasPlaying = audio.isMusicActive() && !RadioService.on();
         focus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
             .setAudioAttributes(attrs())
             .setOnAudioFocusChangeListener(new AudioManager.OnAudioFocusChangeListener() {

@@ -59,6 +59,13 @@ public class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView weatherView;
     private PrayerPanel prayerPanel;
+    private TextView radioBtn;
+    private final RadioService.Listener radioListener = new RadioService.Listener() {
+        @Override
+        public void onRadio(int state) {
+            updateRadioButton();
+        }
+    };
     private final Runnable weatherTick = new Runnable() {
         @Override
         public void run() {
@@ -87,6 +94,27 @@ public class MainActivity extends Activity {
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 28);
         header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        // The radio: OK opens the two stations (and Stop while it plays).
+        radioBtn = new TextView(this);
+        radioBtn.setTextColor(Color.WHITE);
+        radioBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        radioBtn.setGravity(Gravity.CENTER);
+        radioBtn.setPadding(dp(16), dp(8), dp(16), dp(8));
+        radioBtn.setBackgroundResource(R.drawable.weather_bg);
+        radioBtn.setFocusable(true);
+        radioBtn.setClickable(true);
+        radioBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                chooseRadio();
+            }
+        });
+        LinearLayout.LayoutParams radioLp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        radioLp.setMarginEnd(dp(16));
+        header.addView(radioBtn, radioLp);
+        updateRadioButton();
 
         // The weather. Reach it with the remote's arrows and press OK to change the city.
         weatherView = new TextView(this);
@@ -181,6 +209,8 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(weatherTick);
         handler.post(weatherTick);
         prayerPanel.start();
+        RadioService.listen(radioListener);
+        updateRadioButton();
         // Line up the alarm for the next prayer (it is also set again after a restart).
         Scheduler.scheduleNext(this);
     }
@@ -189,7 +219,46 @@ public class MainActivity extends Activity {
     protected void onPause() {
         handler.removeCallbacks(weatherTick);
         prayerPanel.stop();
+        RadioService.unlisten(radioListener);
         super.onPause();
+    }
+
+    private void updateRadioButton() {
+        if (radioBtn == null) return;
+        int st = RadioService.state();
+        if (st == RadioService.OFF) {
+            radioBtn.setText(R.string.radio_btn);
+            return;
+        }
+        String name = RadioService.STATIONS[RadioService.station()].shortName(isArabic());
+        int label = st == RadioService.PLAYING ? R.string.radio_on
+            : st == RadioService.PAUSED ? R.string.radio_paused : R.string.radio_connecting;
+        radioBtn.setText(getString(label, name));
+    }
+
+    /** The two stations; the one playing is marked, and Stop appears while the radio is on. */
+    private void chooseRadio() {
+        final boolean arabic = isArabic();
+        final boolean on = RadioService.on();
+        int n = RadioService.STATIONS.length;
+        String[] items = new String[on ? n + 1 : n];
+        for (int i = 0; i < n; i++) {
+            items[i] = (on && i == RadioService.station() ? "● " : "") + RadioService.STATIONS[i].name(arabic);
+        }
+        if (on) items[n] = getString(R.string.radio_stop);
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.radio_title)
+            .setItems(items, new android.content.DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(android.content.DialogInterface d, int which) {
+                    if (which < RadioService.STATIONS.length) {
+                        RadioService.play(MainActivity.this, which);
+                    } else {
+                        RadioService.stop(MainActivity.this);
+                    }
+                }
+            })
+            .show();
     }
 
     private SharedPreferences prefs() {

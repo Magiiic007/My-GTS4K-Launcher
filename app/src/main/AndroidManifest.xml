@@ -15,6 +15,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- The radio keeps Wi-Fi awake while it plays. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -36,7 +38,8 @@
         android:banner="@drawable/banner"
         android:theme="@style/Theme.MyLauncher"
         android:supportsRtl="true"
-        android:allowBackup="false">
+        android:allowBackup="false"
+        android:networkSecurityConfig="@xml/network_security">
 
         <!-- Phase 1: an ordinary TV app (it shows in the apps list). It is NOT the home screen yet:
              the HOME intent filter is added only in the last phase. -->
@@ -52,6 +55,11 @@
 
         <service
             android:name=".AdhanService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <service
+            android:name=".RadioService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
