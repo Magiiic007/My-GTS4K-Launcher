@@ -14,7 +14,6 @@ final class Scheduler {
     private Scheduler() {}
 
     private static final int REQ_REAL = 1;
-    private static final int REQ_TEST = 2;
     private static final String ACTION = "app.mylauncher.gtv.ADHAN";
 
     /** Alarm for the next adhan or iqama of the chosen city (replaces the previous one). */
@@ -30,14 +29,6 @@ final class Scheduler {
             city, System.currentTimeMillis(), PrayerPrefs.adjust(c), PrayerPrefs.iqama(c));
         if (e == null) return;
         set(am, e.at, pending(c, REQ_REAL, e.index, e.friday, e.at, false, e.iqama));
-    }
-
-    /** A test adhan or iqama one minute from now, through exactly the same path as a real one. */
-    static void scheduleTest(Context c, boolean iqama, int index) {
-        AlarmManager am = c.getSystemService(AlarmManager.class);
-        if (am == null) return;
-        long at = System.currentTimeMillis() + 60000L;
-        set(am, at, pending(c, REQ_TEST, index, false, at, true, iqama));
     }
 
     private static PendingIntent pending(Context c, int request, int index, boolean friday, long at,

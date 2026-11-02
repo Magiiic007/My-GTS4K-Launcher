@@ -27,7 +27,15 @@ final class NumberDialog {
      * @param signed   show a plus sign for positive values (for an adjustment)
      * @param zeroText what to show for 0 ("no adjustment", "no iqama")
      */
+    static void show(Context c, String title, int min, int max, int start,
+                     boolean signed, String zeroText, OnSave save) {
+        show(c, title, min, max, start, c.getString(R.string.minutes_plain), c.getString(R.string.minutes_signed),
+            signed, zeroText, save);
+    }
+
+    /** Like the above, with the wording of the number given as format texts (for example "%1$d days"). */
     static void show(final Context c, String title, final int min, final int max, int start,
+                     final String plainFormat, final String signedFormat,
                      final boolean signed, final String zeroText, final OnSave save) {
         final int[] value = {Math.max(min, Math.min(max, start))};
         final TextView shown = new TextView(c);
@@ -39,8 +47,8 @@ final class NumberDialog {
             @Override
             public void run() {
                 int v = value[0];
-                shown.setText(v == 0 ? zeroText
-                    : c.getString(signed ? R.string.minutes_signed : R.string.minutes_plain, v));
+                shown.setText(v == 0 && zeroText != null ? zeroText
+                    : String.format(java.util.Locale.getDefault(), signed ? signedFormat : plainFormat, v));
             }
         };
         refresh.run();

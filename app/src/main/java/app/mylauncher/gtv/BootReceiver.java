@@ -9,6 +9,7 @@ public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context c, Intent i) {
         Scheduler.scheduleNext(c);
+        Reminders.scheduleNext(c);
         // Only a real start of the device brings the radio back, not an app update. It plays the last station
         // (the Cairo one the first time); if the network isn't ready yet it keeps retrying by itself.
         if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) {

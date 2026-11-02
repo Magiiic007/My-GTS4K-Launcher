@@ -67,8 +67,7 @@ public class AdhanService extends Service {
     private AudioFocusRequest focus;
     private MediaPlayer player;
     private PowerManager.WakeLock wake;
-    private WindowManager windows;
-    private View overlay;
+    private Popup popup;
     private boolean started;
     private boolean finished;
     private boolean pausedOthers;
@@ -121,7 +120,7 @@ public class AdhanService extends Service {
         nm.createNotificationChannel(new NotificationChannel(
             CHANNEL, getString(R.string.notif_channel), NotificationManager.IMPORTANCE_LOW));
         Notification n = new Notification.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher)
+            .setSmallIcon(R.drawable.ic_crescent)
             .setContentTitle(title)
             .setContentText(getString(hintRes))
             .setOngoing(true)
@@ -171,92 +170,19 @@ public class AdhanService extends Service {
             TypedValue.COMPLEX_UNIT_DIP, value, getResources().getDisplayMetrics()));
     }
 
-    /** The full-screen popup. Back or OK closes it and stops the adhan. */
+    /** The full-screen popup (themed like the home screen). Back or OK closes it and stops the adhan. */
     private void showOverlay(String title, String where) {
-        if (!Settings.canDrawOverlays(this)) return;
-        try {
-            windows = getSystemService(WindowManager.class);
-            FrameLayout root = new FrameLayout(this) {
-                @Override
-                public boolean dispatchKeyEvent(KeyEvent e) {
-                    int k = e.getKeyCode();
-                    if (k == KeyEvent.KEYCODE_VOLUME_UP || k == KeyEvent.KEYCODE_VOLUME_DOWN
-                            || k == KeyEvent.KEYCODE_VOLUME_MUTE) {
-                        return super.dispatchKeyEvent(e);
-                    }
-                    if (e.getAction() == KeyEvent.ACTION_UP && (k == KeyEvent.KEYCODE_BACK
-                            || k == KeyEvent.KEYCODE_ENTER || k == KeyEvent.KEYCODE_DPAD_CENTER)) {
-                        finishAdhan();
-                    }
-                    return true;
-                }
-            };
-            root.setBackgroundColor(Color.parseColor("#F20F1720"));
-
-            LinearLayout col = new LinearLayout(this);
-            col.setOrientation(LinearLayout.VERTICAL);
-            col.setGravity(Gravity.CENTER_HORIZONTAL);
-
-            TextView name = new TextView(this);
-            name.setText(title);
-            name.setTextColor(Color.WHITE);
-            name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 44);
-            name.setGravity(Gravity.CENTER);
-            col.addView(name, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-            View bar = new View(this);
-            bar.setBackgroundColor(Color.parseColor("#FFE0B040"));
-            LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams(dp(120), dp(3));
-            barLp.topMargin = dp(20);
-            barLp.bottomMargin = dp(20);
-            col.addView(bar, barLp);
-
-            TextView sub = new TextView(this);
-            sub.setText(where);
-            sub.setTextColor(Color.parseColor("#FFB8C4D0"));
-            sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-            sub.setGravity(Gravity.CENTER);
-            col.addView(sub, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-            TextView hint = new TextView(this);
-            hint.setText(hintRes);
-            hint.setTextColor(Color.parseColor("#FF7F8C99"));
-            hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-            hint.setGravity(Gravity.CENTER);
-            LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            hintLp.topMargin = dp(48);
-            col.addView(hint, hintLp);
-
-            root.addView(col, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
-
-            WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
-                PixelFormat.TRANSLUCENT);
-            windows.addView(root, lp);
-            overlay = root;
-            root.setFocusable(true);
-            root.setFocusableInTouchMode(true);
-            root.requestFocus();
-        } catch (RuntimeException e) {
-            overlay = null;
-        }
+        popup = Popup.show(this, title, where, getString(hintRes), new Popup.OnClose() {
+            @Override
+            public void closed() {
+                finishAdhan();
+            }
+        });
     }
 
     private void hideOverlay() {
-        if (overlay != null && windows != null) {
-            try {
-                windows.removeView(overlay);
-            } catch (RuntimeException ignored) {
-                // Already gone.
-            }
-        }
-        overlay = null;
+        if (popup != null) popup.hide();
+        popup = null;
     }
 
     /** The adhan (res/raw/adhan.mp3) or, for an iqama, a shorter alert (res/raw/iqama.mp3). */

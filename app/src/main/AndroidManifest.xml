@@ -17,8 +17,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- The radio keeps Wi-Fi awake while it plays. -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <!-- Only usable after a one-time grant from ADB; lets the settings menu change the private DNS. -->
-    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <!-- The connection icon in the header. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Lets the apps row offer "Uninstall" (Android still asks to confirm). -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -65,7 +68,17 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <service
+            android:name=".ReminderService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Shows a reminder popup the user scheduled (fasting days and custom reminders)" />
+        </service>
+
         <receiver android:name=".AdhanReceiver" android:exported="false" />
+        <receiver android:name=".ReminderReceiver" android:exported="false" />
 
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>

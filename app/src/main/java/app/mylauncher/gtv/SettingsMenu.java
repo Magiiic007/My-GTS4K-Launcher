@@ -3,37 +3,25 @@ package app.mylauncher.gtv;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
+import android.content.Intent;
+import android.net.Uri;
 import android.provider.Settings;
-import android.text.InputType;
-import android.widget.EditText;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * The launcher's settings menu: hidden apps, the ad-blocking DNS, and the about page.
- * The DNS option needs a one-time permission that can only be given from a computer or an ADB app (see
- * {@link #dnsHelp}); until then the app explains how, and changes nothing.
- */
+/** The smaller dialogs behind the left-hand panel: which apps show and in what order, the device's own settings, credits. */
 final class SettingsMenu {
     private SettingsMenu() {}
 
     static final String PREFS = "magiic";
     private static final String HIDDEN = "hidden";
-    private static final String PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
+    private static final String ORDER = "order";
 
-    /** One choice of DNS: a name for the list and the host name (null = back to the system's own setting). */
-    private static final String[][] DNS = {
-        {"AdGuard", "dns.adguard-dns.com"},
-        {"AdGuard (unfiltered)", "unfiltered.adguard-dns.com"},
-        {"AdGuard (family)", "family.adguard-dns.com"},
-    };
-
-    // ---------------------------------------------------------------- hidden apps
+    // ---------------------------------------------------------------- hidden and ordered apps
 
     static Set<String> hidden(Context c) {
         return new HashSet<>(c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getStringSet(HIDDEN, new HashSet<String>()));
@@ -43,22 +31,36 @@ final class SettingsMenu {
         c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putStringSet(HIDDEN, new HashSet<>(set)).apply();
     }
 
-    // ---------------------------------------------------------------- the menu
+    /** The package names in the order the user arranged them (apps not in it come after, alphabetically). */
+    static List<String> order(Context c) {
+        String s = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(ORDER, "");
+        List<String> out = new ArrayList<>();
+        for (String p : s.split("\n")) if (!p.isEmpty()) out.add(p);
+        return out;
+    }
 
-    static void open(final Context c, final List<String[]> allApps, final Runnable appsChanged) {
-        String[] items = {
-            c.getString(R.string.menu_hidden),
-            c.getString(R.string.menu_dns),
-            c.getString(R.string.menu_about),
-        };
+    static void setOrder(Context c, List<String> packages) {
+        StringBuilder b = new StringBuilder();
+        for (String p : packages) b.append(p).append('\n');
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(ORDER, b.toString()).apply();
+    }
+
+    /** "Apps": choose which show, or put them back in alphabetical order. */
+    static void apps(final Context c, final List<String[]> allApps, final Runnable appsChanged) {
+        String[] items = {c.getString(R.string.apps_hide_show), c.getString(R.string.apps_reset_order),
+            c.getString(R.string.apps_tip)};
         new AlertDialog.Builder(c)
-            .setTitle(R.string.menu_title)
+            .setTitle(R.string.menu_apps)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int which) {
-                    if (which == 0) hiddenApps(c, allApps, appsChanged);
-                    else if (which == 1) dns(c);
-                    else about(c);
+                    if (which == 0) {
+                        hiddenApps(c, allApps, appsChanged);
+                    } else if (which == 1) {
+                        setOrder(c, new ArrayList<String>());
+                        appsChanged.run();
+                        Toast.makeText(c, R.string.apps_order_reset, Toast.LENGTH_SHORT).show();
+                    }
                 }
             })
             .show();
@@ -93,106 +95,79 @@ final class SettingsMenu {
                     appsChanged.run();
                 }
             })
-            .setNegativeButton(android.R.string.cancel, null)
+            .setNegativeButton(R.string.cancel, null)
             .show();
     }
 
-    // ---------------------------------------------------------------- the ad-blocking DNS
+    // ---------------------------------------------------------------- the device's own settings
 
-    private static boolean canWrite(Context c) {
-        return c.checkSelfPermission(PERMISSION) == PackageManager.PERMISSION_GRANTED;
-    }
+    private static final String[][] DEVICE = {
+        {String.valueOf(R.string.menu_account), Settings.ACTION_SYNC_SETTINGS},
+        {String.valueOf(R.string.set_network), Settings.ACTION_WIFI_SETTINGS},
+        {String.valueOf(R.string.set_bluetooth), Settings.ACTION_BLUETOOTH_SETTINGS},
+        {String.valueOf(R.string.set_sound), Settings.ACTION_SOUND_SETTINGS},
+        {String.valueOf(R.string.set_display), Settings.ACTION_DISPLAY_SETTINGS},
+        {String.valueOf(R.string.set_date), Settings.ACTION_DATE_SETTINGS},
+        {String.valueOf(R.string.set_language), Settings.ACTION_LOCALE_SETTINGS},
+        {String.valueOf(R.string.set_apps), Settings.ACTION_APPLICATION_SETTINGS},
+        {String.valueOf(R.string.set_storage), Settings.ACTION_INTERNAL_STORAGE_SETTINGS},
+        {String.valueOf(R.string.set_about), Settings.ACTION_DEVICE_INFO_SETTINGS},
+        {String.valueOf(R.string.set_all), Settings.ACTION_SETTINGS},
+    };
 
-    private static String currentDns(Context c) {
-        try {
-            String mode = Settings.Global.getString(c.getContentResolver(), "private_dns_mode");
-            String host = Settings.Global.getString(c.getContentResolver(), "private_dns_specifier");
-            if ("hostname".equals(mode) && host != null && !host.isEmpty()) return host;
-        } catch (RuntimeException ignored) {
-            // Unreadable: show it as automatic.
-        }
-        return c.getString(R.string.dns_auto);
-    }
-
-    private static void dns(final Context c) {
-        if (!canWrite(c)) {
-            dnsHelp(c);
-            return;
-        }
-        String[] items = new String[DNS.length + 3];
-        for (int i = 0; i < DNS.length; i++) items[i] = DNS[i][0] + "\n" + DNS[i][1];
-        items[DNS.length] = c.getString(R.string.dns_custom);
-        items[DNS.length + 1] = c.getString(R.string.dns_off);
-        items[DNS.length + 2] = c.getString(R.string.dns_note);
+    /** The device and account settings: each opens that screen, or the main settings if this device has no such screen. */
+    static void device(final Context c) {
+        String[] items = new String[DEVICE.length + 1];
+        for (int i = 0; i < DEVICE.length; i++) items[i] = c.getString(Integer.parseInt(DEVICE[i][0]));
+        items[DEVICE.length] = c.getString(R.string.menu_about);
         new AlertDialog.Builder(c)
-            .setTitle(c.getString(R.string.dns_title, currentDns(c)))
+            .setTitle(R.string.menu_device)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int which) {
-                    if (which < DNS.length) apply(c, DNS[which][1]);
-                    else if (which == DNS.length) custom(c);
-                    else if (which == DNS.length + 1) apply(c, null);
-                    else noteDialog(c);
+                    if (which == DEVICE.length) about(c);
+                    else launch(c, DEVICE[which][1], which == 0 ? R.string.account_hint : 0);
                 }
             })
             .show();
     }
 
-    private static void custom(final Context c) {
-        final EditText input = new EditText(c);
-        input.setSingleLine(true);
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        input.setHint("dns.example.com");
-        new AlertDialog.Builder(c)
-            .setTitle(R.string.dns_custom)
-            .setView(input)
-            .setPositiveButton(R.string.save, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int w) {
-                    String host = input.getText().toString().trim().toLowerCase();
-                    // A real host name: letters, digits, dots and dashes, with at least one dot.
-                    if (host.length() > 253 || !host.matches("[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+")) {
-                        Toast.makeText(c, R.string.dns_bad, Toast.LENGTH_LONG).show();
-                        return;
-                    }
-                    apply(c, host);
-                }
-            })
-            .setNegativeButton(android.R.string.cancel, null)
-            .show();
+    static void launch(Context c, String action) {
+        launch(c, action, 0);
     }
 
-    /** Sets the private DNS to {@code host}, or back to automatic when it is null. */
-    private static void apply(Context c, String host) {
+    static void launch(Context c, String action, int hint) {
         try {
-            if (host == null) {
-                Settings.Global.putString(c.getContentResolver(), "private_dns_mode", "opportunistic");
-            } else {
-                // The host first, then the mode that uses it.
-                Settings.Global.putString(c.getContentResolver(), "private_dns_specifier", host);
-                Settings.Global.putString(c.getContentResolver(), "private_dns_mode", "hostname");
-            }
-            Toast.makeText(c, host == null ? c.getString(R.string.dns_done_off) : c.getString(R.string.dns_done, host),
-                Toast.LENGTH_LONG).show();
+            c.startActivity(new Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            if (hint != 0) Toast.makeText(c, hint, Toast.LENGTH_LONG).show();
         } catch (RuntimeException e) {
-            Toast.makeText(c, R.string.dns_failed, Toast.LENGTH_LONG).show();
+            try {
+                c.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                Toast.makeText(c, R.string.settings_fallback, Toast.LENGTH_LONG).show();
+            } catch (RuntimeException e2) {
+                Toast.makeText(c, R.string.settings_missing, Toast.LENGTH_LONG).show();
+            }
         }
     }
 
-    private static void dnsHelp(Context c) {
-        new AlertDialog.Builder(c)
-            .setTitle(R.string.menu_dns)
-            .setMessage(c.getString(R.string.dns_help, c.getPackageName(), PERMISSION))
-            .setPositiveButton(android.R.string.ok, null)
-            .show();
+    /** The system's page about one app (open, force stop, clear data). */
+    static void appInfo(Context c, String pkg) {
+        try {
+            c.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (RuntimeException e) {
+            Toast.makeText(c, R.string.settings_missing, Toast.LENGTH_LONG).show();
+        }
     }
 
-    private static void noteDialog(Context c) {
-        new AlertDialog.Builder(c)
-            .setTitle(R.string.menu_dns)
-            .setMessage(R.string.dns_note_text)
-            .setPositiveButton(android.R.string.ok, null)
-            .show();
+    /** Asks Android to uninstall an app; Android shows its own confirmation, and refuses for system apps. */
+    static void uninstall(Context c, String pkg) {
+        try {
+            c.startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + pkg))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (RuntimeException e) {
+            Toast.makeText(c, R.string.uninstall_failed, Toast.LENGTH_LONG).show();
+        }
     }
 
     // ---------------------------------------------------------------- about

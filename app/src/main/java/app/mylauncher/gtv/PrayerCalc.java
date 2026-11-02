@@ -58,6 +58,16 @@ final class PrayerCalc {
      * days. {@code adjust}: minutes added to each of the five.
      */
     static long[] day(Cities.City city, long when, int plusDays, int[] adjust) {
+        PrayerTimes p = times(city, when, plusDays, adjust);
+        return new long[] {minute(p.fajr), minute(p.dhuhr), minute(p.asr), minute(p.maghrib), minute(p.isha)};
+    }
+
+    /** Sunrise of the same day (shown in the list; it has no adhan). */
+    static long sunrise(Cities.City city, long when, int plusDays, int[] adjust) {
+        return minute(times(city, when, plusDays, adjust).sunrise);
+    }
+
+    private static PrayerTimes times(Cities.City city, long when, int plusDays, int[] adjust) {
         TimeZone tz = zone(city);
         Calendar cal = Calendar.getInstance(tz);
         cal.setTimeInMillis(when);
@@ -74,8 +84,7 @@ final class PrayerCalc {
         params.adjustments = new PrayerAdjustments(adjust[FAJR], 0, adjust[DHUHR], adjust[ASR],
             adjust[MAGHRIB], adjust[ISHA]);
 
-        PrayerTimes p = new PrayerTimes(new Coordinates(city.lat, city.lon), date, params);
-        return new long[] {minute(p.fajr), minute(p.dhuhr), minute(p.asr), minute(p.maghrib), minute(p.isha)};
+        return new PrayerTimes(new Coordinates(city.lat, city.lon), date, params);
     }
 
     /**

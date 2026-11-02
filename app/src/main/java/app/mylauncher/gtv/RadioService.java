@@ -173,7 +173,7 @@ public class RadioService extends Service {
             CHANNEL, getString(R.string.radio_btn), NotificationManager.IMPORTANCE_LOW));
         boolean arabic = "ar".equals(Locale.getDefault().getLanguage());
         Notification n = new Notification.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher)
+            .setSmallIcon(R.drawable.ic_crescent)
             .setContentTitle(STATIONS[stationIndex].name(arabic))
             .setOngoing(true)
             .build();

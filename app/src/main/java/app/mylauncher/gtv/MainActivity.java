@@ -3,26 +3,34 @@ package app.mylauncher.gtv;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
-import android.content.SharedPreferences;
-import android.os.Handler;
-import android.os.Looper;
 import android.content.ComponentName;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.graphics.Outline;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.Settings;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.widget.AdapterView;
-import android.widget.BaseAdapter;
-import android.widget.GridView;
+import android.widget.ArrayAdapter;
+import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.TextClock;
+import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,12 +45,13 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Phase 1: a grid of the TV apps installed on the device. Move with the remote's arrows, press OK to open.
- * Built with plain Android Views, no extra libraries, so there is very little that can go wrong.
+ * The home screen. Top: the name, radio, weather and status icons. Middle: the clock and dates (right), the prayer
+ * times (centre) and the settings list (left). Bottom: a row of apps. Everything can be selected with the remote.
+ * It comes in two looks, chosen from a drop-down in the settings list: royal (green and gold) and kids (pink).
  */
 public class MainActivity extends Activity {
 
-    /** One app in the grid. */
+    /** One app in the row. */
     private static final class AppItem {
         String label;
         ComponentName component;
@@ -51,20 +60,21 @@ public class MainActivity extends Activity {
         boolean banner;
     }
 
-    /** Every app found, and the ones shown (without the hidden ones). */
+    /** Every app found, and the ones shown (without the hidden ones, in the user's order). */
     private final List<AppItem> allApps = new ArrayList<>();
     private final List<AppItem> apps = new ArrayList<>();
-    private View lastSelected;
-    private GridView grid;
+    private LinearLayout appRow;
     private TextView empty;
-    private AppAdapter adapter;
+    private String focusPkg;
 
     private static final String PREFS = "magiic";
     private static final long WEATHER_EVERY_MS = 30L * 60L * 1000L;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView weatherView;
-    private PrayerPanel prayerPanel;
     private TextView radioBtn;
+    private TextView permRow;
+    private PrayerBoard board;
+    private StatusIcons status;
     private final RadioService.Listener radioListener = new RadioService.Listener() {
         @Override
         public void onRadio(int state) {
@@ -78,84 +88,246 @@ public class MainActivity extends Activity {
             handler.postDelayed(this, WEATHER_EVERY_MS);
         }
     };
+    /** Run after any prayer or iqama setting changes: new alarm, new numbers on screen. */
+    private final Runnable prayerChanged = new Runnable() {
+        @Override
+        public void run() {
+            Scheduler.scheduleNext(MainActivity.this);
+            board.refresh();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundResource(R.drawable.bg_main);
-        root.setPadding(dp(48), dp(24), dp(48), dp(16));
+        FrameLayout root = new FrameLayout(this);
+        root.setBackground(Theme.background(this));
+        addDecorations(root);
 
-        // Header: the name on the start side, the clock and date on the end side. In Arabic (right-to-left)
-        // the start side is the right, so the layout mirrors by itself.
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(24), dp(14), dp(24), dp(12));
+        root.addView(content, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // ---------------------------------------------------------------- top bar
+        LinearLayout top = new LinearLayout(this);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView title = new TextView(this);
         title.setText(R.string.app_name);
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 28);
-        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        title.setTextColor(Theme.bgText(this));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        top.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        // The radio: OK opens the two stations (and Stop while it plays).
-        radioBtn = new TextView(this);
-        radioBtn.setTextColor(Color.WHITE);
-        radioBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        radioBtn.setGravity(Gravity.CENTER);
-        radioBtn.setPadding(dp(16), dp(8), dp(16), dp(8));
-        radioBtn.setBackgroundResource(R.drawable.weather_bg);
-        radioBtn.setFocusable(true);
-        radioBtn.setClickable(true);
+        radioBtn = chip(R.drawable.ic_radio, null);
         radioBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 chooseRadio();
             }
         });
-        LinearLayout.LayoutParams radioLp = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        radioLp.setMarginEnd(dp(16));
-        header.addView(radioBtn, radioLp);
-        updateRadioButton();
+        top.addView(radioBtn, chipLp(10));
 
-        // The weather. Reach it with the remote's arrows and press OK to change the city.
-        weatherView = new TextView(this);
-        weatherView.setTextColor(Color.WHITE);
-        weatherView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        weatherView.setGravity(Gravity.CENTER);
-        weatherView.setPadding(dp(16), dp(8), dp(16), dp(8));
-        weatherView.setBackgroundResource(R.drawable.weather_bg);
-        weatherView.setFocusable(true);
-        weatherView.setClickable(true);
+        weatherView = chip(0, null);
+        weatherView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         weatherView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 chooseCountry();
             }
         });
-        LinearLayout.LayoutParams weatherLp = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        weatherLp.setMarginEnd(dp(32));
-        header.addView(weatherView, weatherLp);
+        top.addView(weatherView, chipLp(10));
 
-        // The settings: hidden apps, the ad-blocking DNS, credits.
-        TextView settingsBtn = new TextView(this);
-        settingsBtn.setText(R.string.menu_btn);
-        settingsBtn.setTextColor(Color.WHITE);
-        settingsBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        settingsBtn.setGravity(Gravity.CENTER);
-        settingsBtn.setPadding(dp(16), dp(8), dp(16), dp(8));
-        settingsBtn.setBackgroundResource(R.drawable.weather_bg);
-        settingsBtn.setFocusable(true);
-        settingsBtn.setClickable(true);
-        settingsBtn.setOnClickListener(new View.OnClickListener() {
+        status = new StatusIcons(this, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                SettingsMenu.open(MainActivity.this, appList(), new Runnable() {
+                SettingsMenu.launch(MainActivity.this, Settings.ACTION_WIFI_SETTINGS);
+            }
+        });
+        top.addView(status.view, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        updateRadioButton();
+        content.addView(top, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // ---------------------------------------------------------------- the middle: clock, prayers, settings
+        board = new PrayerBoard(this,
+            new Runnable() {
+                @Override
+                public void run() {
+                    chooseCountry();
+                }
+            },
+            new Runnable() {
+                @Override
+                public void run() {
+                    chooseHijri();
+                }
+            },
+            new Runnable() {
+                @Override
+                public void run() {
+                    SettingsMenu.launch(MainActivity.this, Settings.ACTION_DATE_SETTINGS);
+                }
+            },
+            prayerChanged);
+
+        LinearLayout middle = new LinearLayout(this);
+        middle.setOrientation(LinearLayout.HORIZONTAL);
+        // First child is on the start side: the right in Arabic (as in the design), the left in English.
+        middle.addView(board.clockColumn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 30f));
+        LinearLayout.LayoutParams pLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 38f);
+        pLp.setMarginStart(dp(10));
+        pLp.setMarginEnd(dp(10));
+        middle.addView(board.prayers, pLp);
+        middle.addView(buildSettingsPanel(), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 25f));
+        LinearLayout.LayoutParams mLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 2.7f);
+        mLp.topMargin = dp(8);
+        content.addView(middle, mLp);
+
+        // ---------------------------------------------------------------- the apps row
+        HorizontalScrollView scroll = new HorizontalScrollView(this);
+        scroll.setHorizontalScrollBarEnabled(false);
+        scroll.setBackground(Theme.panel(this, 22));
+        scroll.setClipToPadding(false);
+        scroll.setPadding(dp(10), dp(8), dp(10), dp(8));
+        appRow = new LinearLayout(this);
+        appRow.setOrientation(LinearLayout.HORIZONTAL);
+        scroll.addView(appRow, new ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        scroll.setFillViewport(true);
+        LinearLayout.LayoutParams aLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.15f);
+        aLp.topMargin = dp(10);
+        content.addView(scroll, aLp);
+
+        empty = new TextView(this);
+        empty.setText(R.string.no_apps);
+        empty.setTextColor(Theme.bgText(this));
+        empty.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        empty.setGravity(Gravity.CENTER);
+        empty.setVisibility(View.GONE);
+        content.addView(empty, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        setContentView(root);
+    }
+
+    /** The skyline over the middle of the top bar, and a few stars in the corners. */
+    private void addDecorations(FrameLayout root) {
+        ImageView skyline = new ImageView(this);
+        skyline.setImageResource(Theme.kids(this) ? R.drawable.deco_skyline_kids : R.drawable.deco_skyline_royal);
+        skyline.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        FrameLayout.LayoutParams sLp = new FrameLayout.LayoutParams(dp(420), dp(66),
+            Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        sLp.topMargin = dp(6);
+        root.addView(skyline, sLp);
+
+        int[] stars = {R.drawable.ic_crescent, R.drawable.ic_star, R.drawable.ic_star};
+        int[] sizes = {34, 20, 14};
+        int[] marginTop = {10, 40, 22};
+        int[] marginSide = {250, 210, 300};
+        for (int i = 0; i < 3; i++) {
+            for (int side = 0; side < 2; side++) {
+                ImageView s = new ImageView(this);
+                s.setImageResource(stars[i]);
+                s.setColorFilter(Theme.kids(this) ? Color.WHITE : Theme.accent(this));
+                s.setAlpha(0.55f);
+                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(sizes[i]), dp(sizes[i]),
+                    Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+                lp.topMargin = dp(marginTop[i]);
+                s.setTranslationX(dp(side == 0 ? -marginSide[i] : marginSide[i]));
+                root.addView(s, lp);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- the settings list (left)
+
+    private LinearLayout buildSettingsPanel() {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackground(Theme.panel(this, 22));
+        panel.setPadding(dp(10), dp(10), dp(10), dp(10));
+
+        TextView head = new TextView(this);
+        head.setText(R.string.menu_title);
+        head.setTextColor(Theme.accent(this));
+        head.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        head.setTypeface(Typeface.DEFAULT_BOLD);
+        head.setGravity(Gravity.CENTER);
+        head.setCompoundDrawablePadding(dp(8));
+        head.setCompoundDrawablesRelativeWithIntrinsicBounds(
+            tinted(R.drawable.ic_settings, Theme.accent(this), 26), null, null, null);
+        panel.addView(head, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setVerticalScrollBarEnabled(false);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(list, new ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams sLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        sLp.topMargin = dp(6);
+        panel.addView(scroll, sLp);
+
+        // The look: a drop-down with the two interfaces.
+        Spinner look = new Spinner(this, Spinner.MODE_DIALOG);
+        String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids)};
+        look.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, names) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                TextView t = (TextView) super.getView(position, convertView, parent);
+                t.setTextColor(Theme.chipText(MainActivity.this));
+                t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+                t.setTypeface(Typeface.DEFAULT_BOLD);
+                t.setSingleLine(true);
+                t.setCompoundDrawablePadding(dp(8));
+                t.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                    tinted(R.drawable.ic_palette, Theme.chipText(MainActivity.this), 22), null, null, null);
+                return t;
+            }
+        });
+        look.setSelection(Theme.id(this), false);
+        look.setPrompt(getString(R.string.menu_theme));
+        look.setBackground(Theme.chip(this));
+        look.setPadding(dp(8), dp(4), dp(8), dp(4));
+        look.setFocusable(true);
+        look.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position != Theme.id(MainActivity.this)) {
+                    Theme.set(MainActivity.this, position);
+                    recreate();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+        list.addView(look, rowLp());
+
+        addRow(list, R.drawable.ic_bell, R.string.menu_adhan, new Runnable() {
+            @Override
+            public void run() {
+                TimingDialogs.open(MainActivity.this, prayerChanged);
+            }
+        });
+        addRow(list, R.drawable.ic_radio, R.string.menu_radio, new Runnable() {
+            @Override
+            public void run() {
+                chooseRadio();
+            }
+        });
+        addRow(list, R.drawable.ic_apps, R.string.menu_apps, new Runnable() {
+            @Override
+            public void run() {
+                SettingsMenu.apps(MainActivity.this, appList(), new Runnable() {
                     @Override
                     public void run() {
                         applyHidden();
@@ -163,120 +335,116 @@ public class MainActivity extends Activity {
                 });
             }
         });
-        LinearLayout.LayoutParams settingsLp = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        settingsLp.setMarginEnd(dp(32));
-        header.addView(settingsBtn, settingsLp);
-
-        LinearLayout when = new LinearLayout(this);
-        when.setOrientation(LinearLayout.VERTICAL);
-        when.setGravity(Gravity.END);
-
-        // The clock follows the TV's own 12/24-hour setting and updates itself every minute.
-        TextClock clock = new TextClock(this);
-        clock.setTextColor(Color.WHITE);
-        clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 36);
-        when.addView(clock, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        // The date, in the TV's language: for example "الأحد 1 نوفمبر 2026" or "Sunday 1 November 2026".
-        TextClock date = new TextClock(this);
-        date.setFormat12Hour("EEEE d MMMM yyyy");
-        date.setFormat24Hour("EEEE d MMMM yyyy");
-        date.setTextColor(Color.parseColor("#FFB8C4D0"));
-        date.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        when.addView(date, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        header.addView(when, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(header, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        // The prayer times strip, with the countdown to the next prayer.
-        prayerPanel = new PrayerPanel(this);
-        LinearLayout.LayoutParams panelLp = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        panelLp.topMargin = dp(12);
-        root.addView(prayerPanel.view, panelLp);
-
-        grid = new GridView(this);
-        grid.setNumColumns(6);
-        grid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
-        grid.setHorizontalSpacing(dp(14));
-        grid.setVerticalSpacing(dp(14));
-        grid.setClipToPadding(false);
-        grid.setPadding(dp(8), dp(16), dp(8), dp(16));
-        grid.setSelector(R.drawable.tile_selector);
-        grid.setDrawSelectorOnTop(true);
-        grid.setFocusable(true);
-        adapter = new AppAdapter();
-        grid.setAdapter(adapter);
-        grid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        addRow(list, R.drawable.ic_calendar, R.string.menu_hijri, new Runnable() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                open(apps.get(position));
+            public void run() {
+                chooseHijri();
             }
         });
-        // Hold OK on an app to hide it from the home screen.
-        grid.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+        addRow(list, R.drawable.ic_star, R.string.menu_reminders, new Runnable() {
             @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                askHide(apps.get(position));
-                return true;
+            public void run() {
+                ReminderDialogs.open(MainActivity.this);
             }
         });
-        // The app the remote is on grows a little.
-        grid.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        addRow(list, R.drawable.ic_account, R.string.menu_device, new Runnable() {
             @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (lastSelected != null) lastSelected.animate().scaleX(1f).scaleY(1f).setDuration(120).start();
-                lastSelected = view;
-                if (view != null) view.animate().scaleX(1.07f).scaleY(1.07f).setDuration(120).start();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-                if (lastSelected != null) lastSelected.animate().scaleX(1f).scaleY(1f).setDuration(120).start();
-                lastSelected = null;
+            public void run() {
+                SettingsMenu.device(MainActivity.this);
             }
         });
-        root.addView(grid, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-
-        empty = new TextView(this);
-        empty.setText(R.string.no_apps);
-        empty.setTextColor(Color.WHITE);
-        empty.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        empty.setGravity(Gravity.CENTER);
-        empty.setVisibility(View.GONE);
-        root.addView(empty, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        setContentView(root);
+        permRow = addRow(list, R.drawable.ic_warning, R.string.perm_btn, new Runnable() {
+            @Override
+            public void run() {
+                askOverlayPermission();
+            }
+        });
+        return panel;
     }
+
+    private LinearLayout.LayoutParams rowLp() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(5);
+        return lp;
+    }
+
+    private LinearLayout.LayoutParams chipLp(int endMarginDp) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMarginEnd(dp(endMarginDp));
+        return lp;
+    }
+
+    private TextView addRow(LinearLayout list, int icon, int text, final Runnable click) {
+        TextView row = chip(icon, getString(text));
+        row.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        row.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        row.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                click.run();
+            }
+        });
+        list.addView(row, rowLp());
+        return row;
+    }
+
+    /** A selectable button with an optional icon at its start. */
+    private TextView chip(int icon, String text) {
+        TextView b = new TextView(this);
+        if (text != null) b.setText(text);
+        b.setTextColor(Theme.chipText(this));
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(12), dp(8), dp(12), dp(8));
+        b.setBackground(Theme.chip(this));
+        b.setFocusable(true);
+        b.setClickable(true);
+        if (icon != 0) {
+            b.setCompoundDrawablePadding(dp(8));
+            b.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                tinted(icon, Theme.chipText(this), 22), null, null, null);
+        }
+        return b;
+    }
+
+    private Drawable tinted(int res, int colour, int sizeDp) {
+        Drawable d = getDrawable(res).mutate();
+        d.setTint(colour);
+        d.setBounds(0, 0, dp(sizeDp), dp(sizeDp));
+        return d;
+    }
+
+    // ---------------------------------------------------------------- lifecycle
 
     @Override
     protected void onResume() {
         super.onResume();
         loadApps();
-        grid.requestFocus();
         handler.removeCallbacks(weatherTick);
         handler.post(weatherTick);
-        prayerPanel.start();
+        board.start();
+        status.start();
         RadioService.listen(radioListener);
         updateRadioButton();
-        // Line up the alarm for the next prayer (it is also set again after a restart).
+        permRow.setVisibility(Settings.canDrawOverlays(this) ? View.GONE : View.VISIBLE);
+        // Line up the alarms for the next prayer and the next reminder (also set again after a restart).
         Scheduler.scheduleNext(this);
+        Reminders.scheduleNext(this);
     }
 
     @Override
     protected void onPause() {
         handler.removeCallbacks(weatherTick);
-        prayerPanel.stop();
+        board.stop();
+        status.stop();
         RadioService.unlisten(radioListener);
         super.onPause();
     }
+
+    // ---------------------------------------------------------------- radio
 
     private void updateRadioButton() {
         if (radioBtn == null) return;
@@ -303,9 +471,9 @@ public class MainActivity extends Activity {
         if (on) items[n] = getString(R.string.radio_stop);
         new AlertDialog.Builder(this)
             .setTitle(R.string.radio_title)
-            .setItems(items, new android.content.DialogInterface.OnClickListener() {
+            .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
-                public void onClick(android.content.DialogInterface d, int which) {
+                public void onClick(DialogInterface d, int which) {
                     if (which < RadioService.STATIONS.length) {
                         RadioService.play(MainActivity.this, which);
                     } else {
@@ -315,6 +483,39 @@ public class MainActivity extends Activity {
             })
             .show();
     }
+
+    // ---------------------------------------------------------------- permissions, Hijri
+
+    /** The system screen for "display over other apps" if this TV has one; otherwise instructions. */
+    private void askOverlayPermission() {
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                android.net.Uri.parse("package:" + getPackageName())));
+        } catch (ActivityNotFoundException | SecurityException e) {
+            new AlertDialog.Builder(this)
+                .setTitle(R.string.overlay_title)
+                .setMessage(R.string.overlay_help)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+        }
+    }
+
+    /** Moves the Hijri date by up to three days either way, for when the local moon sighting differs. */
+    private void chooseHijri() {
+        NumberDialog.show(this, getString(R.string.hijri_title), -3, 3, Hijri.adjust(this),
+            getString(R.string.days_plain), getString(R.string.days_signed), true, getString(R.string.no_adjust),
+            new NumberDialog.OnSave() {
+                @Override
+                public void saved(int value) {
+                    Hijri.setAdjust(MainActivity.this, value);
+                    board.refreshDates();
+                    // The White Days follow the Hijri date.
+                    Reminders.scheduleNext(MainActivity.this);
+                }
+            });
+    }
+
+    // ---------------------------------------------------------------- city and weather
 
     private SharedPreferences prefs() {
         return getSharedPreferences(PREFS, MODE_PRIVATE);
@@ -334,9 +535,9 @@ public class MainActivity extends Activity {
         String[] countries = {getString(R.string.egypt), getString(R.string.saudi)};
         new AlertDialog.Builder(this)
             .setTitle(R.string.choose_country)
-            .setItems(countries, new android.content.DialogInterface.OnClickListener() {
+            .setItems(countries, new DialogInterface.OnClickListener() {
                 @Override
-                public void onClick(android.content.DialogInterface dialog, int which) {
+                public void onClick(DialogInterface dialog, int which) {
                     chooseCity(which == 0 ? Cities.EGYPT : Cities.SAUDI);
                 }
             })
@@ -359,13 +560,14 @@ public class MainActivity extends Activity {
         for (int i = 0; i < names.length; i++) names[i] = sorted.get(i).name(arabic);
         new AlertDialog.Builder(this)
             .setTitle(R.string.choose_city)
-            .setItems(names, new android.content.DialogInterface.OnClickListener() {
+            .setItems(names, new DialogInterface.OnClickListener() {
                 @Override
-                public void onClick(android.content.DialogInterface dialog, int which) {
+                public void onClick(DialogInterface dialog, int which) {
                     prefs().edit().putString("city", sorted.get(which).key()).apply();
                     loadWeather();
                     Scheduler.scheduleNext(MainActivity.this);
-                    prayerPanel.update();
+                    board.refresh();
+                    board.refreshDates();
                 }
             })
             .show();
@@ -424,7 +626,9 @@ public class MainActivity extends Activity {
         return getString(res);
     }
 
-    /** Reads the installed TV apps (or, on a device with none, every launchable app), sorted by name. */
+    // ---------------------------------------------------------------- the apps
+
+    /** Reads the installed TV apps (or, on a device with none, every launchable app). */
     private void loadApps() {
         PackageManager pm = getPackageManager();
         List<ResolveInfo> found = query(pm, Intent.CATEGORY_LEANBACK_LAUNCHER);
@@ -445,7 +649,7 @@ public class MainActivity extends Activity {
             list.add(item);
         }
         final Collator collator = Collator.getInstance();
-        Collections.sort(list, new java.util.Comparator<AppItem>() {
+        Collections.sort(list, new Comparator<AppItem>() {
             @Override
             public int compare(AppItem a, AppItem b) {
                 return collator.compare(a.label, b.label);
@@ -456,16 +660,118 @@ public class MainActivity extends Activity {
         applyHidden();
     }
 
-    /** Shows every app except the hidden ones. */
+    /** The apps to show: all but the hidden ones, in the user's order (then alphabetical), and the row is redrawn. */
     private void applyHidden() {
         Set<String> hidden = SettingsMenu.hidden(this);
+        final List<String> order = SettingsMenu.order(this);
         apps.clear();
         for (AppItem a : allApps) {
             if (!hidden.contains(a.component.getPackageName())) apps.add(a);
         }
-        lastSelected = null;
-        adapter.notifyDataSetChanged();
+        // A stable sort: apps with a saved place go first in that order; the others keep their alphabetical order.
+        Collections.sort(apps, new Comparator<AppItem>() {
+            @Override
+            public int compare(AppItem a, AppItem b) {
+                int ia = order.indexOf(a.component.getPackageName());
+                int ib = order.indexOf(b.component.getPackageName());
+                if (ia < 0) ia = Integer.MAX_VALUE;
+                if (ib < 0) ib = Integer.MAX_VALUE;
+                return ia < ib ? -1 : ia > ib ? 1 : 0;
+            }
+        });
+        rebuildRow();
         empty.setVisibility(apps.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
+    private void rebuildRow() {
+        appRow.removeAllViews();
+        View toFocus = null;
+        for (int i = 0; i < apps.size(); i++) {
+            AppItem item = apps.get(i);
+            View tile = buildTile(item);
+            appRow.addView(tile);
+            if (item.component.getPackageName().equals(focusPkg) || (toFocus == null && focusPkg == null && i == 0)) {
+                toFocus = tile;
+            }
+        }
+        focusPkg = null;
+        if (toFocus != null && getCurrentFocus() == null) toFocus.requestFocus();
+        else if (toFocus != null && appRow.hasFocus()) toFocus.requestFocus();
+    }
+
+    private View buildTile(final AppItem item) {
+        final boolean kids = Theme.kids(this);
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER_HORIZONTAL);
+        tile.setPadding(dp(6), dp(6), dp(6), dp(6));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Theme.tileFill(this));
+        bg.setCornerRadius(dp(18));
+        bg.setStroke(dp(2), kids ? Color.parseColor("#FFE58FA3") : Color.parseColor("#88E8B84A"));
+        tile.setBackground(bg);
+        tile.setTag(item.component.getPackageName());
+        tile.setFocusable(true);
+        tile.setClickable(true);
+        tile.setLongClickable(true);
+
+        ImageView image = new ImageView(this);
+        image.setClipToOutline(true);
+        image.setOutlineProvider(new ViewOutlineProvider() {
+            @Override
+            public void getOutline(View v, Outline o) {
+                o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(12));
+            }
+        });
+        if (item.banner) {
+            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        } else {
+            // A square icon sits in the middle on a lighter backing.
+            image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            image.setPadding(dp(12), dp(8), dp(12), dp(8));
+            image.setBackgroundColor(kids ? Color.WHITE : Color.parseColor("#33FFFFFF"));
+        }
+        image.setImageDrawable(item.image);
+        tile.addView(image, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        TextView label = new TextView(this);
+        label.setText(item.label);
+        label.setTextColor(Theme.tileLabel(this));
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        label.setTypeface(Typeface.DEFAULT_BOLD);
+        label.setSingleLine(true);
+        label.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams lLp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lLp.topMargin = dp(5);
+        tile.addView(label, lLp);
+
+        final Drawable ring = Theme.focusRing(this, 18);
+        tile.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean has) {
+                v.setForeground(has ? ring : null);
+                v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(120).start();
+            }
+        });
+        tile.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                open(item);
+            }
+        });
+        tile.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                appActions(item);
+                return true;
+            }
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(126), ViewGroup.LayoutParams.MATCH_PARENT);
+        lp.setMarginStart(dp(5));
+        lp.setMarginEnd(dp(5));
+        tile.setLayoutParams(lp);
+        return tile;
     }
 
     /** (name, package) of every app, for the "hide or show apps" list. */
@@ -475,20 +781,56 @@ public class MainActivity extends Activity {
         return out;
     }
 
-    private void askHide(final AppItem item) {
+    /** Hold OK on an app: move it, take it off the screen, uninstall it or see its info. */
+    private void appActions(final AppItem item) {
+        final String pkg = item.component.getPackageName();
+        String[] items = {
+            getString(R.string.app_earlier), getString(R.string.app_later), getString(R.string.app_first),
+            getString(R.string.app_hide), getString(R.string.app_uninstall), getString(R.string.app_info),
+        };
         new AlertDialog.Builder(this)
-            .setMessage(getString(R.string.hide_ask, item.label))
-            .setPositiveButton(R.string.hide_yes, new android.content.DialogInterface.OnClickListener() {
+            .setTitle(item.label)
+            .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
-                public void onClick(android.content.DialogInterface d, int w) {
-                    Set<String> hidden = SettingsMenu.hidden(MainActivity.this);
-                    hidden.add(item.component.getPackageName());
-                    SettingsMenu.setHidden(MainActivity.this, hidden);
-                    applyHidden();
+                public void onClick(DialogInterface d, int which) {
+                    if (which <= 2) {
+                        move(pkg, which);
+                        focusPkg = pkg;
+                        applyHidden();
+                        // Open again, so the app can be moved several places in a row.
+                        appActions(item);
+                    } else if (which == 3) {
+                        Set<String> hidden = SettingsMenu.hidden(MainActivity.this);
+                        hidden.add(pkg);
+                        SettingsMenu.setHidden(MainActivity.this, hidden);
+                        applyHidden();
+                        Toast.makeText(MainActivity.this, R.string.app_hidden_tip, Toast.LENGTH_LONG).show();
+                    } else if (which == 4) {
+                        SettingsMenu.uninstall(MainActivity.this, pkg);
+                    } else {
+                        SettingsMenu.appInfo(MainActivity.this, pkg);
+                    }
                 }
             })
-            .setNegativeButton(R.string.cancel, null)
+            .setNegativeButton(R.string.close, null)
             .show();
+    }
+
+    /** Saves a new order: 0 = one place earlier, 1 = one place later, 2 = to the first place. */
+    private void move(String pkg, int how) {
+        List<String> order = new ArrayList<>();
+        for (AppItem a : apps) order.add(a.component.getPackageName());
+        int i = order.indexOf(pkg);
+        if (i < 0) return;
+        if (how == 0 && i > 0) {
+            Collections.swap(order, i, i - 1);
+        } else if (how == 1 && i < order.size() - 1) {
+            Collections.swap(order, i, i + 1);
+        } else if (how == 2 && i > 0) {
+            order.remove(i);
+            order.add(0, pkg);
+        }
+        SettingsMenu.setOrder(this, order);
     }
 
     private static List<ResolveInfo> query(PackageManager pm, String category) {
@@ -508,85 +850,6 @@ public class MainActivity extends Activity {
     }
 
     private int dp(int value) {
-        return Math.round(TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, value, getResources().getDisplayMetrics()));
-    }
-
-    /** Draws one tile: the app's banner or icon above its name. */
-    private final class AppAdapter extends BaseAdapter {
-        @Override
-        public int getCount() {
-            return apps.size();
-        }
-
-        @Override
-        public Object getItem(int position) {
-            return apps.get(position);
-        }
-
-        @Override
-        public long getItemId(int position) {
-            return position;
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            LinearLayout tile;
-            ImageView image;
-            TextView label;
-            if (convertView == null) {
-                tile = new LinearLayout(MainActivity.this);
-                tile.setOrientation(LinearLayout.VERTICAL);
-                tile.setGravity(Gravity.CENTER_HORIZONTAL);
-                tile.setBackgroundResource(R.drawable.tile_bg);
-                tile.setPadding(dp(6), dp(6), dp(6), dp(6));
-
-                image = new ImageView(MainActivity.this);
-                // The picture area is always the same shape, with rounded corners.
-                image.setClipToOutline(true);
-                image.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                    @Override
-                    public void getOutline(View v, android.graphics.Outline o) {
-                        o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(10));
-                    }
-                });
-                tile.addView(image, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(76)));
-
-                label = new TextView(MainActivity.this);
-                label.setTextColor(Color.WHITE);
-                label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-                label.setSingleLine(true);
-                label.setGravity(Gravity.CENTER);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                lp.topMargin = dp(5);
-                tile.addView(label, lp);
-
-                tile.setTag(new View[] {image, label});
-            } else {
-                tile = (LinearLayout) convertView;
-            }
-            View[] parts = (View[]) tile.getTag();
-            image = (ImageView) parts[0];
-            label = (TextView) parts[1];
-            AppItem item = apps.get(position);
-            if (item.banner) {
-                // A wide banner fills the picture area.
-                image.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                image.setPadding(0, 0, 0, 0);
-                image.setBackgroundColor(Color.TRANSPARENT);
-            } else {
-                // A square icon sits in the middle at a comfortable size, on a slightly lighter backing.
-                image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                image.setPadding(dp(14), dp(8), dp(14), dp(8));
-                image.setBackgroundColor(Color.parseColor("#FF24304A"));
-            }
-            image.setImageDrawable(item.image);
-            tile.setScaleX(1f);
-            tile.setScaleY(1f);
-            label.setText(item.label);
-            return tile;
-        }
+        return Theme.dp(this, value);
     }
 }

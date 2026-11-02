@@ -1,0 +1,229 @@
+package app.mylauncher.gtv;
+
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+
+/**
+ * Reminders that appear as a popup over the screen at a time the user sets: the Monday and Thursday fast, the White
+ * Days fast (13, 14, 15 of the Hijri month), and any number of custom reminders. They are saved as one JSON text, and
+ * one system alarm is kept for the earliest of them.
+ */
+final class Reminders {
+    private Reminders() {}
+
+    static final int WEEK_FAST = 1, WHITE_FAST = 2, CUSTOM = 3;
+    private static final String KEY = "reminders";
+    private static final int REQ = 3;
+    private static final String ACTION = "app.mylauncher.gtv.REMINDER";
+    /** How far ahead to look for the next time; the White Days come every month, so 45 days is plenty. */
+    private static final int LOOK_AHEAD_DAYS = 45;
+    /** A reminder that comes more than this late (the TV was off) is skipped. */
+    static final long TOO_LATE_MS = 30L * 60L * 1000L;
+
+    static final class Item {
+        String id;
+        int kind;
+        boolean enabled;
+        /** Custom reminders only: their title and text. */
+        String title = "";
+        String text = "";
+        /** Weekly fast: the fasting days; custom: the days it shows. Bit 0 = Sunday ... bit 6 = Saturday. */
+        int daysMask;
+        /** White Days: which of the 13th (bit 0), 14th (bit 1) and 15th (bit 2) of the Hijri month. */
+        int hijriMask = 7;
+        /** The fasts: show the reminder the day before the fast (true) or on its day (false). */
+        boolean dayBefore = true;
+        int hour = 21;
+        int minute = 0;
+        /** Minutes it stays on screen; 0 = until it is closed by hand. */
+        int durationMin = 0;
+    }
+
+    // ---------------------------------------------------------------- saving
+
+    static List<Item> load(Context c) {
+        List<Item> list = new ArrayList<>();
+        String json = c.getSharedPreferences("magiic", Context.MODE_PRIVATE).getString(KEY, null);
+        if (json != null) {
+            try {
+                JSONArray a = new JSONArray(json);
+                for (int i = 0; i < a.length(); i++) list.add(fromJson(a.getJSONObject(i)));
+            } catch (JSONException e) {
+                list.clear();
+            }
+        }
+        if (list.isEmpty()) {
+            Item w = new Item();
+            w.id = "week";
+            w.kind = WEEK_FAST;
+            w.daysMask = (1 << (Calendar.MONDAY - 1)) | (1 << (Calendar.THURSDAY - 1));
+            list.add(w);
+            Item b = new Item();
+            b.id = "white";
+            b.kind = WHITE_FAST;
+            list.add(b);
+        }
+        return list;
+    }
+
+    static void save(Context c, List<Item> items) {
+        JSONArray a = new JSONArray();
+        try {
+            for (Item it : items) a.put(toJson(it));
+        } catch (JSONException e) {
+            return;
+        }
+        c.getSharedPreferences("magiic", Context.MODE_PRIVATE).edit().putString(KEY, a.toString()).apply();
+    }
+
+    private static JSONObject toJson(Item it) throws JSONException {
+        return new JSONObject()
+            .put("id", it.id).put("kind", it.kind).put("on", it.enabled)
+            .put("title", it.title).put("text", it.text)
+            .put("days", it.daysMask).put("hijri", it.hijriMask).put("before", it.dayBefore)
+            .put("h", it.hour).put("m", it.minute).put("dur", it.durationMin);
+    }
+
+    private static Item fromJson(JSONObject o) {
+        Item it = new Item();
+        it.id = o.optString("id", "x");
+        it.kind = o.optInt("kind", CUSTOM);
+        it.enabled = o.optBoolean("on", false);
+        it.title = o.optString("title", "");
+        it.text = o.optString("text", "");
+        it.daysMask = o.optInt("days", 127);
+        it.hijriMask = o.optInt("hijri", 7);
+        it.dayBefore = o.optBoolean("before", true);
+        it.hour = o.optInt("h", 21);
+        it.minute = o.optInt("m", 0);
+        it.durationMin = o.optInt("dur", 0);
+        return it;
+    }
+
+    static Item newCustom() {
+        Item it = new Item();
+        it.id = "c" + System.currentTimeMillis();
+        it.kind = CUSTOM;
+        it.enabled = true;
+        it.daysMask = 127;
+        it.hour = 9;
+        it.minute = 0;
+        return it;
+    }
+
+    // ---------------------------------------------------------------- when
+
+    /** The first moment after {@code after} at which {@code it} should show, or -1 if never (switched off, no days). */
+    static long next(Context c, Item it, long after) {
+        if (!it.enabled) return -1;
+        int adj = Hijri.adjust(c);
+        for (int d = 0; d <= LOOK_AHEAD_DAYS; d++) {
+            Calendar show = Calendar.getInstance();
+            show.setTimeInMillis(after);
+            show.add(Calendar.DAY_OF_MONTH, d);
+            show.set(Calendar.HOUR_OF_DAY, it.hour);
+            show.set(Calendar.MINUTE, it.minute);
+            show.set(Calendar.SECOND, 0);
+            show.set(Calendar.MILLISECOND, 0);
+            long at = show.getTimeInMillis();
+            if (at <= after) continue;
+            Calendar target = fastDay(it, show);
+            if (matches(it, target, adj)) return at;
+        }
+        return -1;
+    }
+
+    /** The day the reminder is about: the fast's own day (a day after the popup when it shows the day before). */
+    static Calendar fastDay(Item it, Calendar show) {
+        Calendar t = (Calendar) show.clone();
+        if (it.kind != CUSTOM && it.dayBefore) t.add(Calendar.DAY_OF_MONTH, 1);
+        return t;
+    }
+
+    private static boolean matches(Item it, Calendar target, int hijriAdj) {
+        if (it.kind == WHITE_FAST) {
+            int day = Hijri.of(target, hijriAdj)[2];
+            return day >= 13 && day <= 15 && (it.hijriMask & (1 << (day - 13))) != 0;
+        }
+        return (it.daysMask & (1 << (target.get(Calendar.DAY_OF_WEEK) - 1))) != 0;
+    }
+
+    /** The reminders that are due at exactly {@code at} (several may share the same minute). */
+    static List<Item> dueAt(Context c, long at) {
+        List<Item> due = new ArrayList<>();
+        for (Item it : load(c)) {
+            if (next(c, it, at - 1L) == at) due.add(it);
+        }
+        return due;
+    }
+
+    // ---------------------------------------------------------------- the alarm
+
+    /** Sets (or cancels) the one alarm for the earliest reminder after {@code max(now, after)}. */
+    static void scheduleNext(Context c, long after) {
+        AlarmManager am = c.getSystemService(AlarmManager.class);
+        if (am == null) return;
+        long from = Math.max(System.currentTimeMillis(), after);
+        long best = -1;
+        for (Item it : load(c)) {
+            long t = next(c, it, from);
+            if (t > 0 && (best < 0 || t < best)) best = t;
+        }
+        if (best < 0) {
+            am.cancel(pending(c, 0));
+            return;
+        }
+        PendingIntent pi = pending(c, best);
+        try {
+            if (Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, best, pi);
+            } else {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, best, pi);
+            }
+        } catch (SecurityException e) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, best, pi);
+        }
+    }
+
+    static void scheduleNext(Context c) {
+        scheduleNext(c, 0L);
+    }
+
+    private static PendingIntent pending(Context c, long at) {
+        Intent i = new Intent(c, ReminderReceiver.class).setAction(ACTION).putExtra("at", at);
+        return PendingIntent.getBroadcast(c, REQ, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    // ---------------------------------------------------------------- the words
+
+    static String title(Context c, Item it) {
+        if (it.kind == WEEK_FAST) return c.getString(R.string.rem_week_title);
+        if (it.kind == WHITE_FAST) return c.getString(R.string.rem_white_title);
+        return it.title.isEmpty() ? c.getString(R.string.rem_custom_default) : it.title;
+    }
+
+    /** The popup's second line: for the fasts, which day it is about; for a custom reminder, its text. */
+    static String message(Context c, Item it, long shownAt) {
+        if (it.kind == CUSTOM) return it.text;
+        Calendar show = Calendar.getInstance();
+        show.setTimeInMillis(shownAt);
+        Calendar target = fastDay(it, show);
+        String when = c.getString(it.dayBefore ? R.string.rem_tomorrow : R.string.rem_today);
+        if (it.kind == WEEK_FAST) {
+            return c.getString(R.string.rem_week_msg, when, Hijri.weekdayAr(target));
+        }
+        int day = Hijri.of(target, Hijri.adjust(c))[2];
+        return c.getString(R.string.rem_white_msg, when, day);
+    }
+}
