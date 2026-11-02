@@ -73,6 +73,7 @@ public class AdhanService extends Service {
     private boolean finished;
     private boolean pausedOthers;
     private boolean isIqama;
+    private int prayerIndex = PrayerCalc.DHUHR;
     private int hintRes = R.string.popup_hint;
     private ToneGenerator tone;
 
@@ -88,6 +89,7 @@ public class AdhanService extends Service {
         started = true;
 
         int index = intent != null ? intent.getIntExtra("index", PrayerCalc.DHUHR) : PrayerCalc.DHUHR;
+        prayerIndex = index;
         boolean friday = intent != null && intent.getBooleanExtra("friday", false);
         boolean test = intent != null && intent.getBooleanExtra("test", false);
         isIqama = intent != null && intent.getBooleanExtra("iqama", false);
@@ -258,7 +260,15 @@ public class AdhanService extends Service {
 
     /** The adhan (res/raw/adhan.mp3) or, for an iqama, a shorter alert (res/raw/iqama.mp3). */
     private void playSound() {
-        int res = getResources().getIdentifier(isIqama ? "iqama" : "adhan", "raw", getPackageName());
+        // Recordings are looked for in res/raw: iqama.mp3; adhan_fajr.mp3 for Fajr (its adhan has extra words),
+        // then adhan.mp3 for every prayer.
+        int res = 0;
+        if (isIqama) {
+            res = rawId("iqama");
+        } else {
+            if (prayerIndex == PrayerCalc.FAJR) res = rawId("adhan_fajr");
+            if (res == 0) res = rawId("adhan");
+        }
         long cap = isIqama ? MAX_IQAMA_MS : MAX_ADHAN_MS;
         if (res != 0 && playMedia(null, res, cap)) return;
         if (isIqama) {
@@ -269,6 +279,10 @@ public class AdhanService extends Service {
         // No adhan.mp3 added yet: a short system alert, so the popup and the pause/resume can be tested.
         Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
         if (alert == null || !playMedia(alert, 0, MAX_FALLBACK_MS)) beep();
+    }
+
+    private int rawId(String name) {
+        return getResources().getIdentifier(name, "raw", getPackageName());
     }
 
     /** Plays a recording (a Uri, or a raw resource when the Uri is null); false if it could not be started. */

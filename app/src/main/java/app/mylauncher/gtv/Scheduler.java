@@ -33,11 +33,11 @@ final class Scheduler {
     }
 
     /** A test adhan or iqama one minute from now, through exactly the same path as a real one. */
-    static void scheduleTest(Context c, boolean iqama) {
+    static void scheduleTest(Context c, boolean iqama, int index) {
         AlarmManager am = c.getSystemService(AlarmManager.class);
         if (am == null) return;
         long at = System.currentTimeMillis() + 60000L;
-        set(am, at, pending(c, REQ_TEST, PrayerCalc.DHUHR, false, at, true, iqama));
+        set(am, at, pending(c, REQ_TEST, index, false, at, true, iqama));
     }
 
     private static PendingIntent pending(Context c, int request, int index, boolean friday, long at,

@@ -15,13 +15,14 @@ final class TimingDialogs {
     static void open(final Context c, final Runnable changed) {
         int[] adj = PrayerPrefs.adjust(c);
         int[] iq = PrayerPrefs.iqama(c);
-        String[] items = new String[7];
+        String[] items = new String[8];
         for (int i = 0; i < 5; i++) {
             items[i] = c.getString(R.string.main_row, PrayerCalc.name(c, i, false),
                 PrayerPrefs.adjustText(c, adj[i]), PrayerPrefs.iqamaText(c, iq[i]));
         }
         items[5] = c.getString(R.string.test_btn);
-        items[6] = c.getString(R.string.test_iqama_item);
+        items[6] = c.getString(R.string.test_fajr_item);
+        items[7] = c.getString(R.string.test_iqama_item);
 
         new AlertDialog.Builder(c)
             .setTitle(R.string.settings_title)
@@ -31,7 +32,7 @@ final class TimingDialogs {
                     if (which < 5) {
                         field(c, which, changed);
                     } else {
-                        Scheduler.scheduleTest(c, which == 6);
+                        Scheduler.scheduleTest(c, which == 7, which == 6 ? PrayerCalc.FAJR : PrayerCalc.DHUHR);
                         Toast.makeText(c, R.string.test_scheduled, Toast.LENGTH_LONG).show();
                     }
                 }
