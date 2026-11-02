@@ -51,6 +51,9 @@ public class AdhanService extends Service {
     private static final int NOTE_ID = 7;
     private static final long MAX_ADHAN_MS = 6L * 60L * 1000L;
     private static final long MAX_FALLBACK_MS = 15L * 1000L;
+    private static final long MAX_IQAMA_MS = 60L * 1000L;
+    /** The iqama alert without a recording: three double beeps, and the popup stays long enough to read. */
+    private static final long IQAMA_BEEPS_END_MS = 6500L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable finisher = new Runnable() {
@@ -69,6 +72,9 @@ public class AdhanService extends Service {
     private boolean started;
     private boolean finished;
     private boolean pausedOthers;
+    private boolean isIqama;
+    private int hintRes = R.string.popup_hint;
+    private ToneGenerator tone;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -84,9 +90,12 @@ public class AdhanService extends Service {
         int index = intent != null ? intent.getIntExtra("index", PrayerCalc.DHUHR) : PrayerCalc.DHUHR;
         boolean friday = intent != null && intent.getBooleanExtra("friday", false);
         boolean test = intent != null && intent.getBooleanExtra("test", false);
+        isIqama = intent != null && intent.getBooleanExtra("iqama", false);
+        hintRes = isIqama ? R.string.iqama_hint : R.string.popup_hint;
 
         Cities.City city = Cities.selected(this);
-        String title = getString(R.string.popup_title, PrayerCalc.name(this, index, friday));
+        String title = getString(isIqama ? R.string.iqama_title : R.string.popup_title,
+            PrayerCalc.name(this, index, friday));
         if (test) title = title + " " + getString(R.string.popup_test);
         String where = city != null ? city.name("ar".equals(Locale.getDefault().getLanguage())) : "";
 
@@ -112,7 +121,7 @@ public class AdhanService extends Service {
         Notification n = new Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher)
             .setContentTitle(title)
-            .setContentText(getString(R.string.popup_hint))
+            .setContentText(getString(hintRes))
             .setOngoing(true)
             .build();
         if (Build.VERSION.SDK_INT >= 29) {
@@ -209,7 +218,7 @@ public class AdhanService extends Service {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
             TextView hint = new TextView(this);
-            hint.setText(R.string.popup_hint);
+            hint.setText(hintRes);
             hint.setTextColor(Color.parseColor("#FF7F8C99"));
             hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
             hint.setGravity(Gravity.CENTER);
@@ -247,23 +256,35 @@ public class AdhanService extends Service {
         overlay = null;
     }
 
+    /** The adhan (res/raw/adhan.mp3) or, for an iqama, a shorter alert (res/raw/iqama.mp3). */
     private void playSound() {
-        int res = getResources().getIdentifier("adhan", "raw", getPackageName());
+        int res = getResources().getIdentifier(isIqama ? "iqama" : "adhan", "raw", getPackageName());
+        long cap = isIqama ? MAX_IQAMA_MS : MAX_ADHAN_MS;
+        if (res != 0 && playMedia(null, res, cap)) return;
+        if (isIqama) {
+            // No iqama.mp3 added yet: three double beeps, clearly different from the adhan.
+            beepsForIqama();
+            return;
+        }
+        // No adhan.mp3 added yet: a short system alert, so the popup and the pause/resume can be tested.
+        Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        if (alert == null || !playMedia(alert, 0, MAX_FALLBACK_MS)) beep();
+    }
+
+    /** Plays a recording (a Uri, or a raw resource when the Uri is null); false if it could not be started. */
+    private boolean playMedia(Uri uri, int res, long capMs) {
         try {
             player = new MediaPlayer();
             player.setAudioAttributes(attrs());
-            if (res != 0) {
+            if (uri != null) {
+                player.setDataSource(this, uri);
+            } else {
                 AssetFileDescriptor afd = getResources().openRawResourceFd(res);
                 try {
                     player.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
                 } finally {
                     afd.close();
                 }
-                handler.postDelayed(finisher, MAX_ADHAN_MS);
-            } else {
-                // No adhan.mp3 added yet: a short system alert, so the popup and the pause/resume can be tested.
-                player.setDataSource(this, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM));
-                handler.postDelayed(finisher, MAX_FALLBACK_MS);
             }
             player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 @Override
@@ -285,21 +306,51 @@ public class AdhanService extends Service {
                 }
             });
             player.prepareAsync();
+            handler.postDelayed(finisher, capMs);
+            return true;
         } catch (Exception e) {
-            beep();
+            releasePlayer();
+            return false;
         }
     }
 
-    /** The last resort when nothing can be played: three seconds of beeps. */
+    /** The last resort for the adhan when nothing can be played: three seconds of beeps. */
     private void beep() {
-        releasePlayer();
         try {
-            new ToneGenerator(AudioManager.STREAM_MUSIC, 100)
-                .startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 3000);
+            tone = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
+            tone.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 3000);
         } catch (RuntimeException ignored) {
             // No sound at all; the popup still closes on time.
         }
         handler.postDelayed(finisher, 3500L);
+    }
+
+    private void beepsForIqama() {
+        try {
+            tone = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
+        } catch (RuntimeException ignored) {
+            tone = null;
+        }
+        for (int k = 0; k < 3; k++) {
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (tone != null && !finished) tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 600);
+                }
+            }, k * 1800L);
+        }
+        handler.postDelayed(finisher, IQAMA_BEEPS_END_MS);
+    }
+
+    private void releaseTone() {
+        if (tone != null) {
+            try {
+                tone.release();
+            } catch (RuntimeException ignored) {
+                // Already released.
+            }
+            tone = null;
+        }
     }
 
     private void releasePlayer() {
@@ -317,8 +368,9 @@ public class AdhanService extends Service {
     private void finishAdhan() {
         if (finished) return;
         finished = true;
-        handler.removeCallbacks(finisher);
+        handler.removeCallbacksAndMessages(null);
         releasePlayer();
+        releaseTone();
         hideOverlay();
         final AudioManager am = audio;
         if (am != null && focus != null) am.abandonAudioFocusRequest(focus);
@@ -340,7 +392,9 @@ public class AdhanService extends Service {
         // Killed by the system before the adhan ended: at least take down the popup and give the audio back.
         if (!finished) {
             finished = true;
+            handler.removeCallbacksAndMessages(null);
             releasePlayer();
+            releaseTone();
             hideOverlay();
             if (audio != null && focus != null) audio.abandonAudioFocusRequest(focus);
             if (wake != null && wake.isHeld()) wake.release();

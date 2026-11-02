@@ -34,8 +34,28 @@
     <string name="popup_test">(test)</string>
     <string name="notif_channel">Adhan</string>
     <string name="test_btn">Test the adhan in 1 minute</string>
-    <string name="test_scheduled">The test adhan will play in one minute. Leave this app and start any video.</string>
+    <string name="test_scheduled">The test alert will play in one minute. Leave this app and start any video.</string>
     <string name="perm_btn">Enable the adhan popup over apps</string>
     <string name="overlay_title">Allow the adhan popup</string>
     <string name="overlay_help">The app must be allowed to appear over other apps.\n\nIf your settings have it: Apps → Special access → Display over other apps → Magiic TV → Allow.\n\nIf not, run this with an ADB app on your phone (connected to the device on the same Wi-Fi):\n\nadb shell appops set app.mylauncher.gtv SYSTEM_ALERT_WINDOW allow</string>
+
+    <string name="settings_btn">Adhan &amp; iqama settings</string>
+    <string name="settings_title">Adhan &amp; iqama settings</string>
+    <string name="main_row">%1$s  |  Time shift: %2$s  |  Iqama: %3$s</string>
+    <string name="adjust_item">Shift the adhan time: %1$s</string>
+    <string name="iqama_item">Iqama after the adhan: %1$s</string>
+    <string name="adjust_title">Shift the %1$s time</string>
+    <string name="iqama_set_title">Iqama after %1$s</string>
+    <string name="no_adjust">No shift</string>
+    <string name="iqama_off">Off</string>
+    <string name="minutes_signed">%1$+d min</string>
+    <string name="minutes_plain">%1$d min</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="number_tip">Up and Down change it by one minute, or use + and −</string>
+    <string name="iqama_title">It is time for the %1$s iqama</string>
+    <string name="iqama_hint">Press Back to close</string>
+    <string name="iqama_in">%1$s iqama in %2$s</string>
+    <string name="iqama_at">Iqama %1$s</string>
+    <string name="test_iqama_item">Test the iqama in 1 minute</string>
 </resources>

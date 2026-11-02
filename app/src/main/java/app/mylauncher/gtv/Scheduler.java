@@ -7,8 +7,8 @@ import android.content.Intent;
 import android.os.Build;
 
 /**
- * Sets the system alarm for the next prayer. One alarm is kept at a time: when it rings, the receiver sets the
- * one after it. It is set again whenever the app opens, the city changes, or the TV restarts.
+ * Sets the system alarm for the next adhan or iqama. One alarm is kept at a time: when it rings, the receiver sets
+ * the one after it. It is set again whenever the app opens, the city or a setting changes, or the TV restarts.
  */
 final class Scheduler {
     private Scheduler() {}
@@ -17,33 +17,37 @@ final class Scheduler {
     private static final int REQ_TEST = 2;
     private static final String ACTION = "app.mylauncher.gtv.ADHAN";
 
-    /** Alarm for the next prayer of the chosen city (replaces the previous one). */
+    /** Alarm for the next adhan or iqama of the chosen city (replaces the previous one). */
     static void scheduleNext(Context c) {
         AlarmManager am = c.getSystemService(AlarmManager.class);
         if (am == null) return;
         Cities.City city = Cities.selected(c);
         if (city == null) {
-            am.cancel(pending(c, REQ_REAL, 0, false, 0, false));
+            am.cancel(pending(c, REQ_REAL, 0, false, 0, false, false));
             return;
         }
-        PrayerCalc.Next n = PrayerCalc.next(city, System.currentTimeMillis());
-        set(am, n.at, pending(c, REQ_REAL, n.index, n.friday, n.at, false));
+        PrayerCalc.Event e = PrayerCalc.nextEvent(
+            city, System.currentTimeMillis(), PrayerPrefs.adjust(c), PrayerPrefs.iqama(c));
+        if (e == null) return;
+        set(am, e.at, pending(c, REQ_REAL, e.index, e.friday, e.at, false, e.iqama));
     }
 
-    /** A test adhan one minute from now, through exactly the same path as a real prayer. */
-    static void scheduleTest(Context c) {
+    /** A test adhan or iqama one minute from now, through exactly the same path as a real one. */
+    static void scheduleTest(Context c, boolean iqama) {
         AlarmManager am = c.getSystemService(AlarmManager.class);
         if (am == null) return;
         long at = System.currentTimeMillis() + 60000L;
-        set(am, at, pending(c, REQ_TEST, PrayerCalc.DHUHR, false, at, true));
+        set(am, at, pending(c, REQ_TEST, PrayerCalc.DHUHR, false, at, true, iqama));
     }
 
-    private static PendingIntent pending(Context c, int request, int index, boolean friday, long at, boolean test) {
+    private static PendingIntent pending(Context c, int request, int index, boolean friday, long at,
+                                         boolean test, boolean iqama) {
         Intent i = new Intent(c, AdhanReceiver.class).setAction(ACTION)
             .putExtra("index", index)
             .putExtra("friday", friday)
             .putExtra("at", at)
-            .putExtra("test", test);
+            .putExtra("test", test)
+            .putExtra("iqama", iqama);
         return PendingIntent.getBroadcast(c, request, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 

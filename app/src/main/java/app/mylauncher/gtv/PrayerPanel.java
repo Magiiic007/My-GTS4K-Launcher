@@ -16,21 +16,22 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 /**
- * The prayer strip under the header: the next prayer with a live countdown, the five times of the day, and two
- * small buttons (test the adhan in a minute; allow the popup over other apps while that is not yet allowed).
+ * The prayer strip under the header: what rings next (an adhan or an iqama) with a live countdown, the five times
+ * of the day with each iqama time under it, and two small buttons: the adhan and iqama settings, and (until it is
+ * allowed) the permission for the popup over other apps.
  */
 final class PrayerPanel {
     final LinearLayout view;
 
     private final Context ctx;
     private final TextView nextLine;
-    private final TextView testBtn;
+    private final TextView settingsBtn;
     private final TextView permBtn;
     private final TextView[] names = new TextView[5];
     private final TextView[] times = new TextView[5];
+    private final TextView[] iqamas = new TextView[5];
     private final LinearLayout[] cells = new LinearLayout[5];
     private final GradientDrawable highlight = new GradientDrawable();
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -41,11 +42,19 @@ final class PrayerPanel {
             handler.postDelayed(this, 1000L);
         }
     };
+    /** Run after any setting changes: new alarm, new numbers on screen. */
+    private final Runnable changed = new Runnable() {
+        @Override
+        public void run() {
+            Scheduler.scheduleNext(ctx);
+            refresh();
+        }
+    };
 
     private String cacheKey;
     private long cacheMinute = -1;
     private long[] shown = new long[5];
-    private PrayerCalc.Next next;
+    private PrayerCalc.Event event;
     private boolean fridayToday;
 
     PrayerPanel(Context context) {
@@ -72,15 +81,14 @@ final class PrayerPanel {
                 askOverlayPermission();
             }
         });
-        testBtn = button(R.string.test_btn, new View.OnClickListener() {
+        settingsBtn = button(R.string.settings_btn, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Scheduler.scheduleTest(ctx);
-                Toast.makeText(ctx, R.string.test_scheduled, Toast.LENGTH_LONG).show();
+                TimingDialogs.open(ctx, changed);
             }
         });
         top.addView(permBtn);
-        top.addView(testBtn);
+        top.addView(settingsBtn);
         view.addView(top, new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
@@ -103,6 +111,12 @@ final class PrayerPanel {
             times[i].setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
             times[i].setGravity(Gravity.CENTER);
             cell.addView(times[i]);
+
+            iqamas[i] = new TextView(ctx);
+            iqamas[i].setTextColor(Color.parseColor("#FFE0B040"));
+            iqamas[i].setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            iqamas[i].setGravity(Gravity.CENTER);
+            cell.addView(iqamas[i]);
 
             cells[i] = cell;
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
@@ -160,7 +174,13 @@ final class PrayerPanel {
         handler.removeCallbacks(tick);
     }
 
-    /** Called every second; the five times are only recalculated once a minute or when the city changes. */
+    /** Recalculate everything now (the city or a setting changed). */
+    void refresh() {
+        cacheKey = null;
+        update();
+    }
+
+    /** Called every second; the times are only recalculated once a minute or when something changes. */
     void update() {
         Cities.City city = Cities.selected(ctx);
         if (city == null) {
@@ -168,6 +188,7 @@ final class PrayerPanel {
             for (int i = 0; i < 5; i++) {
                 names[i].setText(PrayerCalc.name(ctx, i, false));
                 times[i].setText("--:--");
+                iqamas[i].setVisibility(View.GONE);
                 cells[i].setAlpha(1f);
                 cells[i].setBackground(null);
             }
@@ -176,27 +197,38 @@ final class PrayerPanel {
         }
 
         long now = System.currentTimeMillis();
-        if (next != null && next.at <= now) cacheMinute = -1;
+        if (event != null && event.at <= now) cacheMinute = -1;
         long minute = now / 60000L;
         if (!city.key().equals(cacheKey) || minute != cacheMinute) {
             cacheKey = city.key();
             cacheMinute = minute;
-            shown = PrayerCalc.day(city, now, 0);
-            next = PrayerCalc.next(city, now);
+            int[] adjust = PrayerPrefs.adjust(ctx);
+            int[] iqama = PrayerPrefs.iqama(ctx);
+            shown = PrayerCalc.day(city, now, 0, adjust);
+            event = PrayerCalc.nextEvent(city, now, adjust, iqama);
             fridayToday = PrayerCalc.isFriday(city, now);
-            // After Isha the next prayer is tomorrow's Fajr: show that time in its cell.
-            if (next.at != shown[next.index]) shown[next.index] = next.at;
+            if (event == null) return;
+            // After Isha the next adhan is tomorrow's Fajr: show that time in its cell.
+            if (!event.iqama && event.at != shown[event.index]) shown[event.index] = event.at;
             for (int i = 0; i < 5; i++) {
-                boolean isNext = i == next.index;
-                boolean jumuah = i == PrayerCalc.DHUHR && (isNext ? next.friday : fridayToday);
+                boolean isNext = i == event.index;
+                boolean jumuah = i == PrayerCalc.DHUHR && (isNext ? event.friday : fridayToday);
                 names[i].setText(PrayerCalc.name(ctx, i, jumuah));
                 times[i].setText(PrayerCalc.time(ctx, city, shown[i]));
+                if (iqama[i] > 0) {
+                    iqamas[i].setText(ctx.getString(R.string.iqama_at,
+                        PrayerCalc.time(ctx, city, shown[i] + iqama[i] * 60000L)));
+                    iqamas[i].setVisibility(View.VISIBLE);
+                } else {
+                    iqamas[i].setVisibility(View.GONE);
+                }
                 cells[i].setAlpha(shown[i] <= now && !isNext ? 0.45f : 1f);
                 cells[i].setBackground(isNext ? highlight : null);
             }
         }
-        long left = Math.max(0L, next.at - now);
-        nextLine.setText(ctx.getString(R.string.next_in,
-            PrayerCalc.name(ctx, next.index, next.friday), PrayerCalc.countdown(left)));
+        if (event == null) return;
+        long left = Math.max(0L, event.at - now);
+        nextLine.setText(ctx.getString(event.iqama ? R.string.iqama_in : R.string.next_in,
+            PrayerCalc.name(ctx, event.index, event.friday), PrayerCalc.countdown(left)));
     }
 }

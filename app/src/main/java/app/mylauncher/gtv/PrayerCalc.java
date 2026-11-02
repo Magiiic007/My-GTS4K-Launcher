@@ -7,6 +7,7 @@ import android.text.format.DateFormat;
 import com.batoulapps.adhan.CalculationMethod;
 import com.batoulapps.adhan.CalculationParameters;
 import com.batoulapps.adhan.Coordinates;
+import com.batoulapps.adhan.PrayerAdjustments;
 import com.batoulapps.adhan.PrayerTimes;
 import com.batoulapps.adhan.data.DateComponents;
 
@@ -19,23 +20,25 @@ import java.util.TimeZone;
 /**
  * Prayer times, worked out on the TV with no internet (adhan-java). Egypt uses the Egyptian General Authority of
  * Survey method and Saudi Arabia uses Umm al-Qura, each country's official one. Asr is the Shafi'i/majority time.
- * Times are rounded down to the whole minute so the same prayer always gives the same number.
+ * Times are on the whole minute, and each prayer can be moved by a few minutes (Settings) to match a local timetable.
  */
 final class PrayerCalc {
     private PrayerCalc() {}
 
     static final int FAJR = 0, DHUHR = 1, ASR = 2, MAGHRIB = 3, ISHA = 4;
 
-    /** The next prayer: which one (0..4), when, and whether its Dhuhr is a Friday's (Jumu'ah). */
-    static final class Next {
+    /** The next thing that rings: an adhan or an iqama, which prayer, when, and whether its Dhuhr is a Friday's. */
+    static final class Event {
         final int index;
         final long at;
         final boolean friday;
+        final boolean iqama;
 
-        Next(int index, long at, boolean friday) {
+        Event(int index, long at, boolean friday, boolean iqama) {
             this.index = index;
             this.at = at;
             this.friday = friday;
+            this.iqama = iqama;
         }
     }
 
@@ -50,8 +53,11 @@ final class PrayerCalc {
         return c.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY;
     }
 
-    /** The five times (Fajr, Dhuhr, Asr, Maghrib, Isha) of the city's calendar day that holds {@code when}, plus days. */
-    static long[] day(Cities.City city, long when, int plusDays) {
+    /**
+     * The five times (Fajr, Dhuhr, Asr, Maghrib, Isha) of the city's calendar day that holds {@code when}, plus
+     * days. {@code adjust}: minutes added to each of the five.
+     */
+    static long[] day(Cities.City city, long when, int plusDays, int[] adjust) {
         TimeZone tz = zone(city);
         Calendar cal = Calendar.getInstance(tz);
         cal.setTimeInMillis(when);
@@ -65,18 +71,31 @@ final class PrayerCalc {
         // Umm al-Qura: Isha is 2 hours after Maghrib in Ramadan (1.5 hours otherwise). The evening belongs to the
         // next Hijri day, so this starts on the night before the 1st of Ramadan.
         if (!egypt && nextHijriDayIsRamadan(cal)) params.ishaInterval = 120;
+        params.adjustments = new PrayerAdjustments(adjust[FAJR], 0, adjust[DHUHR], adjust[ASR],
+            adjust[MAGHRIB], adjust[ISHA]);
 
         PrayerTimes p = new PrayerTimes(new Coordinates(city.lat, city.lon), date, params);
         return new long[] {minute(p.fajr), minute(p.dhuhr), minute(p.asr), minute(p.maghrib), minute(p.isha)};
     }
 
-    /** The first prayer after {@code now}: today's, or tomorrow's Fajr once Isha has passed. */
-    static Next next(Cities.City city, long now) {
-        long[] today = day(city, now, 0);
-        for (int i = 0; i < 5; i++) {
-            if (today[i] > now) return new Next(i, today[i], i == DHUHR && isFriday(city, today[i]));
+    /**
+     * The first adhan or iqama after {@code now}. {@code iqama}: minutes after each adhan (0 = none). Yesterday,
+     * today and tomorrow are looked at, so an iqama after midnight or tomorrow's Fajr is never missed.
+     */
+    static Event nextEvent(Cities.City city, long now, int[] adjust, int[] iqama) {
+        Event best = null;
+        for (int d = -1; d <= 1; d++) {
+            long[] t = day(city, now, d, adjust);
+            for (int i = 0; i < 5; i++) {
+                boolean friday = i == DHUHR && isFriday(city, t[i]);
+                if (t[i] > now && (best == null || t[i] < best.at)) best = new Event(i, t[i], friday, false);
+                if (iqama[i] > 0) {
+                    long q = t[i] + iqama[i] * 60000L;
+                    if (q > now && (best == null || q < best.at)) best = new Event(i, q, friday, true);
+                }
+            }
         }
-        return new Next(FAJR, day(city, now, 1)[FAJR], false);
+        return best;
     }
 
     private static boolean nextHijriDayIsRamadan(Calendar cal) {

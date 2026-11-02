@@ -34,8 +34,28 @@
     <string name="popup_test">(تجربة)</string>
     <string name="notif_channel">الأذان</string>
     <string name="test_btn">تجربة الأذان بعد دقيقة</string>
-    <string name="test_scheduled">سيعمل الأذان التجريبي بعد دقيقة. اخرج من التطبيق وشغّل أي فيديو.</string>
+    <string name="test_scheduled">سيعمل التنبيه التجريبي بعد دقيقة. اخرج من التطبيق وشغّل أي فيديو.</string>
     <string name="perm_btn">تفعيل نافذة الأذان فوق التطبيقات</string>
     <string name="overlay_title">السماح بنافذة الأذان</string>
     <string name="overlay_help">لازم تسمح للتطبيق بالظهور فوق التطبيقات الأخرى.\n\nإن وجدت الخيار في الإعدادات: التطبيقات ← صلاحيات خاصة ← العرض فوق التطبيقات الأخرى ← Magiic TV ← السماح.\n\nوإن لم تجده، نفّذ هذا الأمر بتطبيق ADB من الموبايل (متصل بالجهاز على نفس الواي فاي):\n\nadb shell appops set app.mylauncher.gtv SYSTEM_ALERT_WINDOW allow</string>
+
+    <string name="settings_btn">ضبط الأذان والإقامة</string>
+    <string name="settings_title">ضبط الأذان والإقامة</string>
+    <string name="main_row">%1$s  |  تعديل الوقت: %2$s  |  الإقامة: %3$s</string>
+    <string name="adjust_item">تعديل وقت الأذان: %1$s</string>
+    <string name="iqama_item">الإقامة بعد الأذان: %1$s</string>
+    <string name="adjust_title">تعديل وقت أذان %1$s</string>
+    <string name="iqama_set_title">الإقامة بعد أذان %1$s</string>
+    <string name="no_adjust">بدون تعديل</string>
+    <string name="iqama_off">غير مفعّلة</string>
+    <string name="minutes_signed">%1$+d دقيقة</string>
+    <string name="minutes_plain">%1$d دقيقة</string>
+    <string name="save">حفظ</string>
+    <string name="cancel">إلغاء</string>
+    <string name="number_tip">السهم لأعلى وأسفل يغيّر الرقم بدقيقة، أو استخدم + و −</string>
+    <string name="iqama_title">حان الآن موعد إقامة صلاة %1$s</string>
+    <string name="iqama_hint">اضغط رجوع للإغلاق</string>
+    <string name="iqama_in">إقامة %1$s بعد %2$s</string>
+    <string name="iqama_at">الإقامة %1$s</string>
+    <string name="test_iqama_item">تجربة الإقامة بعد دقيقة</string>
 </resources>
