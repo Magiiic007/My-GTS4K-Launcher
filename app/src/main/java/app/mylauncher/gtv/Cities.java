@@ -112,6 +112,11 @@ final class Cities {
         new City("SA", "Rafha", "رفحاء", 29.62, 43.49),
     };
 
+    /** The city chosen on this device, or null the first time. */
+    static City selected(android.content.Context c) {
+        return find(c.getSharedPreferences("magiic", android.content.Context.MODE_PRIVATE).getString("city", null));
+    }
+
     /** The saved choice back to its city, or null if nothing was chosen (or the list changed). */
     static City find(String key) {
         if (key == null) return null;

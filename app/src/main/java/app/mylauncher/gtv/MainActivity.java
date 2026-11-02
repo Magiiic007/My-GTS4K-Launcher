@@ -58,6 +58,7 @@ public class MainActivity extends Activity {
     private static final long WEATHER_EVERY_MS = 30L * 60L * 1000L;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView weatherView;
+    private PrayerPanel prayerPanel;
     private final Runnable weatherTick = new Runnable() {
         @Override
         public void run() {
@@ -132,6 +133,13 @@ public class MainActivity extends Activity {
         root.addView(header, new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
+        // The prayer times strip, with the countdown to the next prayer.
+        prayerPanel = new PrayerPanel(this);
+        LinearLayout.LayoutParams panelLp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        panelLp.topMargin = dp(12);
+        root.addView(prayerPanel.view, panelLp);
+
         grid = new GridView(this);
         grid.setNumColumns(5);
         grid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
@@ -172,11 +180,15 @@ public class MainActivity extends Activity {
         grid.requestFocus();
         handler.removeCallbacks(weatherTick);
         handler.post(weatherTick);
+        prayerPanel.start();
+        // Line up the alarm for the next prayer (it is also set again after a restart).
+        Scheduler.scheduleNext(this);
     }
 
     @Override
     protected void onPause() {
         handler.removeCallbacks(weatherTick);
+        prayerPanel.stop();
         super.onPause();
     }
 
@@ -228,6 +240,8 @@ public class MainActivity extends Activity {
                 public void onClick(android.content.DialogInterface dialog, int which) {
                     prefs().edit().putString("city", sorted.get(which).key()).apply();
                     loadWeather();
+                    Scheduler.scheduleNext(MainActivity.this);
+                    prayerPanel.update();
                 }
             })
             .show();

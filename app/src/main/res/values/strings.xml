@@ -8,7 +8,7 @@
     <string name="choose_city">Choose your city</string>
     <string name="egypt">Egypt</string>
     <string name="saudi">Saudi Arabia</string>
-    <string name="weather_pick">Choose your city for the weather</string>
+    <string name="weather_pick">Choose your city (weather &amp; prayer times)</string>
     <string name="weather_unavailable">Weather unavailable</string>
 
     <string name="w_clear">Clear</string>
@@ -20,4 +20,22 @@
     <string name="w_snow">Snow</string>
     <string name="w_showers">Showers</string>
     <string name="w_storm">Thunderstorm</string>
+
+    <string name="p_fajr">Fajr</string>
+    <string name="p_dhuhr">Dhuhr</string>
+    <string name="p_jumuah">Jumu\'ah</string>
+    <string name="p_asr">Asr</string>
+    <string name="p_maghrib">Maghrib</string>
+    <string name="p_isha">Isha</string>
+    <string name="next_in">%1$s in %2$s</string>
+    <string name="pick_city_hint">Choose your city in the weather box to see prayer times</string>
+    <string name="popup_title">It is time for %1$s prayer</string>
+    <string name="popup_hint">Press Back to stop the adhan</string>
+    <string name="popup_test">(test)</string>
+    <string name="notif_channel">Adhan</string>
+    <string name="test_btn">Test the adhan in 1 minute</string>
+    <string name="test_scheduled">The test adhan will play in one minute. Leave this app and start any video.</string>
+    <string name="perm_btn">Enable the adhan popup over apps</string>
+    <string name="overlay_title">Allow the adhan popup</string>
+    <string name="overlay_help">The app must be allowed to appear over other apps.\n\nIf your settings have it: Apps → Special access → Display over other apps → Magiic TV → Allow.\n\nIf not, run this with an ADB app on your phone (connected to the device on the same Wi-Fi):\n\nadb shell appops set app.mylauncher.gtv SYSTEM_ALERT_WINDOW allow</string>
 </resources>

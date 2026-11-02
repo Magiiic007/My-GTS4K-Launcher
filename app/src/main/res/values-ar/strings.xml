@@ -8,7 +8,7 @@
     <string name="choose_city">اختر مدينتك</string>
     <string name="egypt">مصر</string>
     <string name="saudi">السعودية</string>
-    <string name="weather_pick">اختر مدينتك لعرض الطقس</string>
+    <string name="weather_pick">اختر مدينتك (الطقس والمواقيت)</string>
     <string name="weather_unavailable">الطقس غير متاح</string>
 
     <string name="w_clear">صافٍ</string>
@@ -20,4 +20,22 @@
     <string name="w_snow">ثلج</string>
     <string name="w_showers">زخات مطر</string>
     <string name="w_storm">عاصفة رعدية</string>
+
+    <string name="p_fajr">الفجر</string>
+    <string name="p_dhuhr">الظهر</string>
+    <string name="p_jumuah">الجمعة</string>
+    <string name="p_asr">العصر</string>
+    <string name="p_maghrib">المغرب</string>
+    <string name="p_isha">العشاء</string>
+    <string name="next_in">%1$s بعد %2$s</string>
+    <string name="pick_city_hint">اختر مدينتك من مربع الطقس لعرض مواقيت الصلاة</string>
+    <string name="popup_title">حان الآن موعد صلاة %1$s</string>
+    <string name="popup_hint">اضغط رجوع لإيقاف الأذان</string>
+    <string name="popup_test">(تجربة)</string>
+    <string name="notif_channel">الأذان</string>
+    <string name="test_btn">تجربة الأذان بعد دقيقة</string>
+    <string name="test_scheduled">سيعمل الأذان التجريبي بعد دقيقة. اخرج من التطبيق وشغّل أي فيديو.</string>
+    <string name="perm_btn">تفعيل نافذة الأذان فوق التطبيقات</string>
+    <string name="overlay_title">السماح بنافذة الأذان</string>
+    <string name="overlay_help">لازم تسمح للتطبيق بالظهور فوق التطبيقات الأخرى.\n\nإن وجدت الخيار في الإعدادات: التطبيقات ← صلاحيات خاصة ← العرض فوق التطبيقات الأخرى ← Magiic TV ← السماح.\n\nوإن لم تجده، نفّذ هذا الأمر بتطبيق ADB من الموبايل (متصل بالجهاز على نفس الواي فاي):\n\nadb shell appops set app.mylauncher.gtv SYSTEM_ALERT_WINDOW allow</string>
 </resources>
