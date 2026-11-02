@@ -65,4 +65,24 @@
     <string name="radio_connecting">الراديو · جارٍ الاتصال %1$s…</string>
     <string name="radio_paused">الراديو · متوقف أثناء الأذان</string>
     <string name="radio_stop">إيقاف الراديو</string>
+    <string name="menu_btn">الإعدادات</string>
+    <string name="menu_title">الإعدادات</string>
+    <string name="menu_hidden">إخفاء أو إظهار التطبيقات</string>
+    <string name="menu_dns">DNS لمنع الإعلانات</string>
+    <string name="menu_about">عن التطبيق والمصادر</string>
+    <string name="hidden_title">علّم التطبيقات اللي عايز تخفيها</string>
+    <string name="hide_ask">إخفاء \"%1$s\" من الشاشة الرئيسية؟ تقدر ترجعه من الإعدادات.</string>
+    <string name="hide_yes">إخفاء</string>
+    <string name="dns_title">الـ DNS الحالي: %1$s</string>
+    <string name="dns_auto">تلقائي</string>
+    <string name="dns_custom">DNS آخر (اكتب اسمه)</string>
+    <string name="dns_off">الرجوع للوضع التلقائي</string>
+    <string name="dns_note">ماذا يحجب وماذا لا يحجب</string>
+    <string name="dns_bad">هذا ليس اسم DNS صحيحًا</string>
+    <string name="dns_done">تم ضبط الـ DNS على %1$s</string>
+    <string name="dns_done_off">رجع الـ DNS للوضع التلقائي</string>
+    <string name="dns_failed">تعذر تغيير الـ DNS على هذا الجهاز</string>
+    <string name="dns_help">لتغيير الـ DNS يحتاج التطبيق إلى إذن يُمنح مرة واحدة من كمبيوتر أو من تطبيق ADB على الموبايل. نفّذ هذا الأمر مرة واحدة:\n\nadb shell pm grant %1$s %2$s\n\nثم افتح هذه القائمة مرة أخرى.</string>
+    <string name="dns_note_text">الـ DNS المُفلتر يحجب عناوين كثير من سيرفرات الإعلانات والتتبع لكل التطبيقات على التلفزيون. لكنه لا يحجب الإعلانات اللي بتيجي من نفس سيرفرات الفيديو، مثل أغلب إعلانات يوتيوب. وقد يتوقف بعض التطبيقات لو حُجب أحد سيرفراته؛ اختر الرجوع للوضع التلقائي للتراجع.</string>
+    <string name="about_text">Magiic TV، لانشر شخصي.\n\nالطقس: Open-Meteo.com (رخصة CC BY 4.0).\nمواقيت الصلاة: مكتبة adhan-java (رخصة MIT).\nالإذاعتان ملك لأصحابهما وغير تابعتين لهذا التطبيق.\nتسجيلات الأذان والإقامة: راجع ملف THIRD_PARTY.md في صفحة المشروع.</string>
 </resources>

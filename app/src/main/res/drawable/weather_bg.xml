@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The weather box: plain until the remote is on it, then outlined like the app tiles. -->
+<!-- A header button: a soft pill, outlined in gold when the remote is on it. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
         <shape android:shape="rectangle">
-            <solid android:color="#22FFFFFF" />
-            <stroke android:width="3dp" android:color="#FFFFFFFF" />
-            <corners android:radius="12dp" />
+            <solid android:color="#33E0B040" />
+            <stroke android:width="3dp" android:color="#FFE0B040" />
+            <corners android:radius="14dp" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#00000000" />
-            <corners android:radius="12dp" />
+            <solid android:color="#661A2438" />
+            <corners android:radius="14dp" />
         </shape>
     </item>
 </selector>

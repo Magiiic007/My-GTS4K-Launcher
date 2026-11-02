@@ -65,6 +65,8 @@ final class PrayerPanel {
 
         view = new LinearLayout(ctx);
         view.setOrientation(LinearLayout.VERTICAL);
+        view.setBackgroundResource(R.drawable.card_bg);
+        view.setPadding(dp(16), dp(10), dp(16), dp(10));
 
         LinearLayout top = new LinearLayout(ctx);
         top.setOrientation(LinearLayout.HORIZONTAL);

@@ -65,4 +65,24 @@
     <string name="radio_connecting">Radio · connecting %1$s…</string>
     <string name="radio_paused">Radio · paused for the adhan</string>
     <string name="radio_stop">Stop the radio</string>
+    <string name="menu_btn">Settings</string>
+    <string name="menu_title">Settings</string>
+    <string name="menu_hidden">Hide or show apps</string>
+    <string name="menu_dns">Ad-blocking DNS</string>
+    <string name="menu_about">About and credits</string>
+    <string name="hidden_title">Tick the apps to hide</string>
+    <string name="hide_ask">Hide \"%1$s\" from the home screen? You can bring it back from Settings.</string>
+    <string name="hide_yes">Hide</string>
+    <string name="dns_title">DNS now: %1$s</string>
+    <string name="dns_auto">automatic</string>
+    <string name="dns_custom">Another DNS (type its name)</string>
+    <string name="dns_off">Back to automatic</string>
+    <string name="dns_note">What this does and does not block</string>
+    <string name="dns_bad">That is not a valid DNS name</string>
+    <string name="dns_done">DNS set to %1$s</string>
+    <string name="dns_done_off">DNS is back to automatic</string>
+    <string name="dns_failed">Could not change the DNS on this device</string>
+    <string name="dns_help">To change the DNS, this app needs a permission that is given once from a computer or an ADB app on your phone. Run this command one time:\n\nadb shell pm grant %1$s %2$s\n\nThen open this menu again.</string>
+    <string name="dns_note_text">A filtering DNS blocks the addresses of many ad and tracking servers for every app on this TV. It cannot remove ads that come from the same servers as the video itself, such as most YouTube ads. Some apps may stop working if their servers are blocked; choose Back to automatic to undo.</string>
+    <string name="about_text">Magiic TV, a personal launcher.\n\nWeather: Open-Meteo.com (CC BY 4.0).\nPrayer times: adhan-java (MIT).\nThe two radio stations belong to their owners and are not affiliated with this app.\nAdhan and iqama recordings: see THIRD_PARTY.md in the project page.</string>
 </resources>

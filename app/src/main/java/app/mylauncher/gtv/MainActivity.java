@@ -47,9 +47,14 @@ public class MainActivity extends Activity {
         String label;
         ComponentName component;
         Drawable image;
+        /** A wide TV banner (fills the tile) rather than a square icon (sits in the middle of it). */
+        boolean banner;
     }
 
+    /** Every app found, and the ones shown (without the hidden ones). */
+    private final List<AppItem> allApps = new ArrayList<>();
     private final List<AppItem> apps = new ArrayList<>();
+    private View lastSelected;
     private GridView grid;
     private TextView empty;
     private AppAdapter adapter;
@@ -80,8 +85,8 @@ public class MainActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.parseColor("#FF0F1720"));
-        root.setPadding(dp(48), dp(32), dp(48), dp(24));
+        root.setBackgroundResource(R.drawable.bg_main);
+        root.setPadding(dp(48), dp(24), dp(48), dp(16));
 
         // Header: the name on the start side, the clock and date on the end side. In Arabic (right-to-left)
         // the start side is the right, so the layout mirrors by itself.
@@ -93,6 +98,7 @@ public class MainActivity extends Activity {
         title.setText(R.string.app_name);
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 28);
+        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         // The radio: OK opens the two stations (and Stop while it plays).
@@ -136,6 +142,32 @@ public class MainActivity extends Activity {
         weatherLp.setMarginEnd(dp(32));
         header.addView(weatherView, weatherLp);
 
+        // The settings: hidden apps, the ad-blocking DNS, credits.
+        TextView settingsBtn = new TextView(this);
+        settingsBtn.setText(R.string.menu_btn);
+        settingsBtn.setTextColor(Color.WHITE);
+        settingsBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        settingsBtn.setGravity(Gravity.CENTER);
+        settingsBtn.setPadding(dp(16), dp(8), dp(16), dp(8));
+        settingsBtn.setBackgroundResource(R.drawable.weather_bg);
+        settingsBtn.setFocusable(true);
+        settingsBtn.setClickable(true);
+        settingsBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SettingsMenu.open(MainActivity.this, appList(), new Runnable() {
+                    @Override
+                    public void run() {
+                        applyHidden();
+                    }
+                });
+            }
+        });
+        LinearLayout.LayoutParams settingsLp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        settingsLp.setMarginEnd(dp(32));
+        header.addView(settingsBtn, settingsLp);
+
         LinearLayout when = new LinearLayout(this);
         when.setOrientation(LinearLayout.VERTICAL);
         when.setGravity(Gravity.END);
@@ -169,12 +201,12 @@ public class MainActivity extends Activity {
         root.addView(prayerPanel.view, panelLp);
 
         grid = new GridView(this);
-        grid.setNumColumns(5);
+        grid.setNumColumns(6);
         grid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
-        grid.setHorizontalSpacing(dp(16));
-        grid.setVerticalSpacing(dp(16));
+        grid.setHorizontalSpacing(dp(14));
+        grid.setVerticalSpacing(dp(14));
         grid.setClipToPadding(false);
-        grid.setPadding(0, dp(24), 0, dp(24));
+        grid.setPadding(dp(8), dp(16), dp(8), dp(16));
         grid.setSelector(R.drawable.tile_selector);
         grid.setDrawSelectorOnTop(true);
         grid.setFocusable(true);
@@ -184,6 +216,29 @@ public class MainActivity extends Activity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 open(apps.get(position));
+            }
+        });
+        // Hold OK on an app to hide it from the home screen.
+        grid.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                askHide(apps.get(position));
+                return true;
+            }
+        });
+        // The app the remote is on grows a little.
+        grid.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (lastSelected != null) lastSelected.animate().scaleX(1f).scaleY(1f).setDuration(120).start();
+                lastSelected = view;
+                if (view != null) view.animate().scaleX(1.07f).scaleY(1.07f).setDuration(120).start();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                if (lastSelected != null) lastSelected.animate().scaleX(1f).scaleY(1f).setDuration(120).start();
+                lastSelected = null;
             }
         });
         root.addView(grid, new LinearLayout.LayoutParams(
@@ -385,6 +440,7 @@ public class MainActivity extends Activity {
             item.label = String.valueOf(ri.loadLabel(pm));
             item.component = new ComponentName(pkg, ri.activityInfo.name);
             Drawable image = ri.activityInfo.loadBanner(pm);
+            item.banner = image != null;
             item.image = image != null ? image : ri.loadIcon(pm);
             list.add(item);
         }
@@ -395,10 +451,44 @@ public class MainActivity extends Activity {
                 return collator.compare(a.label, b.label);
             }
         });
+        allApps.clear();
+        allApps.addAll(list);
+        applyHidden();
+    }
+
+    /** Shows every app except the hidden ones. */
+    private void applyHidden() {
+        Set<String> hidden = SettingsMenu.hidden(this);
         apps.clear();
-        apps.addAll(list);
+        for (AppItem a : allApps) {
+            if (!hidden.contains(a.component.getPackageName())) apps.add(a);
+        }
+        lastSelected = null;
         adapter.notifyDataSetChanged();
         empty.setVisibility(apps.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
+    /** (name, package) of every app, for the "hide or show apps" list. */
+    private List<String[]> appList() {
+        List<String[]> out = new ArrayList<>();
+        for (AppItem a : allApps) out.add(new String[] {a.label, a.component.getPackageName()});
+        return out;
+    }
+
+    private void askHide(final AppItem item) {
+        new AlertDialog.Builder(this)
+            .setMessage(getString(R.string.hide_ask, item.label))
+            .setPositiveButton(R.string.hide_yes, new android.content.DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(android.content.DialogInterface d, int w) {
+                    Set<String> hidden = SettingsMenu.hidden(MainActivity.this);
+                    hidden.add(item.component.getPackageName());
+                    SettingsMenu.setHidden(MainActivity.this, hidden);
+                    applyHidden();
+                }
+            })
+            .setNegativeButton(R.string.cancel, null)
+            .show();
     }
 
     private static List<ResolveInfo> query(PackageManager pm, String category) {
@@ -449,21 +539,28 @@ public class MainActivity extends Activity {
                 tile.setOrientation(LinearLayout.VERTICAL);
                 tile.setGravity(Gravity.CENTER_HORIZONTAL);
                 tile.setBackgroundResource(R.drawable.tile_bg);
-                tile.setPadding(dp(8), dp(8), dp(8), dp(8));
+                tile.setPadding(dp(6), dp(6), dp(6), dp(6));
 
                 image = new ImageView(MainActivity.this);
-                image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                // The picture area is always the same shape, with rounded corners.
+                image.setClipToOutline(true);
+                image.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(View v, android.graphics.Outline o) {
+                        o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(10));
+                    }
+                });
                 tile.addView(image, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(100)));
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(76)));
 
                 label = new TextView(MainActivity.this);
                 label.setTextColor(Color.WHITE);
-                label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+                label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
                 label.setSingleLine(true);
                 label.setGravity(Gravity.CENTER);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                lp.topMargin = dp(6);
+                lp.topMargin = dp(5);
                 tile.addView(label, lp);
 
                 tile.setTag(new View[] {image, label});
@@ -474,7 +571,20 @@ public class MainActivity extends Activity {
             image = (ImageView) parts[0];
             label = (TextView) parts[1];
             AppItem item = apps.get(position);
+            if (item.banner) {
+                // A wide banner fills the picture area.
+                image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                image.setPadding(0, 0, 0, 0);
+                image.setBackgroundColor(Color.TRANSPARENT);
+            } else {
+                // A square icon sits in the middle at a comfortable size, on a slightly lighter backing.
+                image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                image.setPadding(dp(14), dp(8), dp(14), dp(8));
+                image.setBackgroundColor(Color.parseColor("#FF24304A"));
+            }
             image.setImageDrawable(item.image);
+            tile.setScaleX(1f);
+            tile.setScaleY(1f);
             label.setText(item.label);
             return tile;
         }
