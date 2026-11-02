@@ -46,15 +46,22 @@
         android:allowBackup="false"
         android:networkSecurityConfig="@xml/network_security">
 
-        <!-- Phase 1: an ordinary TV app (it shows in the apps list). It is NOT the home screen yet:
-             the HOME intent filter is added only in the last phase. -->
+        <!-- Opens from the apps list, and can also be chosen as the home screen (the HOME filter below). Uninstalling
+             this app is always enough to get the original home screen back. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
             android:screenOrientation="landscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 

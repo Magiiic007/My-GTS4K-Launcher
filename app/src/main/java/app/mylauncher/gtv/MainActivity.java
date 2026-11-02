@@ -419,6 +419,12 @@ public class MainActivity extends Activity {
 
     // ---------------------------------------------------------------- lifecycle
 
+    /** As the home screen, Back does nothing: leaving it would just bring it straight back. */
+    @Override
+    public void onBackPressed() {
+        // Stay on the home screen.
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
