@@ -229,4 +229,8 @@
     <string name="occ_adha_msg">تقبّل الله منا ومنكم، وكل عام وأنتم بخير</string>
     <string name="occ_newyear">عام هجري جديد</string>
     <string name="occ_newyear_msg">كل عام وأنتم بخير، وأعاده الله عليكم بالخير والبركات</string>
+    <string name="ramadan_left">باقي %1$d يوم على رمضان</string>
+    <string name="ramadan_today">اليوم أول أيام رمضان</string>
+    <string name="ramadan_tomorrow">غداً أول أيام رمضان</string>
+    <string name="ramadan_times">الإمساك %1$s · الإفطار %2$s</string>
 </resources>

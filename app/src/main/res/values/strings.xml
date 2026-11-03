@@ -229,4 +229,8 @@
     <string name="occ_adha_msg">May Allah accept our deeds and yours</string>
     <string name="occ_newyear">Happy Hijri New Year</string>
     <string name="occ_newyear_msg">Wishing you a year full of goodness and blessings</string>
+    <string name="ramadan_left">%1$d days until Ramadan</string>
+    <string name="ramadan_today">Today is the first day of Ramadan</string>
+    <string name="ramadan_tomorrow">Ramadan starts tomorrow</string>
+    <string name="ramadan_times">Imsak %1$s · Iftar %2$s</string>
 </resources>

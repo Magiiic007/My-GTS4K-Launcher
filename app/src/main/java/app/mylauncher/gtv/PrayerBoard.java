@@ -62,6 +62,12 @@ final class PrayerBoard {
         }
     };
 
+    /** Ramadan on the "next prayer" bar: days left before it (0 = today is the 1st), -1 = far off, -2 = it is Ramadan. */
+    private int ramadan = -1;
+    private String extraLine;
+    private String nextText = "";
+    private String barShown = "";
+
     private String cacheKey;
     private long cacheMinute = -1;
     private long[] shown = new long[5];
@@ -390,14 +396,31 @@ final class PrayerBoard {
                 rows[i].setAlpha(at <= now && !isNext ? 0.55f : 1f);
                 rows[i].setBackground(isNext ? Theme.highlight(ctx, 18) : null);
             }
-            nextBar.setText(ctx.getString(R.string.next_prayer,
-                PrayerCalc.name(ctx, adhanEvent.index, adhanEvent.friday)));
+            nextText = ctx.getString(R.string.next_prayer,
+                PrayerCalc.name(ctx, adhanEvent.index, adhanEvent.friday));
+            extraLine = null;
+            if (ramadan == -2) {
+                long[] t = PrayerCalc.day(city, now, 0, adjust);
+                extraLine = ctx.getString(R.string.ramadan_times,
+                    PrayerCalc.time(ctx, city, t[PrayerCalc.FAJR]), PrayerCalc.time(ctx, city, t[PrayerCalc.MAGHRIB]));
+            } else if (ramadan == 0) {
+                extraLine = ctx.getString(R.string.ramadan_today);
+            } else if (ramadan == 1) {
+                extraLine = ctx.getString(R.string.ramadan_tomorrow);
+            } else if (ramadan > 1) {
+                extraLine = ctx.getString(R.string.ramadan_left, ramadan);
+            }
             adhanName.setText(PrayerCalc.name(ctx, adhanEvent.index, adhanEvent.friday));
             if (iqamaEvent != null) {
                 iqamaName.setText(PrayerCalc.name(ctx, iqamaEvent.index, iqamaEvent.friday));
             } else {
                 iqamaName.setText(R.string.count_none);
             }
+        }
+        String want = extraLine != null && (now / 6000L) % 2L == 1L ? extraLine : nextText;
+        if (!want.equals(barShown)) {
+            barShown = want;
+            nextBar.setText(want);
         }
         if (adhanEvent != null) adhanTime.setText(clockText(adhanEvent.at - now));
         iqamaTime.setText(iqamaEvent != null ? clockText(iqamaEvent.at - now) : "--:--:--");
@@ -421,11 +444,26 @@ final class PrayerBoard {
         String key = today.get(Calendar.YEAR) + "-" + today.get(Calendar.DAY_OF_YEAR) + "-" + Hijri.adjust(ctx);
         if (key.equals(lastDate)) return;
         lastDate = key;
+        cacheMinute = -1;
+        ramadan = ramadanState(today);
         weekday.setText(Hijri.weekdayAr(today));
         gregAr.setText(Hijri.gregorianAr(today));
         gregEn.setText(Hijri.gregorianEn(today));
         hijriAr.setText(Hijri.hijriAr(h));
         hijriEn.setText(Hijri.hijriEn(h));
+    }
+
+    /** -2 during Ramadan; otherwise the days left until its first day when that is within 45 days; otherwise -1. */
+    private int ramadanState(Calendar today) {
+        int adj = Hijri.adjust(ctx);
+        if (Hijri.of(today, adj)[1] == 9) return -2;
+        Calendar d = (Calendar) today.clone();
+        for (int i = 1; i <= 45; i++) {
+            d.add(Calendar.DAY_OF_MONTH, 1);
+            int[] h = Hijri.of(d, adj);
+            if (h[1] == 9 && h[2] == 1) return i;
+        }
+        return -1;
     }
 
     /** Forces the dates to be redrawn (the Hijri adjustment changed). */
