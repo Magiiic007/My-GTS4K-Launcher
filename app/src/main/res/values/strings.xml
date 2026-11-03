@@ -153,11 +153,22 @@
     <string name="rem_title_hint">Title of the reminder</string>
     <string name="rem_text_hint">Text of the reminder</string>
     <string name="rem_hijri_day">The %1$d of the Hijri month</string>
-    <string name="menu_stock">Back to the original home screen</string>
-    <string name="stock_open">Open the original Google TV home now</string>
+    <string name="menu_stock">Make it the home screen / go back</string>
+    <string name="stock_open">Open the original Google TV home once</string>
     <string name="stock_defaults">Stop Magiic TV being the home screen</string>
     <string name="stock_defaults_tip">Choose "Clear defaults", "Disable" or "Uninstall", then press the Home button</string>
     <string name="stock_help_btn">How do I go back?</string>
     <string name="stock_none">There is no other home screen enabled to open.</string>
-    <string name="stock_help">1) Settings → Apps → Magiic TV → "Clear defaults".\n2) Press Home on the remote, and choose Google TV if the device asks.\n3) To remove Magiic TV completely: Settings → Apps → Magiic TV → Uninstall. The original Google TV home screen then returns by itself.</string>
+    <string name="stock_help">Easiest: in this menu choose "Stop it being the home screen".\n\nIf the app will not open: Settings → Accessibility → Magiic TV → switch off.\n\nTo remove it completely: Settings → Apps → Magiic TV → Uninstall. In every case the original Google TV home screen comes back by itself.</string>
+    <string name="override_service_label">Magiic TV - home screen</string>
+    <string name="override_service_desc">When the original Google TV home screen appears, this opens Magiic TV instead. It does not read anything on screen.</string>
+    <string name="home_state_not_allowed">State: not allowed yet in Accessibility settings</string>
+    <string name="home_state_on">State: on (the Home button opens Magiic TV)</string>
+    <string name="home_state_off">State: off (the Home button opens the original)</string>
+    <string name="home_open_access">1) Turn it on: open Accessibility settings</string>
+    <string name="home_turn_off">2) Stop it being the home screen (back to the original at once)</string>
+    <string name="home_turn_on">2) Make it the home screen again</string>
+    <string name="home_access_tip">Choose Magiic TV in the list, switch it on and accept the notice</string>
+    <string name="home_now_on">Magiic TV is the home screen now</string>
+    <string name="home_now_off">The original home screen is back</string>
 </resources>

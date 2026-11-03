@@ -153,11 +153,22 @@
     <string name="rem_title_hint">عنوان التذكير</string>
     <string name="rem_text_hint">نص التذكير</string>
     <string name="rem_hijri_day">%1$d من الشهر الهجري</string>
-    <string name="menu_stock">العودة للواجهة الأصلية</string>
-    <string name="stock_open">فتح واجهة Google TV الأصلية الآن</string>
+    <string name="menu_stock">جعله الشاشة الرئيسية / الرجوع للأصلية</string>
+    <string name="stock_open">فتح واجهة Google TV الأصلية مرة واحدة</string>
     <string name="stock_defaults">إلغاء جعل Magiic TV الشاشة الرئيسية</string>
     <string name="stock_defaults_tip">اختر «مسح الإعدادات الافتراضية» أو «تعطيل» أو «إلغاء التثبيت»، ثم اضغط زر Home</string>
-    <string name="stock_help_btn">كيف أرجع للواجهة الأصلية؟</string>
+    <string name="stock_help_btn">كيف أرجع للأصلية؟</string>
     <string name="stock_none">لا توجد واجهة أخرى مفعّلة لفتحها.</string>
-    <string name="stock_help">١) من الإعدادات ← التطبيقات ← Magiic TV ← «مسح الإعدادات الافتراضية».\n٢) اضغط زر Home في الريموت، واختر واجهة Google TV إن سألك الجهاز.\n٣) وإن أردت إزالة Magiic TV نهائياً: الإعدادات ← التطبيقات ← Magiic TV ← إلغاء التثبيت، وتعود واجهة Google TV الأصلية وحدها.</string>
+    <string name="stock_help">أسهل طريقة: من هذه القائمة اختر «إيقاف جعله الرئيسية».\n\nولو التطبيق لا يفتح: الإعدادات ← إمكانية الوصول ← Magiic TV ← إيقاف.\n\nوإن أردت إزالته نهائياً: الإعدادات ← التطبيقات ← Magiic TV ← إلغاء التثبيت. وفي كل الحالات تعود واجهة Google TV الأصلية وحدها.</string>
+    <string name="override_service_label">Magiic TV - الشاشة الرئيسية</string>
+    <string name="override_service_desc">عندما تظهر واجهة Google TV الأصلية يفتح Magiic TV بدلاً منها. لا يقرأ أي شيء من الشاشة.</string>
+    <string name="home_state_not_allowed">الحالة: لم يُفعَّل بعد في إعدادات إمكانية الوصول</string>
+    <string name="home_state_on">الحالة: يعمل (زر Home يفتح Magiic TV)</string>
+    <string name="home_state_off">الحالة: موقوف (زر Home يفتح الواجهة الأصلية)</string>
+    <string name="home_open_access">١) تفعيله: فتح إعدادات إمكانية الوصول</string>
+    <string name="home_turn_off">٢) إيقاف جعله الرئيسية (الرجوع للأصلية فوراً)</string>
+    <string name="home_turn_on">٢) تشغيل جعله الرئيسية</string>
+    <string name="home_access_tip">اختر Magiic TV من القائمة ثم شغّله، ووافق على التنبيه</string>
+    <string name="home_now_on">Magiic TV هو الرئيسية الآن</string>
+    <string name="home_now_off">رجعت الواجهة الأصلية</string>
 </resources>
