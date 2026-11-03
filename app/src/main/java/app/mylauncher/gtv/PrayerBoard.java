@@ -266,16 +266,10 @@ final class PrayerBoard {
 
     /** Makes a view selectable with the remote (a ring around it) and clickable. */
     private void focusable(final View v, float radius, final Runnable click) {
-        v.setFocusable(true);
+        // Display only for the remote: the arrows never land here (settings are in the list on the left). A touch or
+        // mouse click still works.
+        v.setFocusable(false);
         v.setClickable(true);
-        final Drawable ring = Theme.ring(ctx, radius);
-        v.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View view, boolean has) {
-                view.setForeground(has ? ring : null);
-                Motion.pop(view, has, 1.02f);
-            }
-        });
         v.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {

@@ -71,6 +71,7 @@ public class MainActivity extends Activity {
     private TextView radioBtn;
     private TextView permRow;
     private TextView noticeChip;
+    private LinearLayout settingsList;
     private ImageView art;
     private long weatherAt;
     private PrayerBoard board;
@@ -215,6 +216,7 @@ public class MainActivity extends Activity {
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setClipToPadding(false);
         LinearLayout list = new LinearLayout(this);
+        settingsList = list;
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list, new ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -414,6 +416,7 @@ public class MainActivity extends Activity {
         RadioService.listen(radioListener);
         updateRadioButton();
         ((View) permRow.getTag()).setVisibility(Settings.canDrawOverlays(this) ? View.GONE : View.VISIBLE);
+        wireFocus();
         // Line up the alarms for the next prayer and the next reminder (also set again after a restart). Done off the
         // main thread so opening the home screen is never held up by it.
         final android.content.Context app = getApplicationContext();
@@ -449,11 +452,13 @@ public class MainActivity extends Activity {
         });
         if (issues.isEmpty()) {
             noticeChip.setVisibility(View.GONE);
+            wireFocus();
             return;
         }
         boolean onlyUpdate = issues.size() == 1 && Updater.available(this);
         noticeChip.setText(onlyUpdate ? getString(R.string.menu_update) : getString(R.string.notice_chip, issues.size()));
         noticeChip.setVisibility(View.VISIBLE);
+        wireFocus();
         noticeChip.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -739,6 +744,58 @@ public class MainActivity extends Activity {
         focusPkg = null;
         if (toFocus != null && getCurrentFocus() == null) toFocus.requestFocus();
         else if (toFocus != null && appRow.hasFocus()) toFocus.requestFocus();
+        wireFocus();
+    }
+
+    private static int idOf(View v) {
+        if (v.getId() == View.NO_ID) v.setId(View.generateViewId());
+        return v.getId();
+    }
+
+    /**
+     * Fixes where each remote arrow goes, so it is always predictable. Only three groups can be selected: the header
+     * buttons (weather, radio, connection, notice), the settings list on the left, and the apps row at the bottom.
+     * Up and down move between the groups; left and right never jump to another group.
+     */
+    private void wireFocus() {
+        if (settingsList == null || appRow == null || weatherView == null || status == null || radioBtn == null) return;
+        java.util.ArrayList<View> rows = new java.util.ArrayList<>();
+        for (int i = 0; i < settingsList.getChildCount(); i++) {
+            View r = settingsList.getChildAt(i);
+            if (r.getVisibility() == View.VISIBLE && r.isFocusable()) rows.add(r);
+        }
+        java.util.ArrayList<View> tiles = new java.util.ArrayList<>();
+        for (int i = 0; i < appRow.getChildCount(); i++) {
+            if (appRow.getChildAt(i).isFocusable()) tiles.add(appRow.getChildAt(i));
+        }
+        View firstRow = rows.isEmpty() ? null : rows.get(0);
+        View lastRow = rows.isEmpty() ? null : rows.get(rows.size() - 1);
+        View firstTile = tiles.isEmpty() ? null : tiles.get(0);
+        View lastTile = tiles.isEmpty() ? null : tiles.get(tiles.size() - 1);
+        boolean notice = noticeChip != null && noticeChip.getVisibility() == View.VISIBLE;
+        View radio = radioBtn, net = status.view, weather = weatherView;
+
+        View below = firstRow != null ? firstRow : firstTile;
+        link(weather, weather, weather, radio, below);
+        link(radio, weather, notice ? noticeChip : radio, radio, net);
+        link(net, weather, notice ? noticeChip : net, radio, below);
+        if (notice) link(noticeChip, radio, noticeChip, noticeChip, firstTile != null ? firstTile : noticeChip);
+
+        for (View r : rows) {
+            // Left, right: stay. Up, down: the neighbouring row, except at the ends of the list.
+            link(r, r, r, r == firstRow ? weather : null, r == lastRow ? (firstTile != null ? firstTile : r) : null);
+        }
+        for (View t : tiles) {
+            link(t, t == firstTile ? t : null, t == lastTile ? t : null, firstRow != null ? firstRow : t, t);
+        }
+    }
+
+    /** Sets where left, right, up and down go from {@code v}; a null direction is left to the normal neighbour. */
+    private static void link(View v, View left, View right, View up, View down) {
+        if (left != null) v.setNextFocusLeftId(idOf(left));
+        if (right != null) v.setNextFocusRightId(idOf(right));
+        if (up != null) v.setNextFocusUpId(idOf(up));
+        if (down != null) v.setNextFocusDownId(idOf(down));
     }
 
     private View buildTile(final AppItem item) {
