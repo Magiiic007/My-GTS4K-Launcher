@@ -156,22 +156,27 @@ final class SettingsMenu {
      */
     static void screensaver(Context c) {
         String[][] tries = {
-            {null, Settings.ACTION_DREAM_SETTINGS},
             {"com.android.tv.settings", "com.android.tv.settings.device.display.daydream.DaydreamActivity"},
             {"com.google.android.apps.tv.dreamx", "com.google.android.apps.tv.dreamx.settings.AmbientSettingsActivity"},
             {"com.google.android.apps.tv.dreamx", "com.google.android.apps.tv.dreamx.settings.SettingsActivity"},
         };
         for (String[] t : tries) {
             try {
-                Intent i = new Intent().addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if (t[0] == null) i.setAction(t[1]);
-                else i.setClassName(t[0], t[1]);
-                c.startActivity(i);
+                c.startActivity(new Intent().setClassName(t[0], t[1]).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                 Toast.makeText(c, R.string.saver_tip, Toast.LENGTH_LONG).show();
                 return;
             } catch (RuntimeException ignored) {
                 // Not on this TV: try the next one.
             }
+        }
+        // The system's own action: on some Google TV builds it only lands on the main settings page, so the tip
+        // says where to go from there.
+        try {
+            c.startActivity(new Intent(Settings.ACTION_DREAM_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            Toast.makeText(c, R.string.saver_manual, Toast.LENGTH_LONG).show();
+            return;
+        } catch (RuntimeException ignored) {
+            // Fall through to the main settings.
         }
         try {
             c.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
