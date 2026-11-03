@@ -174,7 +174,7 @@
     <string name="menu_clean">Deep clean</string>
     <string name="menu_saver">Screensaver (Google Photos)</string>
     <string name="clean_space">Free space: %1$s of %2$s</string>
-    <string name="clean_own">Clear the launcher's temporary files</string>
+    <string name="clean_own">Clear the launcher\'s temporary files</string>
     <string name="clean_own_done">Cleared %1$s of temporary files</string>
     <string name="clean_apps">Apps using the most space</string>
     <string name="clean_files">Downloaded files (deleted only after you confirm)</string>
@@ -186,7 +186,7 @@
     <string name="clean_allow">Allow</string>
     <string name="clean_usage_tip">Choose Magiic TV, then switch the permission on</string>
     <string name="clean_files_none">There are no files in the Downloads folder.</string>
-    <string name="clean_files_hidden">Magiic TV cannot see any file in the Downloads folder. It may be empty, or the device hides other apps' files unless you allow "All files access".</string>
+    <string name="clean_files_hidden">Magiic TV cannot see any file in the Downloads folder. It may be empty, or the device hides other apps\' files unless you allow "All files access".</string>
     <string name="clean_files_nosetting">This device does not show the "All files access" setting</string>
     <string name="clean_delete_ask">This file (%1$s) will be deleted for good and cannot be brought back. Continue?</string>
     <string name="clean_delete">Delete</string>
