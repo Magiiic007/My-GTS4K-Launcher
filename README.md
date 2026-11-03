@@ -48,3 +48,13 @@
 - أيقونات حالة الاتصال (واي فاي بقوة الإشارة، كابل، بدون اتصال، متصل بلا إنترنت) والبلوتوث والراديو.
 - اختصارات لإعدادات الجهاز والحساب.
 - حُذف خيار الـ DNS وأزرار تجربة الأذان والإقامة.
+
+## الرجوع للواجهة الأصلية
+
+من داخل اللانشر: الإعدادات ← «العودة للواجهة الأصلية». ولو حصلت مشكلة كبيرة، من ADB على الموبايل:
+
+```
+adb shell pm enable com.google.android.apps.tv.launcherx
+adb shell pm enable com.google.android.tungsten.setupwraith
+adb uninstall app.mylauncher.gtv
+```

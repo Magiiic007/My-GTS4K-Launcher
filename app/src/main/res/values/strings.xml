@@ -153,4 +153,11 @@
     <string name="rem_title_hint">Title of the reminder</string>
     <string name="rem_text_hint">Text of the reminder</string>
     <string name="rem_hijri_day">The %1$d of the Hijri month</string>
+    <string name="menu_stock">Back to the original home screen</string>
+    <string name="stock_open">Open the original Google TV home now</string>
+    <string name="stock_defaults">Stop Magiic TV being the home screen</string>
+    <string name="stock_defaults_tip">Choose "Clear defaults", "Disable" or "Uninstall", then press the Home button</string>
+    <string name="stock_help_btn">Full way back (for emergencies)</string>
+    <string name="stock_none">The original Google TV home screen is switched off, so it cannot be opened from here.</string>
+    <string name="stock_help">To bring the original home screen fully back, from your phone with an ADB app (connected to the device on the same Wi-Fi) run:\n\nadb shell pm enable com.google.android.apps.tv.launcherx\nadb shell pm enable com.google.android.tungsten.setupwraith\n\nThen press Home on the remote.\n\nIf this app itself is not working, remove it with:\n\nadb uninstall app.mylauncher.gtv\n\nThe original Google TV home screen then comes back by itself.</string>
 </resources>

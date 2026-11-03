@@ -255,6 +255,12 @@ public class MainActivity extends Activity {
                 SettingsMenu.device(MainActivity.this);
             }
         });
+        addRow(list, R.drawable.ic_home, R.string.menu_stock, new Runnable() {
+            @Override
+            public void run() {
+                StockHome.menu(MainActivity.this);
+            }
+        });
         permRow = addRow(list, R.drawable.ic_warning, R.string.perm_btn, new Runnable() {
             @Override
             public void run() {
