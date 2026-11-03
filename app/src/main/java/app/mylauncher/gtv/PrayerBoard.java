@@ -86,7 +86,7 @@ final class PrayerBoard {
         // ------------------------------------------------------------ the prayer card
         // The title is part of the picture; the city goes in the band under it.
         flag = new Flag(ctx);
-        Stage.add(stage, flag, 372, 156, 436, 196);
+        // The flag and the city name under the title were taken out; the city is chosen from the weather button.
 
         locationText = Stage.text(ctx, "", 19, kids ? Color.parseColor("#FFFFF4E6") : Theme.cardText(ctx), true);
         locationText.setGravity(Gravity.CENTER);
@@ -95,7 +95,7 @@ final class PrayerBoard {
             null, null, tinted(R.drawable.ic_location, kids ? Color.parseColor("#FFFFF4E6") : Theme.cardGold(ctx), 24), null);
         Stage.fitOneLine(locationText, 11, 19);
         focusable(locationText, 14, pickCity);
-        Stage.add(stage, locationText, 448, 156, 812, 198);
+
 
         int pl = g.prayers[0], pt = g.prayers[1], pr = g.prayers[2], pb = g.prayers[3];
         int pitch = (pb - pt) / 6;
