@@ -164,7 +164,7 @@ final class Cleaner {
                     r.cache = s.getCacheBytes();
                     r.total = s.getAppBytes() + s.getDataBytes() + s.getCacheBytes();
                     rows.add(r);
-                } catch (java.io.IOException | RuntimeException e) {
+                } catch (java.io.IOException | PackageManager.NameNotFoundException | RuntimeException e) {
                     // This app's figure is not available: leave it out.
                 }
             }
