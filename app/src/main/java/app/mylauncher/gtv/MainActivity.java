@@ -249,19 +249,15 @@ public class MainActivity extends Activity {
         scroll.addView(list, new ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // The look: a list with the two interfaces (the one in use is marked).
-        addRow(list, R.drawable.ic_palette, R.string.menu_theme, new Runnable() {
+        // Ordered by how often each is used: the most common first.
+        // First while there is something that needs the person (see refreshNotices); hidden otherwise.
+        noticesRow = addRow(list, R.drawable.ic_warning, R.string.menu_notices, new Runnable() {
             @Override
             public void run() {
-                chooseLook();
+                if (!lastIssues.isEmpty()) Health.show(MainActivity.this, lastIssues);
             }
         });
-        addRow(list, R.drawable.ic_location, R.string.menu_city, new Runnable() {
-            @Override
-            public void run() {
-                chooseCountry();
-            }
-        });
+        ((View) noticesRow.getTag()).setVisibility(View.GONE);
         addRow(list, R.drawable.ic_bell, R.string.menu_adhan, new Runnable() {
             @Override
             public void run() {
@@ -285,16 +281,34 @@ public class MainActivity extends Activity {
                 });
             }
         });
+        addRow(list, R.drawable.ic_palette, R.string.menu_theme, new Runnable() {
+            @Override
+            public void run() {
+                chooseLook();
+            }
+        });
+        addRow(list, R.drawable.ic_star, R.string.menu_reminders, new Runnable() {
+            @Override
+            public void run() {
+                ReminderDialogs.open(MainActivity.this);
+            }
+        });
+        addRow(list, R.drawable.ic_location, R.string.menu_city, new Runnable() {
+            @Override
+            public void run() {
+                chooseCountry();
+            }
+        });
         addRow(list, R.drawable.ic_calendar, R.string.menu_hijri, new Runnable() {
             @Override
             public void run() {
                 chooseHijri();
             }
         });
-        addRow(list, R.drawable.ic_shield, R.string.menu_clean, new Runnable() {
+        addRow(list, R.drawable.ic_account, R.string.menu_device, new Runnable() {
             @Override
             public void run() {
-                Cleaner.open(MainActivity.this);
+                SettingsMenu.device(MainActivity.this);
             }
         });
         addRow(list, R.drawable.ic_sunny, R.string.menu_saver, new Runnable() {
@@ -303,30 +317,16 @@ public class MainActivity extends Activity {
                 SettingsMenu.launch(MainActivity.this, Settings.ACTION_DREAM_SETTINGS, R.string.saver_tip);
             }
         });
+        addRow(list, R.drawable.ic_shield, R.string.menu_clean, new Runnable() {
+            @Override
+            public void run() {
+                Cleaner.open(MainActivity.this);
+            }
+        });
         addRow(list, R.drawable.ic_update, R.string.menu_update, new Runnable() {
             @Override
             public void run() {
                 Updater.menu(MainActivity.this);
-            }
-        });
-        // Shown only while the quiet health check has something for the person (see refreshNotices).
-        noticesRow = addRow(list, R.drawable.ic_warning, R.string.menu_notices, new Runnable() {
-            @Override
-            public void run() {
-                if (!lastIssues.isEmpty()) Health.show(MainActivity.this, lastIssues);
-            }
-        });
-        ((View) noticesRow.getTag()).setVisibility(View.GONE);
-        addRow(list, R.drawable.ic_star, R.string.menu_reminders, new Runnable() {
-            @Override
-            public void run() {
-                ReminderDialogs.open(MainActivity.this);
-            }
-        });
-        addRow(list, R.drawable.ic_account, R.string.menu_device, new Runnable() {
-            @Override
-            public void run() {
-                SettingsMenu.device(MainActivity.this);
             }
         });
         addRow(list, R.drawable.ic_home, R.string.menu_stock, new Runnable() {
