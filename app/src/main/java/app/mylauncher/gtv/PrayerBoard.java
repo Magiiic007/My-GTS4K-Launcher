@@ -68,6 +68,11 @@ final class PrayerBoard {
     private String nextText = "";
     private String barShown = "";
 
+    private android.graphics.drawable.Drawable pulseBg;
+    private android.animation.ValueAnimator pulse;
+    private int baseCountColour;
+    private boolean urgent;
+
     private String cacheKey;
     private long cacheMinute = -1;
     private long[] shown = new long[5];
@@ -290,10 +295,27 @@ final class PrayerBoard {
         ampm.setVisibility(DateFormat.is24HourFormat(ctx) ? View.GONE : View.VISIBLE);
         handler.removeCallbacks(tick);
         handler.post(tick);
+        // The row of the coming prayer breathes softly.
+        if (pulse != null) pulse.cancel();
+        pulse = android.animation.ValueAnimator.ofInt(140, 255);
+        pulse.setDuration(1500L);
+        pulse.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        pulse.setRepeatMode(android.animation.ValueAnimator.REVERSE);
+        pulse.addUpdateListener(new android.animation.ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(android.animation.ValueAnimator a) {
+                if (pulseBg != null) pulseBg.setAlpha((Integer) a.getAnimatedValue());
+            }
+        });
+        pulse.start();
     }
 
     void stop() {
         handler.removeCallbacks(tick);
+        if (pulse != null) {
+            pulse.cancel();
+            pulse = null;
+        }
     }
 
     /** Recalculate everything now (the city or a setting changed). */
@@ -394,7 +416,9 @@ final class PrayerBoard {
                     rowIqama[i].setVisibility(View.GONE);
                 }
                 rows[i].setAlpha(at <= now && !isNext ? 0.55f : 1f);
-                rows[i].setBackground(isNext ? Theme.highlight(ctx, 18) : null);
+                android.graphics.drawable.Drawable hl = isNext ? Theme.highlight(ctx, 18) : null;
+                rows[i].setBackground(hl);
+                if (isNext) pulseBg = hl;
             }
             nextText = ctx.getString(R.string.next_prayer,
                 PrayerCalc.name(ctx, adhanEvent.index, adhanEvent.friday));
@@ -422,7 +446,17 @@ final class PrayerBoard {
             barShown = want;
             nextBar.setText(want);
         }
-        if (adhanEvent != null) adhanTime.setText(clockText(adhanEvent.at - now));
+        if (adhanEvent != null) {
+            adhanTime.setText(clockText(adhanEvent.at - now));
+            // In the last ten minutes before the adhan the countdown turns a brighter colour.
+            long left = adhanEvent.at - now;
+            boolean soon = left > 0 && left < 10L * 60000L;
+            if (baseCountColour == 0) baseCountColour = adhanTime.getCurrentTextColor();
+            if (soon != urgent) {
+                urgent = soon;
+                adhanTime.setTextColor(soon ? Color.parseColor(kids ? "#FFD6336C" : "#FFFFF0B0") : baseCountColour);
+            }
+        }
         iqamaTime.setText(iqamaEvent != null ? clockText(iqamaEvent.at - now) : "--:--:--");
     }
 

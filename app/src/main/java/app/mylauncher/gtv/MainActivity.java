@@ -71,6 +71,16 @@ public class MainActivity extends Activity {
     private TextView radioBtn;
     private TextView permRow;
     private TextView noticeChip;
+    private Ambience ambience;
+    private Sparkle sparkle;
+    private FrameLayout rootView;
+    private final Runnable ambienceTick = new Runnable() {
+        @Override
+        public void run() {
+            ambience.update();
+            handler.postDelayed(this, 60000L);
+        }
+    };
     private LinearLayout settingsList;
     private ImageView art;
     private long weatherAt;
@@ -113,6 +123,13 @@ public class MainActivity extends Activity {
         root.addView(art, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
+        rootView = root;
+        // The veil of the day's light sits on the picture, under everything else.
+        View veil = new View(this);
+        root.addView(veil, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        ambience = new Ambience(this, veil);
+
         final FrameLayout stage = new FrameLayout(this);
         stage.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         Motion.fadeIn(root, 350L);
@@ -123,6 +140,10 @@ public class MainActivity extends Activity {
                 Stage.fit(root, stage);
             }
         });
+
+        // The twinkling stars come first so everything else is drawn over them.
+        sparkle = new Sparkle(this, kids);
+        Stage.add(stage, sparkle, 0, 0, Stage.W, Stage.H);
 
         // ---------------------------------------------------------------- top-left: weather, radio, status icons
         weatherView = chip(0, null);
@@ -313,7 +334,13 @@ public class MainActivity extends Activity {
                     d.dismiss();
                     if (which != Theme.id(MainActivity.this)) {
                         Theme.set(MainActivity.this, which);
-                        recreate();
+                        // Fade out, switch, and the new look fades in.
+                        rootView.animate().alpha(0f).setDuration(220L).withEndAction(new Runnable() {
+                            @Override
+                            public void run() {
+                                recreate();
+                            }
+                        }).start();
                     }
                 }
             })
@@ -427,6 +454,10 @@ public class MainActivity extends Activity {
                 Reminders.scheduleNext(app);
             }
         }).start();
+        ambience.update();
+        handler.removeCallbacks(ambienceTick);
+        handler.postDelayed(ambienceTick, 60000L);
+        sparkle.start();
         refreshNotices();
         Updater.checkIfDue(this, new Runnable() {
             @Override
@@ -485,6 +516,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         handler.removeCallbacks(weatherTick);
+        handler.removeCallbacks(ambienceTick);
+        sparkle.stop();
         board.stop();
         status.stop();
         RadioService.unlisten(radioListener);
