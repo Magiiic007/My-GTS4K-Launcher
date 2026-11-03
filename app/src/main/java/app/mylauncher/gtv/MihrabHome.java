@@ -315,7 +315,8 @@ final class MihrabHome {
         total = totalCount;
         lastShown = new ArrayList<>();
         for (MainActivity.AppItem i : apps) lastShown.add(i.component.getPackageName());
-        final boolean hadFocus = a.getCurrentFocus() != null;
+        // Focus is only (re)placed when there is none, or when the view that had it is about to be replaced.
+        final boolean hadFocus = a.getCurrentFocus() != null && !favBox.hasFocus() && !moreBox.hasFocus();
         favBox.removeAllViews();
         moreBox.removeAllViews();
         Set<String> f = favs(a);
@@ -340,8 +341,9 @@ final class MihrabHome {
         }
         FrameLayout.LayoutParams alp = new FrameLayout.LayoutParams(98, 86, Gravity.TOP | Gravity.LEFT);
         alp.leftMargin = 756 - 98 - more * 108;
-        moreBox.addView(allTile(), alp);
-        if (!hadFocus && first != null) first.requestFocus();
+        View all = allTile();
+        moreBox.addView(all, alp);
+        if (!hadFocus) (first != null ? first : all).requestFocus();
     }
 
     private View allTile() {
