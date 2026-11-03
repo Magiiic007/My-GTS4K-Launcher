@@ -11,3 +11,5 @@
 
   If you hold the rights to a recording and want it removed, please open an issue and it will be taken down.
   The app plays these when present and a short alert otherwise.
+
+- `reminder.mp3`: reminder sound supplied by the app owner (the file he chose); its source and rights are not verified here.

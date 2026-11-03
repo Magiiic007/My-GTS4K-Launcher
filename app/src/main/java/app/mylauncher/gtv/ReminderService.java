@@ -6,8 +6,9 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
-import android.media.AudioManager;
-import android.media.ToneGenerator;
+import android.content.res.AssetFileDescriptor;
+import android.media.AudioAttributes;
+import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -118,22 +119,54 @@ public class ReminderService extends Service {
         handler.removeCallbacks(autoClose);
         if (popup != null) popup.hide();
         popup = null;
+        stopChime();
         showNext();
     }
 
-    /** One short, soft beep so the popup is noticed; it does not take the audio from anything. */
+    private MediaPlayer chime;
+
+    /** The reminder sound (the file the user chose). It plays once, as a notification, and does not take the audio focus. */
     private void beep() {
+        stopChime();
         try {
-            final ToneGenerator tone = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 60);
-            tone.startTone(ToneGenerator.TONE_PROP_ACK, 400);
-            handler.postDelayed(new Runnable() {
+            MediaPlayer m = new MediaPlayer();
+            chime = m;
+            m.setAudioAttributes(new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build());
+            AssetFileDescriptor fd = getResources().openRawResourceFd(R.raw.reminder);
+            m.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
+            fd.close();
+            m.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 @Override
-                public void run() {
-                    tone.release();
+                public void onCompletion(MediaPlayer mp) {
+                    stopChime();
                 }
-            }, 800L);
+            });
+            m.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+                @Override
+                public boolean onError(MediaPlayer mp, int what, int extra) {
+                    stopChime();
+                    return true;
+                }
+            });
+            m.prepare();
+            m.start();
+        } catch (java.io.IOException | RuntimeException e) {
+            // No sound; the popup is enough.
+            stopChime();
+        }
+    }
+
+    private void stopChime() {
+        MediaPlayer m = chime;
+        chime = null;
+        if (m == null) return;
+        try {
+            m.release();
         } catch (RuntimeException ignored) {
-            // No tone; the popup is enough.
+            // Already released.
         }
     }
 
@@ -147,6 +180,7 @@ public class ReminderService extends Service {
     @Override
     public void onDestroy() {
         handler.removeCallbacksAndMessages(null);
+        stopChime();
         if (popup != null) popup.hide();
         popup = null;
         if (wake != null && wake.isHeld()) wake.release();
