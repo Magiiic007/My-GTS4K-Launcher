@@ -7,9 +7,9 @@ import android.view.View;
 import java.util.Calendar;
 
 /**
- * The light of the day. A thin coloured veil over the background picture moves with the real prayer times: a cool
- * blue before dawn, a soft warm glow at sunrise, clear through the day, amber toward sunset with the strongest glow at
- * Maghrib, then dusk and a deep blue night. Only the picture is tinted, never the text. It is recalculated once a minute
+ * The light of the day. A thin coloured veil over the background picture moves with the real prayer times: only
+ * shades of white, grey and black, light and calm: a soft darkening before dawn, a faint haze at sunrise, clear through
+ * the day, a little grey toward sunset and at Maghrib, darker after it and darkest at night. Only the picture is tinted, never the text. It is recalculated once a minute
  * while the home screen is open.
  */
 final class Ambience {
@@ -45,15 +45,15 @@ final class Ambience {
         long[] when = {fajr - 40 * MIN, fajr, sunrise, sunrise + 90 * MIN, asr, maghrib - 45 * MIN, maghrib,
             maghrib + 40 * MIN, isha};
         int[] colour = {
-            Color.argb(96, 20, 36, 100),    // before dawn: deep blue
-            Color.argb(78, 60, 80, 160),   // dawn: cooler, lighter blue
-            Color.argb(64, 255, 190, 130), // sunrise: soft warm light
-            Color.argb(0, 0, 0, 0),        // day: nothing
+            Color.argb(80, 0, 0, 0),         // before dawn: soft darkening
+            Color.argb(50, 40, 40, 40),      // dawn: lighter grey
+            Color.argb(28, 255, 255, 255),   // sunrise: a faint white haze
+            Color.argb(0, 0, 0, 0),          // day: nothing
             Color.argb(0, 0, 0, 0),
-            Color.argb(80, 255, 170, 60),  // before sunset: amber
-            Color.argb(110, 255, 120, 20),  // Maghrib: the strongest glow
-            Color.argb(92, 90, 40, 120),   // dusk: purple
-            Color.argb(100, 14, 26, 90)};   // night: deep blue
+            Color.argb(24, 128, 128, 128),   // before sunset: faint grey
+            Color.argb(46, 60, 60, 60),      // Maghrib: calm grey
+            Color.argb(70, 20, 20, 20),      // dusk: darker
+            Color.argb(90, 0, 0, 0)};        // night: darkest, still soft   // night: deep blue
         int c;
         if (now <= when[0] || now >= when[when.length - 1]) {
             c = colour[0];
