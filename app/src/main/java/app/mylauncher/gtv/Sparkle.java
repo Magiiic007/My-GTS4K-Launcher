@@ -62,8 +62,8 @@ final class Sparkle extends View {
             float[] s = stars[i];
             float phase = t * (0.7f + 0.13f * (i % 5)) + i * 1.7f;
             float twinkle = 0.5f + 0.5f * (float) Math.sin(phase);
-            float alpha = 0.25f + 0.75f * twinkle;
-            float r = s[2] * (0.75f + 0.5f * twinkle);
+            float alpha = 0.3f + 0.7f * twinkle;
+            float r = s[2] * 2.0f * (0.7f + 0.6f * twinkle);
             float dy = kids ? 3f * (float) Math.sin(phase * 0.6f) : 0f;
             paint.setColor(kids ? 0xFFFFFFFF : 0xFFFFE9A8);
             paint.setAlpha(Math.round(255 * alpha));
@@ -79,6 +79,8 @@ final class Sparkle extends View {
             path.lineTo(x - r * 0.25f, y - r * 0.25f);
             path.close();
             canvas.drawPath(path, paint);
+            paint.setAlpha(Math.round(70 * alpha));
+            canvas.drawCircle(x, y, r * 1.5f, paint);
         }
     }
 }

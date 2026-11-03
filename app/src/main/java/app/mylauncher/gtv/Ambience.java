@@ -45,15 +45,15 @@ final class Ambience {
         long[] when = {fajr - 40 * MIN, fajr, sunrise, sunrise + 90 * MIN, asr, maghrib - 45 * MIN, maghrib,
             maghrib + 40 * MIN, isha};
         int[] colour = {
-            Color.argb(51, 24, 40, 90),    // before dawn: deep blue
-            Color.argb(38, 64, 80, 140),   // dawn: cooler, lighter blue
-            Color.argb(26, 255, 200, 150), // sunrise: soft warm light
+            Color.argb(96, 20, 36, 100),    // before dawn: deep blue
+            Color.argb(78, 60, 80, 160),   // dawn: cooler, lighter blue
+            Color.argb(64, 255, 190, 130), // sunrise: soft warm light
             Color.argb(0, 0, 0, 0),        // day: nothing
             Color.argb(0, 0, 0, 0),
-            Color.argb(34, 255, 180, 80),  // before sunset: amber
-            Color.argb(56, 255, 140, 40),  // Maghrib: the strongest glow
-            Color.argb(42, 80, 40, 100),   // dusk: purple
-            Color.argb(51, 20, 34, 79)};   // night: deep blue
+            Color.argb(80, 255, 170, 60),  // before sunset: amber
+            Color.argb(110, 255, 120, 20),  // Maghrib: the strongest glow
+            Color.argb(92, 90, 40, 120),   // dusk: purple
+            Color.argb(100, 14, 26, 90)};   // night: deep blue
         int c;
         if (now <= when[0] || now >= when[when.length - 1]) {
             c = colour[0];
@@ -68,7 +68,7 @@ final class Ambience {
             }
         }
         // The pink look gets a lighter touch so it stays bright.
-        if (Theme.kids(ctx)) c = Color.argb(Math.round(Color.alpha(c) * 0.6f), Color.red(c), Color.green(c), Color.blue(c));
+        if (Theme.kids(ctx)) c = Color.argb(Math.round(Color.alpha(c) * 0.7f), Color.red(c), Color.green(c), Color.blue(c));
         veil.setBackgroundColor(c);
     }
 
