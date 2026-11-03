@@ -292,7 +292,7 @@ final class Updater {
         } catch (java.io.IOException | RuntimeException e) {
             try {
                 if (session != null) session.abandon();
-            } catch (RuntimeException | java.io.IOException ignored) {
+            } catch (RuntimeException ignored) {
                 // Nothing more to clean.
             }
             return false;
