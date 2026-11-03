@@ -171,4 +171,26 @@
     <string name="home_access_tip">اختر Magiic TV من القائمة ثم شغّله، ووافق على التنبيه</string>
     <string name="home_now_on">Magiic TV هو الرئيسية الآن</string>
     <string name="home_now_off">رجعت الواجهة الأصلية</string>
+    <string name="menu_clean">التنظيف العميق</string>
+    <string name="menu_saver">شاشة التوقف (صور Google)</string>
+    <string name="clean_space">المساحة الفارغة: %1$s من %2$s</string>
+    <string name="clean_own">مسح الملفات المؤقتة للّانشر</string>
+    <string name="clean_own_done">تم مسح %1$s من الملفات المؤقتة</string>
+    <string name="clean_apps">التطبيقات الأكبر مساحة</string>
+    <string name="clean_files">ملفات التحميل (للحذف بعد تأكيدك)</string>
+    <string name="clean_cache">مؤقت</string>
+    <string name="clean_working">جارٍ حساب المساحات...</string>
+    <string name="clean_apps_none">لا توجد أرقام متاحة للتطبيقات على هذا الجهاز</string>
+    <string name="clean_app_tip">اختر «مسح الذاكرة المؤقتة» فقط. لا تمسح البيانات إلا لو أردت تسجيل الدخول من جديد.</string>
+    <string name="clean_usage_help">لعرض مساحة كل تطبيق، يحتاج Magiic TV إذن «الوصول إلى بيانات الاستخدام». هو يقرأ أحجام التطبيقات فقط ولا يغيّر شيئاً.</string>
+    <string name="clean_allow">السماح</string>
+    <string name="clean_usage_tip">اختر Magiic TV ثم فعّل الإذن</string>
+    <string name="clean_files_none">لا توجد ملفات في مجلد التنزيلات.</string>
+    <string name="clean_files_hidden">لا يظهر لـ Magiic TV أي ملف في مجلد التنزيلات. قد يكون المجلد فارغاً، أو أن الجهاز يخفي ملفات التطبيقات الأخرى ما لم تسمح بـ «الوصول لكل الملفات».</string>
+    <string name="clean_files_nosetting">هذا الجهاز لا يعرض إعداد «الوصول لكل الملفات»</string>
+    <string name="clean_delete_ask">سيُحذف هذا الملف (%1$s) نهائياً ولا يمكن التراجع. هل تريد المتابعة؟</string>
+    <string name="clean_delete">حذف</string>
+    <string name="clean_deleted">تم الحذف</string>
+    <string name="clean_delete_failed">تعذر حذف الملف</string>
+    <string name="saver_tip">اختر «Google Photos» كشاشة توقف ثم الألبومات التي تريدها</string>
 </resources>

@@ -243,6 +243,18 @@ public class MainActivity extends Activity {
                 chooseHijri();
             }
         });
+        addRow(list, R.drawable.ic_shield, R.string.menu_clean, new Runnable() {
+            @Override
+            public void run() {
+                Cleaner.open(MainActivity.this);
+            }
+        });
+        addRow(list, R.drawable.ic_sunny, R.string.menu_saver, new Runnable() {
+            @Override
+            public void run() {
+                SettingsMenu.launch(MainActivity.this, Settings.ACTION_DREAM_SETTINGS, R.string.saver_tip);
+            }
+        });
         addRow(list, R.drawable.ic_star, R.string.menu_reminders, new Runnable() {
             @Override
             public void run() {
