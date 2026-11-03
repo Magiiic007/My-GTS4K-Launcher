@@ -163,7 +163,7 @@ final class SettingsMenu {
         for (String[] t : tries) {
             try {
                 c.startActivity(new Intent().setClassName(t[0], t[1]).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                Toast.makeText(c, R.string.saver_tip, Toast.LENGTH_LONG).show();
+                Toast.makeText(c, R.string.saver_manual, Toast.LENGTH_LONG).show();
                 return;
             } catch (RuntimeException ignored) {
                 // Not on this TV: try the next one.
