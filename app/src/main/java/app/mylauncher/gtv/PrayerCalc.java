@@ -33,8 +33,15 @@ final class PrayerCalc {
         final long at;
         final boolean friday;
         final boolean iqama;
+        /** The Friday first adhan, rung before the Dhuhr adhan. */
+        final boolean first;
 
         Event(int index, long at, boolean friday, boolean iqama) {
+            this(index, at, friday, iqama, false);
+        }
+
+        Event(int index, long at, boolean friday, boolean iqama, boolean first) {
+            this.first = first;
             this.index = index;
             this.at = at;
             this.friday = friday;
@@ -102,6 +109,20 @@ final class PrayerCalc {
                     long q = t[i] + iqama[i] * 60000L;
                     if (q > now && (best == null || q < best.at)) best = new Event(i, q, friday, true);
                 }
+            }
+        }
+        return best;
+    }
+
+    /** What the alarm must ring next: {@link #nextEvent} plus the Friday first adhan, {@code firstMin} minutes early. */
+    static Event nextAlarm(Cities.City city, long now, int[] adjust, int[] iqama, int firstMin) {
+        Event best = nextEvent(city, now, adjust, iqama);
+        if (firstMin > 0) {
+            for (int d = -1; d <= 1; d++) {
+                long[] t = day(city, now, d, adjust);
+                if (!isFriday(city, t[DHUHR])) continue;
+                long f = t[DHUHR] - firstMin * 60000L;
+                if (f > now && (best == null || f < best.at)) best = new Event(DHUHR, f, true, false, true);
             }
         }
         return best;

@@ -237,4 +237,16 @@
     <string name="menu_notices">Notices</string>
     <string name="stock_make_btn">How do I make it the home screen?</string>
     <string name="stock_make_help">Magiic TV now works as a normal app: open it from the apps list. The Home button on the remote opens your device’s own home screen as before.\n\nGoogle Play Protect blocks any app that takes over the home screen without a computer. If you want it to be the home screen, that is done once from your phone over Wi-Fi, and you can go back to the original at any time.</string>
+    <string name="all_apps">All apps</string>
+    <string name="all_apps_hint">Press OK to open an app. Hold OK to show or hide it on the home screen ★</string>
+    <string name="all_apps_shown">Now on the home screen</string>
+    <string name="all_apps_hidden">Removed from the home screen</string>
+    <string name="first_adhan_item">Friday first adhan: %1$s</string>
+    <string name="first_adhan_title">Friday first adhan</string>
+    <string name="first_adhan_set_title">Friday first adhan (before the Friday adhan)</string>
+    <string name="first_adhan_off">Off</string>
+    <string name="first_adhan_sub">The Friday adhan is in %1$d minutes. Get ready for the prayer</string>
+    <string name="friday_first">Blessed Friday · first adhan %1$s</string>
+    <string name="rem_kahf_title">Surat Al-Kahf</string>
+    <string name="rem_kahf_msg">It is Friday. Do not forget to read Surat Al-Kahf</string>
 </resources>

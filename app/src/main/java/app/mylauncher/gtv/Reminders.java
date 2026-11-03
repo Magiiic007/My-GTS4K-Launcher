@@ -22,7 +22,7 @@ import java.util.List;
 final class Reminders {
     private Reminders() {}
 
-    static final int WEEK_FAST = 1, WHITE_FAST = 2, CUSTOM = 3, ADHKAR_AM = 4, ADHKAR_PM = 5, OCCASION = 6;
+    static final int WEEK_FAST = 1, WHITE_FAST = 2, CUSTOM = 3, ADHKAR_AM = 4, ADHKAR_PM = 5, OCCASION = 6, KAHF = 7;
 
     static boolean isFast(int kind) {
         return kind == WEEK_FAST || kind == WHITE_FAST;
@@ -84,15 +84,21 @@ final class Reminders {
 
     /** The morning and evening adhkar and the occasion greetings exist for everyone, switched on at first. */
     private static void ensureExtras(List<Item> list) {
-        boolean am = false, pm = false, occ = false;
+        boolean am = false, pm = false, occ = false, kahf = false;
         for (Item it : list) {
             am |= it.kind == ADHKAR_AM;
             pm |= it.kind == ADHKAR_PM;
             occ |= it.kind == OCCASION;
+            kahf |= it.kind == KAHF;
         }
         if (!am) list.add(extra("adhkar_am", ADHKAR_AM, 6, 30));
         if (!pm) list.add(extra("adhkar_pm", ADHKAR_PM, 16, 30));
         if (!occ) list.add(extra("occasion", OCCASION, 8, 0));
+        if (!kahf) {
+            Item k = extra("kahf", KAHF, 9, 0);
+            k.daysMask = 1 << (Calendar.FRIDAY - 1);
+            list.add(k);
+        }
     }
 
     private static Item extra(String id, int kind, int hour, int minute) {
@@ -267,6 +273,7 @@ final class Reminders {
         if (it.kind == ADHKAR_AM) return c.getString(R.string.rem_adhkar_am_title);
         if (it.kind == ADHKAR_PM) return c.getString(R.string.rem_adhkar_pm_title);
         if (it.kind == OCCASION) return c.getString(R.string.rem_occasion_title);
+        if (it.kind == KAHF) return c.getString(R.string.rem_kahf_title);
         if (it.kind == WEEK_FAST) return c.getString(R.string.rem_week_title);
         if (it.kind == WHITE_FAST) return c.getString(R.string.rem_white_title);
         return it.title.isEmpty() ? c.getString(R.string.rem_custom_default) : it.title;
@@ -277,6 +284,7 @@ final class Reminders {
         if (it.kind == CUSTOM) return it.text;
         if (it.kind == ADHKAR_AM) return c.getString(R.string.rem_adhkar_am_msg);
         if (it.kind == ADHKAR_PM) return c.getString(R.string.rem_adhkar_pm_msg);
+        if (it.kind == KAHF) return c.getString(R.string.rem_kahf_msg);
         if (it.kind == OCCASION) {
             Calendar day = Calendar.getInstance();
             day.setTimeInMillis(shownAt);

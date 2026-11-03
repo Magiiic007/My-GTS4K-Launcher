@@ -59,7 +59,7 @@ final class Cleaner {
         String[] items = {
             a.getString(R.string.clean_own), a.getString(R.string.clean_apps), a.getString(R.string.clean_files),
         };
-        new AlertDialog.Builder(a)
+        new AlertDialog.Builder(a, Theme.dialogStyle(a))
             .setTitle(a.getString(R.string.menu_clean) + (space.isEmpty() ? "" : "\n" + space))
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
@@ -112,7 +112,7 @@ final class Cleaner {
 
     private static void apps(final Activity a) {
         if (!usageAllowed(a)) {
-            new AlertDialog.Builder(a)
+            new AlertDialog.Builder(a, Theme.dialogStyle(a))
                 .setTitle(R.string.clean_apps)
                 .setMessage(R.string.clean_usage_help)
                 .setPositiveButton(R.string.clean_allow, new DialogInterface.OnClickListener() {
@@ -191,7 +191,7 @@ final class Cleaner {
             Row r = rows.get(i);
             items[i] = r.label + " - " + size(r.total) + "  (" + a.getString(R.string.clean_cache) + " " + size(r.cache) + ")";
         }
-        new AlertDialog.Builder(a)
+        new AlertDialog.Builder(a, Theme.dialogStyle(a))
             .setTitle(R.string.clean_apps)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
@@ -229,7 +229,7 @@ final class Cleaner {
             }
         });
         if (list.isEmpty()) {
-            AlertDialog.Builder b = new AlertDialog.Builder(a)
+            AlertDialog.Builder b = new AlertDialog.Builder(a, Theme.dialogStyle(a))
                 .setTitle(R.string.clean_files)
                 .setMessage(allFiles() ? R.string.clean_files_none : R.string.clean_files_hidden)
                 .setNegativeButton(R.string.close, null);
@@ -252,7 +252,7 @@ final class Cleaner {
         int n = Math.min(40, list.size());
         String[] items = new String[n];
         for (int i = 0; i < n; i++) items[i] = list.get(i).getName() + "  -  " + size(list.get(i).length());
-        new AlertDialog.Builder(a)
+        new AlertDialog.Builder(a, Theme.dialogStyle(a))
             .setTitle(R.string.clean_files)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
@@ -265,7 +265,7 @@ final class Cleaner {
     }
 
     private static void confirmDelete(final Activity a, final File f) {
-        new AlertDialog.Builder(a)
+        new AlertDialog.Builder(a, Theme.dialogStyle(a))
             .setTitle(f.getName())
             .setMessage(a.getString(R.string.clean_delete_ask, size(f.length())))
             .setPositiveButton(R.string.clean_delete, new DialogInterface.OnClickListener() {

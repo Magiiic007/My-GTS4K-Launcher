@@ -20,7 +20,7 @@ final class ReminderDialogs {
             items[i] = (it.enabled ? "● " : "○ ") + Reminders.title(c, it) + "  " + time(it);
         }
         items[list.size()] = c.getString(R.string.rem_add);
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(R.string.menu_reminders)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
@@ -108,7 +108,7 @@ final class ReminderDialogs {
             actions.add(DELETE);
         }
 
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(Reminders.title(c, it))
             .setItems(labels.toArray(new String[0]), new DialogInterface.OnClickListener() {
                 @Override
@@ -179,7 +179,7 @@ final class ReminderDialogs {
             names[i] = Hijri.dayNameAr(i);
             on[i] = (it.daysMask & (1 << i)) != 0;
         }
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(R.string.rem_pick_days)
             .setMultiChoiceItems(names, on, new DialogInterface.OnMultiChoiceClickListener() {
                 @Override
@@ -213,7 +213,7 @@ final class ReminderDialogs {
             names[i] = c.getString(R.string.rem_hijri_day, 13 + i);
             on[i] = (it.hijriMask & (1 << i)) != 0;
         }
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(R.string.rem_pick_days)
             .setMultiChoiceItems(names, on, new DialogInterface.OnMultiChoiceClickListener() {
                 @Override
@@ -269,7 +269,7 @@ final class ReminderDialogs {
         input.setSingleLine(false);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         input.setText(current);
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(title)
             .setView(input)
             .setPositiveButton(R.string.save, new DialogInterface.OnClickListener() {

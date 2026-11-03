@@ -36,7 +36,7 @@ final class StockHome {
 
     static void menu(final Context c) {
         String[] items = {c.getString(R.string.stock_open), c.getString(R.string.stock_make_btn)};
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(R.string.menu_stock)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
@@ -53,7 +53,7 @@ final class StockHome {
     }
 
     private static void help(Context c, boolean noneFound) {
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(R.string.menu_stock)
             .setMessage((noneFound ? c.getString(R.string.stock_none) + "\n\n" : "") + c.getString(R.string.stock_make_help))
             .setPositiveButton(android.R.string.ok, null)

@@ -22,23 +22,24 @@ final class Scheduler {
         if (am == null) return;
         Cities.City city = Cities.selected(c);
         if (city == null) {
-            am.cancel(pending(c, REQ_REAL, 0, false, 0, false, false));
+            am.cancel(pending(c, REQ_REAL, 0, false, 0, false, false, false));
             return;
         }
-        PrayerCalc.Event e = PrayerCalc.nextEvent(
-            city, System.currentTimeMillis(), PrayerPrefs.adjust(c), PrayerPrefs.iqama(c));
+        PrayerCalc.Event e = PrayerCalc.nextAlarm(
+            city, System.currentTimeMillis(), PrayerPrefs.adjust(c), PrayerPrefs.iqama(c), PrayerPrefs.firstAdhan(c));
         if (e == null) return;
-        set(am, e.at, pending(c, REQ_REAL, e.index, e.friday, e.at, false, e.iqama));
+        set(am, e.at, pending(c, REQ_REAL, e.index, e.friday, e.at, false, e.iqama, e.first));
     }
 
     private static PendingIntent pending(Context c, int request, int index, boolean friday, long at,
-                                         boolean test, boolean iqama) {
+                                         boolean test, boolean iqama, boolean first) {
         Intent i = new Intent(c, AdhanReceiver.class).setAction(ACTION)
             .putExtra("index", index)
             .putExtra("friday", friday)
             .putExtra("at", at)
             .putExtra("test", test)
-            .putExtra("iqama", iqama);
+            .putExtra("iqama", iqama)
+            .putExtra("first", first);
         return PendingIntent.getBroadcast(c, request, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 

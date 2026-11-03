@@ -347,7 +347,7 @@ public class MainActivity extends Activity {
     /** The two looks, in a list; picking the other one restarts the screen in it. */
     private void chooseLook() {
         String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids)};
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this, Theme.dialogStyle(this))
             .setTitle(R.string.menu_theme)
             .setSingleChoiceItems(names, Theme.id(this), new DialogInterface.OnClickListener() {
                 @Override
@@ -574,7 +574,7 @@ public class MainActivity extends Activity {
             items[i] = (on && i == RadioService.station() ? "● " : "") + RadioService.STATIONS[i].name(arabic);
         }
         if (on) items[n] = getString(R.string.radio_stop);
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this, Theme.dialogStyle(this))
             .setTitle(R.string.radio_title)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
@@ -597,7 +597,7 @@ public class MainActivity extends Activity {
             startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 android.net.Uri.parse("package:" + getPackageName())));
         } catch (ActivityNotFoundException | SecurityException e) {
-            new AlertDialog.Builder(this)
+            new AlertDialog.Builder(this, Theme.dialogStyle(this))
                 .setTitle(R.string.overlay_title)
                 .setMessage(R.string.overlay_help)
                 .setPositiveButton(android.R.string.ok, null)
@@ -638,7 +638,7 @@ public class MainActivity extends Activity {
     /** Step 1 of choosing a city: the country. */
     private void chooseCountry() {
         String[] countries = {getString(R.string.egypt), getString(R.string.saudi)};
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this, Theme.dialogStyle(this))
             .setTitle(R.string.choose_country)
             .setItems(countries, new DialogInterface.OnClickListener() {
                 @Override
@@ -663,7 +663,7 @@ public class MainActivity extends Activity {
         });
         String[] names = new String[sorted.size()];
         for (int i = 0; i < names.length; i++) names[i] = sorted.get(i).name(arabic);
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this, Theme.dialogStyle(this))
             .setTitle(R.string.choose_city)
             .setItems(names, new DialogInterface.OnClickListener() {
                 @Override
@@ -799,6 +799,7 @@ public class MainActivity extends Activity {
                 toFocus = tile;
             }
         }
+        appRow.addView(buildAllTile());
         focusPkg = null;
         if (toFocus != null && getCurrentFocus() == null) toFocus.requestFocus();
         else if (toFocus != null && appRow.hasFocus()) toFocus.requestFocus();
@@ -845,6 +846,72 @@ public class MainActivity extends Activity {
         if (right != null) v.setNextFocusRightId(idOf(right));
         if (up != null) v.setNextFocusUpId(idOf(up));
         if (down != null) v.setNextFocusDownId(idOf(down));
+    }
+
+    /** The last tile of the row: every app in one grid. */
+    private View buildAllTile() {
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER_HORIZONTAL);
+        tile.setPadding(6, 6, 6, 4);
+        tile.setBackground(Theme.tile(this, 16));
+        tile.setFocusable(true);
+        tile.setClickable(true);
+        TextView glyph = Stage.text(this, "\u25A6", 64, Theme.tileLabel(this), true);
+        glyph.setGravity(Gravity.CENTER);
+        tile.addView(glyph, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        TextView label = Stage.text(this, getString(R.string.all_apps), 17, Theme.tileLabel(this), true);
+        label.setGravity(Gravity.CENTER);
+        Stage.fitOneLine(label, 10, 17);
+        LinearLayout.LayoutParams lLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 26);
+        lLp.topMargin = 3;
+        tile.addView(label, lLp);
+        final Drawable ring = Theme.ring(this, 16);
+        tile.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean has) {
+                v.setForeground(has ? ring : null);
+                v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(120).start();
+            }
+        });
+        tile.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openAllApps();
+            }
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(160, ViewGroup.LayoutParams.MATCH_PARENT);
+        lp.setMargins(12, 6, 12, 6);
+        tile.setLayoutParams(lp);
+        return tile;
+    }
+
+    private void openAllApps() {
+        List<AllApps.Entry> entries = new ArrayList<>();
+        for (AppItem a : allApps) {
+            AllApps.Entry e = new AllApps.Entry();
+            e.label = a.label;
+            e.component = a.component;
+            e.image = a.image;
+            e.banner = a.banner;
+            entries.add(e);
+        }
+        AllApps.show(this, entries, new Runnable() {
+            @Override
+            public void run() {
+                applyHidden();
+            }
+        }, new AllApps.Opener() {
+            @Override
+            public void open(ComponentName component) {
+                for (AppItem a : allApps) {
+                    if (a.component.equals(component)) {
+                        MainActivity.this.open(a);
+                        return;
+                    }
+                }
+            }
+        });
     }
 
     private View buildTile(final AppItem item) {
@@ -926,7 +993,7 @@ public class MainActivity extends Activity {
             getString(R.string.app_earlier), getString(R.string.app_later), getString(R.string.app_first),
             getString(R.string.app_hide), getString(R.string.app_uninstall), getString(R.string.app_info),
         };
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this, Theme.dialogStyle(this))
             .setTitle(item.label)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override

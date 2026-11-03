@@ -428,7 +428,11 @@ final class PrayerBoard {
             nextText = ctx.getString(R.string.next_prayer,
                 PrayerCalc.name(ctx, adhanEvent.index, adhanEvent.friday));
             extraLine = null;
-            if (ramadan == -2) {
+            int firstMin = PrayerPrefs.firstAdhan(ctx);
+            long firstAt = shown[PrayerCalc.DHUHR] - firstMin * 60000L;
+            if (fridayToday && firstMin > 0 && firstAt > now) {
+                extraLine = ctx.getString(R.string.friday_first, PrayerCalc.time(ctx, city, firstAt));
+            } else if (ramadan == -2) {
                 long[] t = PrayerCalc.day(city, now, 0, adjust);
                 extraLine = ctx.getString(R.string.ramadan_times,
                     PrayerCalc.time(ctx, city, t[PrayerCalc.FAJR]), PrayerCalc.time(ctx, city, t[PrayerCalc.MAGHRIB]));
@@ -496,12 +500,12 @@ final class PrayerBoard {
         return Math.round(v * k);
     }
 
-    /** -2 during Ramadan; otherwise the days left until its first day when that is at any time of the year; otherwise -1. */
+    /** -2 during Ramadan; otherwise the days left until its first day when that is within three months; otherwise -1. */
     private int ramadanState(Calendar today) {
         int adj = Hijri.adjust(ctx);
         if (Hijri.of(today, adj)[1] == 9) return -2;
         Calendar d = (Calendar) today.clone();
-        for (int i = 1; i <= 400; i++) {
+        for (int i = 1; i <= 92; i++) {
             d.add(Calendar.DAY_OF_MONTH, 1);
             int[] h = Hijri.of(d, adj);
             if (h[1] == 9 && h[2] == 1) return i;

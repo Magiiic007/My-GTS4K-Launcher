@@ -27,7 +27,8 @@ public class AdhanReceiver extends BroadcastReceiver {
             .putExtra("index", i.getIntExtra("index", PrayerCalc.DHUHR))
             .putExtra("friday", i.getBooleanExtra("friday", false))
             .putExtra("test", test)
-            .putExtra("iqama", iqama);
+            .putExtra("iqama", iqama)
+            .putExtra("first", i.getBooleanExtra("first", false));
         try {
             c.startForegroundService(s);
         } catch (RuntimeException e) {

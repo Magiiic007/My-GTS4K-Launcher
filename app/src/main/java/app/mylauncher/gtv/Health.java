@@ -74,7 +74,7 @@ final class Health {
         }
         String[] items = new String[issues.size()];
         for (int i = 0; i < items.length; i++) items[i] = issues.get(i).text;
-        new AlertDialog.Builder(a)
+        new AlertDialog.Builder(a, Theme.dialogStyle(a))
             .setTitle(R.string.notice_title)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override

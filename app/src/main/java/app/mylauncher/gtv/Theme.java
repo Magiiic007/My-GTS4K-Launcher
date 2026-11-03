@@ -245,4 +245,9 @@ final class Theme {
     static int popSub(Context c) { return pick(c, "#FFFFF8E7", "#FFFFFFFF"); }
     static int popHint(Context c) { return pick(c, "#FFE8C15C", "#FFFFF0CC"); }
     static int scrim(Context c) { return pick(c, "#D9031A12", "#D9C8607F"); }
+
+    /** The dialog style of the chosen look: gold-framed dark green, or the soft pink one. */
+    static int dialogStyle(Context c) {
+        return kids(c) ? R.style.MagiicDialogKids : R.style.MagiicDialogRoyal;
+    }
 }

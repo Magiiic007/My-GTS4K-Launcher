@@ -13,18 +13,32 @@ final class TimingDialogs {
     static void open(final Context c, final Runnable changed) {
         int[] adj = PrayerPrefs.adjust(c);
         int[] iq = PrayerPrefs.iqama(c);
-        String[] items = new String[5];
+        String[] items = new String[6];
+        items[5] = c.getString(R.string.first_adhan_item, PrayerPrefs.firstAdhanText(c, PrayerPrefs.firstAdhan(c)));
         for (int i = 0; i < 5; i++) {
             items[i] = c.getString(R.string.main_row, PrayerCalc.name(c, i, false),
                 PrayerPrefs.adjustText(c, adj[i]), PrayerPrefs.iqamaText(c, iq[i]));
         }
 
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(R.string.settings_title)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int which) {
-                    field(c, which, changed);
+                    if (which == 5) {
+                        NumberDialog.show(c, c.getString(R.string.first_adhan_set_title), 0, 90,
+                            PrayerPrefs.firstAdhan(c), false, c.getString(R.string.first_adhan_off),
+                            new NumberDialog.OnSave() {
+                                @Override
+                                public void saved(int value) {
+                                    PrayerPrefs.setFirstAdhan(c, value);
+                                    changed.run();
+                                    open(c, changed);
+                                }
+                            });
+                    } else {
+                        field(c, which, changed);
+                    }
                 }
             })
             .show();
@@ -38,7 +52,7 @@ final class TimingDialogs {
             c.getString(R.string.adjust_item, PrayerPrefs.adjustText(c, adj)),
             c.getString(R.string.iqama_item, PrayerPrefs.iqamaText(c, iq)),
         };
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(prayer)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override

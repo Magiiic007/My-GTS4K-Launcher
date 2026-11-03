@@ -66,7 +66,24 @@ public class RadioService extends Service {
             "https://stream.radiojar.com/8s5u5tpdtwzuv"),
         new Station("إذاعة القرآن الكريم السعودية", "Holy Quran Radio, Saudi Arabia", "السعودية", "Saudi Arabia",
             "https://live.kwikmotion.com/sbrksaquranradiolive/ksaquranradio/playlist.m3u8"),
+        new Station("إذاعة نداء الإسلام", "Nida Al-Islam Radio", "نداء الإسلام", "Nida Al-Islam",
+            "https://live.kwikmotion.com/sbrksanedaradiolive/ksanedaradio/playlist.m3u8"),
+        reciter("مشاري العفاسي", "Mishary Alafasy", "mishary_alafasi"),
+        reciter("عبد الباسط عبد الصمد", "Abdul Basit Abdul Samad", "abdulbasit_abdulsamad"),
+        reciter("محمد صديق المنشاوي", "Mohamed Siddiq Al-Minshawi", "mohammed_siddiq_alminshawi"),
+        reciter("محمود خليل الحصري", "Mahmoud Khalil Al-Husary", "mahmoud_khalil_alhussary"),
+        reciter("ماهر المعيقلي", "Maher Al-Muaiqly", "maher"),
+        reciter("سعد الغامدي", "Saad Al-Ghamdi", "saad_alghamdi"),
+        reciter("عبد الرحمن السديس", "Abdul Rahman Al-Sudais", "abdulrahman_alsudaes"),
+        reciter("ياسر الدوسري", "Yasser Al-Dosari", "yasser_aldosari"),
+        reciter("ناصر القطامي", "Nasser Al-Qatami", "nasser_alqatami"),
+        reciter("محمد رشاد الشريف", "Mohammad Rashad Al-Shareef", "mohammad_rashad_alshareef"),
     };
+
+    /** A reciter's own channel, around the clock (mp3quran.net, through qurango.net). */
+    private static Station reciter(String ar, String en, String id) {
+        return new Station(ar, en, ar, en, "https://backup.qurango.net/radio/" + id);
+    }
 
     static final int OFF = 0, CONNECTING = 1, PLAYING = 2, RETRYING = 3, PAUSED = 4;
 

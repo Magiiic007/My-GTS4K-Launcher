@@ -26,6 +26,19 @@ final class PrayerPrefs {
         return a;
     }
 
+    /** Minutes before the Friday adhan at which the first adhan rings (0 = off). */
+    static int firstAdhan(Context c) {
+        return p(c).getInt("first_adhan", 30);
+    }
+
+    static void setFirstAdhan(Context c, int minutes) {
+        p(c).edit().putInt("first_adhan", minutes).apply();
+    }
+
+    static String firstAdhanText(Context c, int minutes) {
+        return minutes == 0 ? c.getString(R.string.first_adhan_off) : c.getString(R.string.minutes_plain, minutes);
+    }
+
     static void setAdjust(Context c, int index, int minutes) {
         p(c).edit().putInt("adj_" + index, minutes).apply();
     }

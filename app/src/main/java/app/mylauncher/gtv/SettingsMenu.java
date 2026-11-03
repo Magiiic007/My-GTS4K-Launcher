@@ -49,7 +49,7 @@ final class SettingsMenu {
     static void apps(final Context c, final List<String[]> allApps, final Runnable appsChanged) {
         String[] items = {c.getString(R.string.apps_hide_show), c.getString(R.string.apps_reset_order),
             c.getString(R.string.apps_tip)};
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(R.string.menu_apps)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
@@ -75,7 +75,7 @@ final class SettingsMenu {
             labels[i] = allApps.get(i)[0];
             checked[i] = hidden.contains(allApps.get(i)[1]);
         }
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(R.string.hidden_title)
             .setMultiChoiceItems(labels, checked, new DialogInterface.OnMultiChoiceClickListener() {
                 @Override
@@ -120,7 +120,7 @@ final class SettingsMenu {
         String[] items = new String[DEVICE.length + 1];
         for (int i = 0; i < DEVICE.length; i++) items[i] = c.getString(Integer.parseInt(DEVICE[i][0]));
         items[DEVICE.length] = c.getString(R.string.menu_about);
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(R.string.menu_device)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
@@ -173,7 +173,7 @@ final class SettingsMenu {
     // ---------------------------------------------------------------- about
 
     private static void about(Context c) {
-        new AlertDialog.Builder(c)
+        new AlertDialog.Builder(c, Theme.dialogStyle(c))
             .setTitle(R.string.menu_about)
             .setMessage(R.string.about_text)
             .setPositiveButton(android.R.string.ok, null)

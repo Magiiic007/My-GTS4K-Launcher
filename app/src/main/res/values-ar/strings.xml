@@ -237,4 +237,16 @@
     <string name="menu_notices">التنبيهات</string>
     <string name="stock_make_btn">كيف أجعله الشاشة الرئيسية؟</string>
     <string name="stock_make_help">دلوقتي Magiic TV بيشتغل كتطبيق عادي: افتحه من قائمة التطبيقات. زر Home في الريموت بيفتح الواجهة الأصلية لجهازك زي ما هي.\n\nجوجل بلاي بروتكت بيمنع تثبيت أي تطبيق يخليه الشاشة الرئيسية من غير كمبيوتر. ولو حبيت يبقى هو الرئيسية، ده بيتعمل مرة واحدة من الموبايل على الواي فاي، وتقدر ترجع للأصلية في أي وقت.</string>
+    <string name="all_apps">كل التطبيقات</string>
+    <string name="all_apps_hint">اضغط OK لفتح التطبيق، واضغط مطوّلًا لإظهاره أو إخفائه من الشاشة الرئيسية ★</string>
+    <string name="all_apps_shown">ظهر في الشاشة الرئيسية</string>
+    <string name="all_apps_hidden">اتشال من الشاشة الرئيسية</string>
+    <string name="first_adhan_item">الأذان الأول للجمعة: %1$s</string>
+    <string name="first_adhan_title">الأذان الأول للجمعة</string>
+    <string name="first_adhan_set_title">الأذان الأول للجمعة (قبل أذان الجمعة)</string>
+    <string name="first_adhan_off">متوقف</string>
+    <string name="first_adhan_sub">بعد %1$d دقيقة يحين أذان الجمعة، استعد للصلاة</string>
+    <string name="friday_first">جمعة مباركة · الأذان الأول %1$s</string>
+    <string name="rem_kahf_title">سورة الكهف</string>
+    <string name="rem_kahf_msg">اليوم الجمعة، لا تنسَ قراءة سورة الكهف</string>
 </resources>

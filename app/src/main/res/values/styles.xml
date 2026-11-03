@@ -5,4 +5,27 @@
         <item name="android:colorBackground">@android:color/black</item>
         <item name="android:defaultFocusHighlightEnabled">false</item>
     </style>
+    <style name="MagiicDialogRoyal" parent="android:Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/dlg_bg_royal</item>
+        <item name="android:textColorPrimary">#FFFFF8E7</item>
+        <item name="android:textColorSecondary">#FFE8C15C</item>
+        <item name="android:textColorAlertDialogListItem">#FFFFF8E7</item>
+        <item name="android:colorAccent">#FFF2CE6A</item>
+        <item name="android:colorBackground">#FF062711</item>
+        <item name="android:listSelector">@drawable/dlg_sel_royal</item>
+        <item name="android:listDivider">@android:color/transparent</item>
+        <item name="android:divider">@android:color/transparent</item>
+    </style>
+
+    <style name="MagiicDialogKids" parent="android:Theme.Material.Light.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/dlg_bg_kids</item>
+        <item name="android:textColorPrimary">#FF7A3347</item>
+        <item name="android:textColorSecondary">#FFB8566F</item>
+        <item name="android:textColorAlertDialogListItem">#FF7A3347</item>
+        <item name="android:colorAccent">#FFB8566F</item>
+        <item name="android:colorBackground">#FFFBD3DE</item>
+        <item name="android:listSelector">@drawable/dlg_sel_kids</item>
+        <item name="android:listDivider">@android:color/transparent</item>
+        <item name="android:divider">@android:color/transparent</item>
+    </style>
 </resources>

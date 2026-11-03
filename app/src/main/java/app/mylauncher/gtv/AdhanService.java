@@ -92,6 +92,7 @@ public class AdhanService extends Service {
         boolean friday = intent != null && intent.getBooleanExtra("friday", false);
         boolean test = intent != null && intent.getBooleanExtra("test", false);
         isIqama = intent != null && intent.getBooleanExtra("iqama", false);
+        boolean first = intent != null && intent.getBooleanExtra("first", false);
         hintRes = isIqama ? R.string.iqama_hint : R.string.popup_hint;
 
         Cities.City city = Cities.selected(this);
@@ -99,6 +100,10 @@ public class AdhanService extends Service {
             PrayerCalc.name(this, index, friday));
         if (test) title = title + " " + getString(R.string.popup_test);
         String where = city != null ? city.name("ar".equals(Locale.getDefault().getLanguage())) : "";
+        if (first) {
+            title = getString(R.string.first_adhan_title);
+            where = where + "\n" + getString(R.string.first_adhan_sub, PrayerPrefs.firstAdhan(this));
+        }
 
         goForeground(title);
 

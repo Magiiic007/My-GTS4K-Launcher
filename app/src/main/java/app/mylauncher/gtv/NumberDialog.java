@@ -39,7 +39,7 @@ final class NumberDialog {
                      final boolean signed, final String zeroText, final OnSave save) {
         final int[] value = {Math.max(min, Math.min(max, start))};
         final TextView shown = new TextView(c);
-        shown.setTextColor(Color.WHITE);
+        shown.setTextColor(Theme.kids(c) ? Color.parseColor("#FF7A3347") : Color.WHITE);
         shown.setTextSize(TypedValue.COMPLEX_UNIT_SP, 36);
         shown.setGravity(Gravity.CENTER);
 
@@ -116,7 +116,7 @@ final class NumberDialog {
             }
         });
 
-        dialog[0] = new AlertDialog.Builder(c).setTitle(title).setView(box).create();
+        dialog[0] = new AlertDialog.Builder(c, Theme.dialogStyle(c)).setTitle(title).setView(box).create();
         dialog[0].setOnKeyListener(new DialogInterface.OnKeyListener() {
             @Override
             public boolean onKey(DialogInterface d, int keyCode, KeyEvent e) {
