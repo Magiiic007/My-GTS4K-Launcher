@@ -37,7 +37,7 @@
     <string name="test_scheduled">The test alert will play in one minute. Leave this app and start any video.</string>
     <string name="perm_btn">Enable the adhan popup over apps</string>
     <string name="overlay_title">Allow the adhan popup</string>
-    <string name="overlay_help">The app must be allowed to appear over other apps.\n\nIf your settings have it: Apps → Special access → Display over other apps → Magiic TV → Allow.\n\nIf not, run this with an ADB app on your phone (connected to the device on the same Wi-Fi):\n\nadb shell appops set app.mylauncher.gtv SYSTEM_ALERT_WINDOW allow</string>
+    <string name="overlay_help">The app must be allowed to appear over other apps.\n\nIn Settings: Apps → Special access → Display over other apps → Magiic TV → Allow.\n\nIf your device does not have this option, the adhan still plays, but the window may not appear over other apps.</string>
 
     <string name="settings_btn">Adhan &amp; iqama settings</string>
     <string name="settings_title">Adhan &amp; iqama settings</string>
@@ -157,7 +157,7 @@
     <string name="stock_open">Open the original Google TV home now</string>
     <string name="stock_defaults">Stop Magiic TV being the home screen</string>
     <string name="stock_defaults_tip">Choose "Clear defaults", "Disable" or "Uninstall", then press the Home button</string>
-    <string name="stock_help_btn">Full way back (for emergencies)</string>
-    <string name="stock_none">The original Google TV home screen is switched off, so it cannot be opened from here.</string>
-    <string name="stock_help">To bring the original home screen fully back, from your phone with an ADB app (connected to the device on the same Wi-Fi) run:\n\nadb shell pm enable com.google.android.apps.tv.launcherx\nadb shell pm enable com.google.android.tungsten.setupwraith\n\nThen press Home on the remote.\n\nIf this app itself is not working, remove it with:\n\nadb uninstall app.mylauncher.gtv\n\nThe original Google TV home screen then comes back by itself.</string>
+    <string name="stock_help_btn">How do I go back?</string>
+    <string name="stock_none">There is no other home screen enabled to open.</string>
+    <string name="stock_help">1) Settings → Apps → Magiic TV → "Clear defaults".\n2) Press Home on the remote, and choose Google TV if the device asks.\n3) To remove Magiic TV completely: Settings → Apps → Magiic TV → Uninstall. The original Google TV home screen then returns by itself.</string>
 </resources>

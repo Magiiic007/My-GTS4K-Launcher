@@ -51,10 +51,4 @@
 
 ## الرجوع للواجهة الأصلية
 
-من داخل اللانشر: الإعدادات ← «العودة للواجهة الأصلية». ولو حصلت مشكلة كبيرة، من ADB على الموبايل:
-
-```
-adb shell pm enable com.google.android.apps.tv.launcherx
-adb shell pm enable com.google.android.tungsten.setupwraith
-adb uninstall app.mylauncher.gtv
-```
+من داخل اللانشر: الإعدادات ← «العودة للواجهة الأصلية». ومن إعدادات الجهاز: التطبيقات ← Magiic TV ← مسح الإعدادات الافتراضية، أو إلغاء التثبيت. لا حاجة لأي أوامر أو كمبيوتر.

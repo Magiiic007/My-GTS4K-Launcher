@@ -37,7 +37,7 @@
     <string name="test_scheduled">سيعمل التنبيه التجريبي بعد دقيقة. اخرج من التطبيق وشغّل أي فيديو.</string>
     <string name="perm_btn">تفعيل نافذة الأذان فوق التطبيقات</string>
     <string name="overlay_title">السماح بنافذة الأذان</string>
-    <string name="overlay_help">لازم تسمح للتطبيق بالظهور فوق التطبيقات الأخرى.\n\nإن وجدت الخيار في الإعدادات: التطبيقات ← صلاحيات خاصة ← العرض فوق التطبيقات الأخرى ← Magiic TV ← السماح.\n\nوإن لم تجده، نفّذ هذا الأمر بتطبيق ADB من الموبايل (متصل بالجهاز على نفس الواي فاي):\n\nadb shell appops set app.mylauncher.gtv SYSTEM_ALERT_WINDOW allow</string>
+    <string name="overlay_help">لازم تسمح للتطبيق بالظهور فوق التطبيقات الأخرى.\n\nمن الإعدادات: التطبيقات ← صلاحيات خاصة ← العرض فوق التطبيقات الأخرى ← Magiic TV ← السماح.\n\nإن لم تجد هذا الخيار في جهازك فالأذان يعمل بصوته، لكن النافذة قد لا تظهر فوق التطبيقات.</string>
 
     <string name="settings_btn">ضبط الأذان والإقامة</string>
     <string name="settings_title">ضبط الأذان والإقامة</string>
@@ -157,7 +157,7 @@
     <string name="stock_open">فتح واجهة Google TV الأصلية الآن</string>
     <string name="stock_defaults">إلغاء جعل Magiic TV الشاشة الرئيسية</string>
     <string name="stock_defaults_tip">اختر «مسح الإعدادات الافتراضية» أو «تعطيل» أو «إلغاء التثبيت»، ثم اضغط زر Home</string>
-    <string name="stock_help_btn">طريقة الرجوع الكاملة (للطوارئ)</string>
-    <string name="stock_none">واجهة Google TV الأصلية مُعطَّلة حالياً فلا يمكن فتحها من هنا.</string>
-    <string name="stock_help">لإعادة الواجهة الأصلية بالكامل، من الموبايل بتطبيق ADB (متصل بالجهاز على نفس الواي فاي) نفّذ:\n\nadb shell pm enable com.google.android.apps.tv.launcherx\nadb shell pm enable com.google.android.tungsten.setupwraith\n\nثم اضغط زر Home في الريموت.\n\nوإذا كان التطبيق نفسه لا يعمل، أزِله بهذا الأمر:\n\nadb uninstall app.mylauncher.gtv\n\nوبعدها تعود واجهة Google TV الأصلية وحدها.</string>
+    <string name="stock_help_btn">كيف أرجع للواجهة الأصلية؟</string>
+    <string name="stock_none">لا توجد واجهة أخرى مفعّلة لفتحها.</string>
+    <string name="stock_help">١) من الإعدادات ← التطبيقات ← Magiic TV ← «مسح الإعدادات الافتراضية».\n٢) اضغط زر Home في الريموت، واختر واجهة Google TV إن سألك الجهاز.\n٣) وإن أردت إزالة Magiic TV نهائياً: الإعدادات ← التطبيقات ← Magiic TV ← إلغاء التثبيت، وتعود واجهة Google TV الأصلية وحدها.</string>
 </resources>
