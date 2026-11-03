@@ -71,6 +71,8 @@ public class MainActivity extends Activity {
     private TextView radioBtn;
     private TextView permRow;
     private TextView noticeChip;
+    private TextView noticesRow;
+    private java.util.List<Health.Issue> lastIssues = new java.util.ArrayList<>();
     private Ambience ambience;
     private Sparkle sparkle;
     private FrameLayout rootView;
@@ -183,6 +185,11 @@ public class MainActivity extends Activity {
         });
         Stage.add(stage, status.view, 176, 58, 296, 92);
         updateRadioButton();
+        // The header is for looking only: the arrows never land on it (its settings are in the list on the left).
+        weatherView.setFocusable(false);
+        radioBtn.setFocusable(false);
+        status.view.setFocusable(false);
+        noticeChip.setFocusable(false);
 
         // ---------------------------------------------------------------- the clock, prayers and countdowns
         board = new PrayerBoard(this, stage,
@@ -249,6 +256,12 @@ public class MainActivity extends Activity {
                 chooseLook();
             }
         });
+        addRow(list, R.drawable.ic_location, R.string.menu_city, new Runnable() {
+            @Override
+            public void run() {
+                chooseCountry();
+            }
+        });
         addRow(list, R.drawable.ic_bell, R.string.menu_adhan, new Runnable() {
             @Override
             public void run() {
@@ -296,6 +309,14 @@ public class MainActivity extends Activity {
                 Updater.menu(MainActivity.this);
             }
         });
+        // Shown only while the quiet health check has something for the person (see refreshNotices).
+        noticesRow = addRow(list, R.drawable.ic_warning, R.string.menu_notices, new Runnable() {
+            @Override
+            public void run() {
+                if (!lastIssues.isEmpty()) Health.show(MainActivity.this, lastIssues);
+            }
+        });
+        ((View) noticesRow.getTag()).setVisibility(View.GONE);
         addRow(list, R.drawable.ic_star, R.string.menu_reminders, new Runnable() {
             @Override
             public void run() {
@@ -481,6 +502,10 @@ public class MainActivity extends Activity {
                 chooseCountry();
             }
         });
+        lastIssues = issues;
+        if (noticesRow != null) {
+            ((View) noticesRow.getTag()).setVisibility(issues.isEmpty() ? View.GONE : View.VISIBLE);
+        }
         if (issues.isEmpty()) {
             noticeChip.setVisibility(View.GONE);
             wireFocus();
@@ -786,9 +811,8 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Fixes where each remote arrow goes, so it is always predictable. Only three groups can be selected: the header
-     * buttons (weather, radio, connection, notice), the settings list on the left, and the apps row at the bottom.
-     * Up and down move between the groups; left and right never jump to another group.
+     * Fixes where each remote arrow goes, so it is always predictable. Only two groups can be selected: the settings
+     * list on the left and the apps row at the bottom. Up and down move between them; left and right never jump.
      */
     private void wireFocus() {
         if (settingsList == null || appRow == null || weatherView == null || status == null || radioBtn == null) return;
@@ -805,18 +829,10 @@ public class MainActivity extends Activity {
         View lastRow = rows.isEmpty() ? null : rows.get(rows.size() - 1);
         View firstTile = tiles.isEmpty() ? null : tiles.get(0);
         View lastTile = tiles.isEmpty() ? null : tiles.get(tiles.size() - 1);
-        boolean notice = noticeChip != null && noticeChip.getVisibility() == View.VISIBLE;
-        View radio = radioBtn, net = status.view, weather = weatherView;
-
-        View below = firstRow != null ? firstRow : firstTile;
-        link(weather, weather, weather, radio, below);
-        link(radio, weather, notice ? noticeChip : radio, radio, net);
-        link(net, weather, notice ? noticeChip : net, radio, below);
-        if (notice) link(noticeChip, radio, noticeChip, noticeChip, firstTile != null ? firstTile : noticeChip);
 
         for (View r : rows) {
-            // Left, right: stay. Up, down: the neighbouring row, except at the ends of the list.
-            link(r, r, r, r == firstRow ? weather : null, r == lastRow ? (firstTile != null ? firstTile : r) : null);
+            // Left, right: stay. Up, down: the neighbouring row; the first row stays, the last goes to the apps.
+            link(r, r, r, r == firstRow ? r : null, r == lastRow ? (firstTile != null ? firstTile : r) : null);
         }
         for (View t : tiles) {
             link(t, t == firstTile ? t : null, t == lastTile ? t : null, firstRow != null ? firstRow : t, t);

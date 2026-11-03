@@ -233,4 +233,6 @@
     <string name="ramadan_today">اليوم أول أيام رمضان</string>
     <string name="ramadan_tomorrow">غداً أول أيام رمضان</string>
     <string name="ramadan_times">الإمساك %1$s · الإفطار %2$s</string>
+    <string name="menu_city">المدينة والدولة</string>
+    <string name="menu_notices">التنبيهات</string>
 </resources>

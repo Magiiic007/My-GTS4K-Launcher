@@ -233,4 +233,6 @@
     <string name="ramadan_today">Today is the first day of Ramadan</string>
     <string name="ramadan_tomorrow">Ramadan starts tomorrow</string>
     <string name="ramadan_times">Imsak %1$s · Iftar %2$s</string>
+    <string name="menu_city">City and country</string>
+    <string name="menu_notices">Notices</string>
 </resources>
