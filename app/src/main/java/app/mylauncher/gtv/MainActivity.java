@@ -270,17 +270,6 @@ public class MainActivity extends Activity {
                 chooseRadio();
             }
         });
-        addRow(list, R.drawable.ic_apps, R.string.menu_apps, new Runnable() {
-            @Override
-            public void run() {
-                SettingsMenu.apps(MainActivity.this, appList(), new Runnable() {
-                    @Override
-                    public void run() {
-                        applyHidden();
-                    }
-                });
-            }
-        });
         addRow(list, R.drawable.ic_palette, R.string.menu_theme, new Runnable() {
             @Override
             public void run() {
@@ -303,6 +292,17 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 chooseHijri();
+            }
+        });
+        addRow(list, R.drawable.ic_apps, R.string.menu_apps, new Runnable() {
+            @Override
+            public void run() {
+                SettingsMenu.apps(MainActivity.this, appList(), new Runnable() {
+                    @Override
+                    public void run() {
+                        applyHidden();
+                    }
+                });
             }
         });
         addRow(list, R.drawable.ic_account, R.string.menu_device, new Runnable() {
