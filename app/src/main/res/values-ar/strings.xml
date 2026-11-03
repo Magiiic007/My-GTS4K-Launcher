@@ -153,7 +153,7 @@
     <string name="rem_title_hint">عنوان التذكير</string>
     <string name="rem_text_hint">نص التذكير</string>
     <string name="rem_hijri_day">%1$d من الشهر الهجري</string>
-    <string name="menu_stock">جعله الشاشة الرئيسية / الرجوع للأصلية</string>
+    <string name="menu_stock">الشاشة الرئيسية</string>
     <string name="stock_open">فتح واجهة Google TV الأصلية مرة واحدة</string>
     <string name="stock_defaults">إلغاء جعل Magiic TV الشاشة الرئيسية</string>
     <string name="stock_defaults_tip">اختر «مسح الإعدادات الافتراضية» أو «تعطيل» أو «إلغاء التثبيت»، ثم اضغط زر Home</string>
@@ -235,4 +235,6 @@
     <string name="ramadan_times">الإمساك %1$s · الإفطار %2$s</string>
     <string name="menu_city">المدينة والدولة</string>
     <string name="menu_notices">التنبيهات</string>
+    <string name="stock_make_btn">كيف أجعله الشاشة الرئيسية؟</string>
+    <string name="stock_make_help">دلوقتي Magiic TV بيشتغل كتطبيق عادي: افتحه من قائمة التطبيقات. زر Home في الريموت بيفتح الواجهة الأصلية لجهازك زي ما هي.\n\nجوجل بلاي بروتكت بيمنع تثبيت أي تطبيق يخليه الشاشة الرئيسية من غير كمبيوتر. ولو حبيت يبقى هو الرئيسية، ده بيتعمل مرة واحدة من الموبايل على الواي فاي، وتقدر ترجع للأصلية في أي وقت.</string>
 </resources>

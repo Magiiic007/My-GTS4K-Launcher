@@ -43,14 +43,6 @@ final class Health {
             }));
         }
         if (Cities.selected(a) == null) out.add(new Issue(a.getString(R.string.notice_city), pickCity));
-        if (HomeOverride.wasEverOn(a) && HomeOverride.on(a) && !HomeOverride.allowed(a)) {
-            out.add(new Issue(a.getString(R.string.notice_home), new Runnable() {
-                @Override
-                public void run() {
-                    StockHome.menu(a);
-                }
-            }));
-        }
         try {
             long free = new StatFs(Environment.getDataDirectory().getPath()).getAvailableBytes();
             if (free < 400L * 1048576L) {

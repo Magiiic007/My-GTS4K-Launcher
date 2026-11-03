@@ -153,7 +153,7 @@
     <string name="rem_title_hint">Title of the reminder</string>
     <string name="rem_text_hint">Text of the reminder</string>
     <string name="rem_hijri_day">The %1$d of the Hijri month</string>
-    <string name="menu_stock">Make it the home screen / go back</string>
+    <string name="menu_stock">Home screen</string>
     <string name="stock_open">Open the original Google TV home once</string>
     <string name="stock_defaults">Stop Magiic TV being the home screen</string>
     <string name="stock_defaults_tip">Choose "Clear defaults", "Disable" or "Uninstall", then press the Home button</string>
@@ -235,4 +235,6 @@
     <string name="ramadan_times">Imsak %1$s · Iftar %2$s</string>
     <string name="menu_city">City and country</string>
     <string name="menu_notices">Notices</string>
+    <string name="stock_make_btn">How do I make it the home screen?</string>
+    <string name="stock_make_help">Magiic TV now works as a normal app: open it from the apps list. The Home button on the remote opens your device’s own home screen as before.\n\nGoogle Play Protect blocks any app that takes over the home screen without a computer. If you want it to be the home screen, that is done once from your phone over Wi-Fi, and you can go back to the original at any time.</string>
 </resources>
