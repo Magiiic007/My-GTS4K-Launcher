@@ -22,7 +22,7 @@ public class ReminderReceiver extends BroadcastReceiver {
         ArrayList<String> texts = new ArrayList<>();
         ArrayList<Integer> minutes = new ArrayList<>();
         for (Reminders.Item it : due) {
-            titles.add(Reminders.title(c, it));
+            titles.add(Reminders.title(c, it, at));
             texts.add(Reminders.message(c, it, at));
             minutes.add(it.durationMin);
         }

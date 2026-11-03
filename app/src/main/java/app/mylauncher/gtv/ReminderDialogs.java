@@ -83,14 +83,17 @@ final class ReminderDialogs {
             actions.add(TEXT);
             labels.add(c.getString(R.string.rem_days_show, daysText(c, it.daysMask)));
             actions.add(DAYS);
+        } else if (it.kind == Reminders.ADHKAR_AM || it.kind == Reminders.ADHKAR_PM) {
+            labels.add(c.getString(R.string.rem_days_show, daysText(c, it.daysMask)));
+            actions.add(DAYS);
         } else if (it.kind == Reminders.WEEK_FAST) {
             labels.add(c.getString(R.string.rem_days_fast, daysText(c, it.daysMask)));
             actions.add(DAYS);
-        } else {
+        } else if (it.kind == Reminders.WHITE_FAST) {
             labels.add(c.getString(R.string.rem_days_white, whiteText(c, it.hijriMask)));
             actions.add(WHITE);
         }
-        if (it.kind != Reminders.CUSTOM) {
+        if (Reminders.isFast(it.kind)) {
             labels.add(c.getString(R.string.rem_when,
                 c.getString(it.dayBefore ? R.string.rem_day_before : R.string.rem_same_day)));
             actions.add(BEFORE);

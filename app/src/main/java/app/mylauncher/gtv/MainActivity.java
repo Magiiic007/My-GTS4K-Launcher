@@ -70,6 +70,9 @@ public class MainActivity extends Activity {
     private TextView weatherView;
     private TextView radioBtn;
     private TextView permRow;
+    private TextView noticeChip;
+    private ImageView art;
+    private long weatherAt;
     private PrayerBoard board;
     private StatusIcons status;
     private final RadioService.Listener radioListener = new RadioService.Listener() {
@@ -81,6 +84,7 @@ public class MainActivity extends Activity {
     private final Runnable weatherTick = new Runnable() {
         @Override
         public void run() {
+            weatherAt = System.currentTimeMillis();
             loadWeather();
             handler.postDelayed(this, WEATHER_EVERY_MS);
         }
@@ -102,7 +106,7 @@ public class MainActivity extends Activity {
 
         final FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Theme.edgeColour(this));
-        ImageView art = new ImageView(this);
+        art = new ImageView(this);
         art.setImageResource(kids ? R.drawable.bg_kids : R.drawable.bg_royal);
         art.setScaleType(ImageView.ScaleType.FIT_CENTER);
         root.addView(art, new FrameLayout.LayoutParams(
@@ -110,6 +114,7 @@ public class MainActivity extends Activity {
 
         final FrameLayout stage = new FrameLayout(this);
         stage.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        Motion.fadeIn(root, 350L);
         root.addView(stage, new FrameLayout.LayoutParams(Stage.W, Stage.H, Gravity.TOP | Gravity.LEFT));
         root.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
             @Override
@@ -129,6 +134,13 @@ public class MainActivity extends Activity {
             }
         });
         Stage.add(stage, weatherView, 44, 20, 168, 92);
+
+        // A notice that only appears when something needs the person (see Health); hidden otherwise.
+        noticeChip = chip(R.drawable.ic_warning, "");
+        noticeChip.setTextSize(TypedValue.COMPLEX_UNIT_PX, 15);
+        noticeChip.setMaxLines(1);
+        noticeChip.setVisibility(View.GONE);
+        Stage.add(stage, noticeChip, 1090, 22, 1336, 62);
 
         radioBtn = chip(R.drawable.ic_radio, null);
         radioBtn.setTextSize(TypedValue.COMPLEX_UNIT_PX, 14);
@@ -255,6 +267,12 @@ public class MainActivity extends Activity {
                 SettingsMenu.launch(MainActivity.this, Settings.ACTION_DREAM_SETTINGS, R.string.saver_tip);
             }
         });
+        addRow(list, R.drawable.ic_update, R.string.menu_update, new Runnable() {
+            @Override
+            public void run() {
+                Updater.menu(MainActivity.this);
+            }
+        });
         addRow(list, R.drawable.ic_star, R.string.menu_reminders, new Runnable() {
             @Override
             public void run() {
@@ -330,6 +348,7 @@ public class MainActivity extends Activity {
             @Override
             public void onFocusChange(View v, boolean has) {
                 v.setForeground(has ? ring : null);
+                Motion.pop(v, has, 1.03f);
             }
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -361,6 +380,7 @@ public class MainActivity extends Activity {
             @Override
             public void onFocusChange(View v, boolean has) {
                 v.setForeground(has ? ring : null);
+                Motion.pop(v, has, 1.06f);
             }
         });
         return b;
@@ -385,16 +405,76 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         loadApps();
+        // The weather is not fetched again each time the home screen comes back: only when it is 30 minutes old.
         handler.removeCallbacks(weatherTick);
-        handler.post(weatherTick);
+        long age = System.currentTimeMillis() - weatherAt;
+        handler.postDelayed(weatherTick, weatherAt == 0L || age >= WEATHER_EVERY_MS ? 0L : WEATHER_EVERY_MS - age);
         board.start();
         status.start();
         RadioService.listen(radioListener);
         updateRadioButton();
         ((View) permRow.getTag()).setVisibility(Settings.canDrawOverlays(this) ? View.GONE : View.VISIBLE);
-        // Line up the alarms for the next prayer and the next reminder (also set again after a restart).
-        Scheduler.scheduleNext(this);
-        Reminders.scheduleNext(this);
+        // Line up the alarms for the next prayer and the next reminder (also set again after a restart). Done off the
+        // main thread so opening the home screen is never held up by it.
+        final android.content.Context app = getApplicationContext();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Scheduler.scheduleNext(app);
+                Reminders.scheduleNext(app);
+            }
+        }).start();
+        refreshNotices();
+        Updater.checkIfDue(this, new Runnable() {
+            @Override
+            public void run() {
+                refreshNotices();
+            }
+        });
+    }
+
+    /** Shows the notice chip only when the quiet health check found something. */
+    private void refreshNotices() {
+        if (noticeChip == null) return;
+        final java.util.List<Health.Issue> issues = Health.check(this, new Runnable() {
+            @Override
+            public void run() {
+                askOverlayPermission();
+            }
+        }, new Runnable() {
+            @Override
+            public void run() {
+                chooseCountry();
+            }
+        });
+        if (issues.isEmpty()) {
+            noticeChip.setVisibility(View.GONE);
+            return;
+        }
+        boolean onlyUpdate = issues.size() == 1 && Updater.available(this);
+        noticeChip.setText(onlyUpdate ? getString(R.string.menu_update) : getString(R.string.notice_chip, issues.size()));
+        noticeChip.setVisibility(View.VISIBLE);
+        noticeChip.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Health.show(MainActivity.this, issues);
+            }
+        });
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (art != null && art.getDrawable() == null) {
+            art.setImageResource(Theme.kids(this) ? R.drawable.bg_kids : R.drawable.bg_royal);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        // While another app is in front, the big background picture (about 8 MB in memory) is let go.
+        if (art != null) art.setImageDrawable(null);
+        super.onStop();
     }
 
     @Override

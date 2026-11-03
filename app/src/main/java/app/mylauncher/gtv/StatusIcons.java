@@ -76,6 +76,14 @@ final class StatusIcons {
         view.setFocusable(true);
         view.setClickable(true);
         view.setOnClickListener(open);
+        final android.graphics.drawable.Drawable ring = Theme.ring(ctx, 14);
+        view.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean has) {
+                v.setForeground(has ? ring : null);
+                Motion.pop(v, has, 1.06f);
+            }
+        });
         radio = icon(R.drawable.ic_volume);
         bluetooth = icon(R.drawable.ic_bluetooth);
         net = icon(R.drawable.ic_wifi_off);

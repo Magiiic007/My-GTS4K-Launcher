@@ -273,6 +273,7 @@ final class PrayerBoard {
             @Override
             public void onFocusChange(View view, boolean has) {
                 view.setForeground(has ? ring : null);
+                Motion.pop(view, has, 1.02f);
             }
         });
         v.setOnClickListener(new View.OnClickListener() {

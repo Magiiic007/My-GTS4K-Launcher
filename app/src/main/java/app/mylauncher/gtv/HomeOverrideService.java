@@ -29,6 +29,12 @@ public class HomeOverrideService extends AccessibilityService {
     }
 
     @Override
+    protected void onServiceConnected() {
+        super.onServiceConnected();
+        HomeOverride.markSeen(this);
+    }
+
+    @Override
     public void onInterrupt() {
     }
 }

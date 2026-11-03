@@ -24,6 +24,8 @@
     <!-- Lets the apps row offer "Uninstall" (Android still asks to confirm). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Lets the launcher update itself: it downloads the new APK and hands it to the system installer. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Only for the storage clean-up screen: to read how much space each app uses, and to see the Downloads folder. -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
@@ -106,6 +108,7 @@
 
         <receiver android:name=".AdhanReceiver" android:exported="false" />
         <receiver android:name=".ReminderReceiver" android:exported="false" />
+        <receiver android:name=".InstallReceiver" android:exported="false" />
 
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>

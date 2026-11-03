@@ -19,6 +19,7 @@ final class HomeOverride {
     private static final String PREFS = "magiic";
     private static final String ON = "override_on";
     private static final String PAUSED = "override_paused_until";
+    private static final String SEEN = "override_service_seen";
 
     private static SharedPreferences prefs(Context c) {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -31,6 +32,15 @@ final class HomeOverride {
 
     static void setOn(Context c, boolean on) {
         prefs(c).edit().putBoolean(ON, on).apply();
+    }
+
+    /** The service has been connected at least once: only then is "it stopped" worth a notice. */
+    static boolean wasEverOn(Context c) {
+        return prefs(c).getBoolean(SEEN, false);
+    }
+
+    static void markSeen(Context c) {
+        prefs(c).edit().putBoolean(SEEN, true).apply();
     }
 
     /** True while the device's own home screen has been opened on purpose (so it is not taken over again). */

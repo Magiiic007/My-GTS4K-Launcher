@@ -22,7 +22,11 @@ import java.util.List;
 final class Reminders {
     private Reminders() {}
 
-    static final int WEEK_FAST = 1, WHITE_FAST = 2, CUSTOM = 3;
+    static final int WEEK_FAST = 1, WHITE_FAST = 2, CUSTOM = 3, ADHKAR_AM = 4, ADHKAR_PM = 5, OCCASION = 6;
+
+    static boolean isFast(int kind) {
+        return kind == WEEK_FAST || kind == WHITE_FAST;
+    }
     private static final String KEY = "reminders";
     private static final int REQ = 3;
     private static final String ACTION = "app.mylauncher.gtv.REMINDER";
@@ -74,7 +78,33 @@ final class Reminders {
             b.kind = WHITE_FAST;
             list.add(b);
         }
+        ensureExtras(list);
         return list;
+    }
+
+    /** The morning and evening adhkar and the occasion greetings exist for everyone, switched on at first. */
+    private static void ensureExtras(List<Item> list) {
+        boolean am = false, pm = false, occ = false;
+        for (Item it : list) {
+            am |= it.kind == ADHKAR_AM;
+            pm |= it.kind == ADHKAR_PM;
+            occ |= it.kind == OCCASION;
+        }
+        if (!am) list.add(extra("adhkar_am", ADHKAR_AM, 6, 30));
+        if (!pm) list.add(extra("adhkar_pm", ADHKAR_PM, 16, 30));
+        if (!occ) list.add(extra("occasion", OCCASION, 8, 0));
+    }
+
+    private static Item extra(String id, int kind, int hour, int minute) {
+        Item it = new Item();
+        it.id = id;
+        it.kind = kind;
+        it.enabled = true;
+        it.dayBefore = false;
+        it.daysMask = 127;
+        it.hour = hour;
+        it.minute = minute;
+        return it;
     }
 
     static void save(Context c, List<Item> items) {
@@ -147,16 +177,32 @@ final class Reminders {
     /** The day the reminder is about: the fast's own day (a day after the popup when it shows the day before). */
     static Calendar fastDay(Item it, Calendar show) {
         Calendar t = (Calendar) show.clone();
-        if (it.kind != CUSTOM && it.dayBefore) t.add(Calendar.DAY_OF_MONTH, 1);
+        if (isFast(it.kind) && it.dayBefore) t.add(Calendar.DAY_OF_MONTH, 1);
         return t;
     }
 
     private static boolean matches(Item it, Calendar target, int hijriAdj) {
+        if (it.kind == OCCASION) return occasion(Hijri.of(target, hijriAdj)) >= 0;
         if (it.kind == WHITE_FAST) {
             int day = Hijri.of(target, hijriAdj)[2];
             return day >= 13 && day <= 15 && (it.hijriMask & (1 << (day - 13))) != 0;
         }
         return (it.daysMask & (1 << (target.get(Calendar.DAY_OF_WEEK) - 1))) != 0;
+    }
+
+    private static final int[] OCC_TITLE = {R.string.occ_ramadan, R.string.occ_fitr, R.string.occ_arafa,
+        R.string.occ_adha, R.string.occ_newyear};
+    private static final int[] OCC_MSG = {R.string.occ_ramadan_msg, R.string.occ_fitr_msg, R.string.occ_arafa_msg,
+        R.string.occ_adha_msg, R.string.occ_newyear_msg};
+
+    /** Which occasion a Hijri date {year, month, day} is (index into the lists above), or -1. */
+    static int occasion(int[] h) {
+        if (h[1] == 9 && h[2] == 1) return 0;
+        if (h[1] == 10 && h[2] == 1) return 1;
+        if (h[1] == 12 && h[2] == 9) return 2;
+        if (h[1] == 12 && h[2] == 10) return 3;
+        if (h[1] == 1 && h[2] == 1) return 4;
+        return -1;
     }
 
     /** The reminders that are due at exactly {@code at} (several may share the same minute). */
@@ -207,7 +253,20 @@ final class Reminders {
 
     // ---------------------------------------------------------------- the words
 
+    static String title(Context c, Item it, long shownAt) {
+        if (it.kind == OCCASION) {
+            Calendar day = Calendar.getInstance();
+            day.setTimeInMillis(shownAt);
+            int o = occasion(Hijri.of(day, Hijri.adjust(c)));
+            if (o >= 0) return c.getString(OCC_TITLE[o]);
+        }
+        return title(c, it);
+    }
+
     static String title(Context c, Item it) {
+        if (it.kind == ADHKAR_AM) return c.getString(R.string.rem_adhkar_am_title);
+        if (it.kind == ADHKAR_PM) return c.getString(R.string.rem_adhkar_pm_title);
+        if (it.kind == OCCASION) return c.getString(R.string.rem_occasion_title);
         if (it.kind == WEEK_FAST) return c.getString(R.string.rem_week_title);
         if (it.kind == WHITE_FAST) return c.getString(R.string.rem_white_title);
         return it.title.isEmpty() ? c.getString(R.string.rem_custom_default) : it.title;
@@ -216,6 +275,14 @@ final class Reminders {
     /** The popup's second line: for the fasts, which day it is about; for a custom reminder, its text. */
     static String message(Context c, Item it, long shownAt) {
         if (it.kind == CUSTOM) return it.text;
+        if (it.kind == ADHKAR_AM) return c.getString(R.string.rem_adhkar_am_msg);
+        if (it.kind == ADHKAR_PM) return c.getString(R.string.rem_adhkar_pm_msg);
+        if (it.kind == OCCASION) {
+            Calendar day = Calendar.getInstance();
+            day.setTimeInMillis(shownAt);
+            int o = occasion(Hijri.of(day, Hijri.adjust(c)));
+            return o >= 0 ? c.getString(OCC_MSG[o]) : "";
+        }
         Calendar show = Calendar.getInstance();
         show.setTimeInMillis(shownAt);
         Calendar target = fastDay(it, show);

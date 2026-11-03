@@ -131,6 +131,7 @@ final class Popup {
         panel.addView(hintView, hLp);
 
         frame.addView(panel, new FrameLayout.LayoutParams(pw, ph, Gravity.CENTER));
+        Motion.popIn(panel);
 
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
