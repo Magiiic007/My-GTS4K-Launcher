@@ -319,7 +319,7 @@ public class MainActivity extends Activity {
         addRow(list, R.drawable.ic_sunny, R.string.menu_saver, new Runnable() {
             @Override
             public void run() {
-                SettingsMenu.launch(MainActivity.this, Settings.ACTION_DREAM_SETTINGS, R.string.saver_tip);
+                SettingsMenu.screensaver(MainActivity.this);
             }
         });
         addRow(list, R.drawable.ic_shield, R.string.menu_clean, new Runnable() {
@@ -428,7 +428,7 @@ public class MainActivity extends Activity {
         names.add(getString(R.string.menu_saver));
         acts.add(new Runnable() {
             public void run() {
-                SettingsMenu.launch(MainActivity.this, Settings.ACTION_DREAM_SETTINGS, R.string.saver_tip);
+                SettingsMenu.screensaver(MainActivity.this);
             }
         });
         names.add(getString(R.string.menu_clean));

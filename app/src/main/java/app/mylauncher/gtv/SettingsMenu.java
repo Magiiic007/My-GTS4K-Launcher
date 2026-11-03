@@ -150,6 +150,37 @@ final class SettingsMenu {
         }
     }
 
+    /**
+     * The screensaver (Google Photos, ambient mode). The system's own action does nothing on some Google TV builds,
+     * so the known screens are tried one after the other; if none opens, the main settings open with a clear tip.
+     */
+    static void screensaver(Context c) {
+        String[][] tries = {
+            {null, Settings.ACTION_DREAM_SETTINGS},
+            {"com.android.tv.settings", "com.android.tv.settings.device.display.daydream.DaydreamActivity"},
+            {"com.google.android.apps.tv.dreamx", "com.google.android.apps.tv.dreamx.settings.AmbientSettingsActivity"},
+            {"com.google.android.apps.tv.dreamx", "com.google.android.apps.tv.dreamx.settings.SettingsActivity"},
+        };
+        for (String[] t : tries) {
+            try {
+                Intent i = new Intent().addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (t[0] == null) i.setAction(t[1]);
+                else i.setClassName(t[0], t[1]);
+                c.startActivity(i);
+                Toast.makeText(c, R.string.saver_tip, Toast.LENGTH_LONG).show();
+                return;
+            } catch (RuntimeException ignored) {
+                // Not on this TV: try the next one.
+            }
+        }
+        try {
+            c.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            Toast.makeText(c, R.string.saver_manual, Toast.LENGTH_LONG).show();
+        } catch (RuntimeException e) {
+            Toast.makeText(c, R.string.settings_missing, Toast.LENGTH_LONG).show();
+        }
+    }
+
     /** The system's page about one app (open, force stop, clear data). */
     static void appInfo(Context c, String pkg) {
         try {

@@ -267,4 +267,5 @@
     <string name="fav_add">Add to favourites</string>
     <string name="mih_verse">إِنَّ الصَّلَاةَ كَانَتْ عَلَى الْمُؤْمِنِينَ كِتَابًا مَّوْقُوتًا</string>
     <string name="mih_adhan_at">Adhan %1$s</string>
+    <string name="saver_manual">Open Settings, then System, then Ambient mode (screensaver), and choose Google Photos</string>
 </resources>
