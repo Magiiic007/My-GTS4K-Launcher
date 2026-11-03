@@ -125,7 +125,7 @@ final class PrayerBoard {
             ImageView icon = new ImageView(ctx);
             icon.setImageResource(ROW_ICONS[i]);
             icon.setColorFilter(kids ? Color.parseColor("#FFD9788E") : Theme.cardGold(ctx));
-            Stage.add(row, icon, 392, (rh - 40) / 2, 432, (rh - 40) / 2 + 40);
+            Stage.add(row, icon, 410, (rh - 40) / 2, 450, (rh - 40) / 2 + 40);
 
             if (prayer >= 0) {
                 focusable(row, 18, new Runnable() {
