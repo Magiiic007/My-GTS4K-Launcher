@@ -166,58 +166,62 @@ final class PrayerBoard {
         // ------------------------------------------------------------ the clock
         clock = new Stage.Outlined(ctx);
         clock.setTextColor(Theme.clockFill(ctx));
-        clock.setTextSize(TypedValue.COMPLEX_UNIT_PX, 118);
+        final int clockMax = kids ? 118 : 94;
+        clock.setTextSize(TypedValue.COMPLEX_UNIT_PX, clockMax);
         clock.setTypeface(kids ? Typeface.create("sans-serif-medium", Typeface.BOLD) : Typeface.create("serif", Typeface.BOLD));
         clock.setIncludeFontPadding(false);
         clock.setGravity(Gravity.CENTER);
         clock.setMaxLines(1);
-        clock.setAutoSizeTextTypeUniformWithConfiguration(40, 118, 1, TypedValue.COMPLEX_UNIT_PX);
+        clock.setAutoSizeTextTypeUniformWithConfiguration(40, clockMax, 1, TypedValue.COMPLEX_UNIT_PX);
         if (kids) clock.setOutline(Theme.clockOutline(ctx), 7f);
         focusable(clock, 30, openClock);
-        Stage.add(stage, clock, 930, 92, 1252, 214);
+        if (kids) Stage.add(stage, clock, 930, 92, 1252, 214);
+        else Stage.add(stage, clock, 962, 96, 1216, 200);
 
-        ampm = Stage.text(ctx, "", 22, kids ? Color.parseColor("#FF7A3347") : Theme.cardGold(ctx), true);
+        ampm = Stage.text(ctx, "", kids ? 22 : 18, kids ? Color.parseColor("#FF7A3347") : Theme.cardGold(ctx), true);
         ampm.setGravity(Gravity.CENTER);
         GradientDrawable ap = new GradientDrawable();
         ap.setCornerRadius(18);
         ap.setColor(Color.parseColor(kids ? "#FFFBDDE0" : "#99062B1F"));
         ap.setStroke(2, Color.parseColor(kids ? "#FFE5A9B7" : "#FFB88A22"));
         ampm.setBackground(ap);
-        Stage.add(stage, ampm, 1258, 164, 1324, 202);
+        if (kids) Stage.add(stage, ampm, 1258, 164, 1324, 202);
+        else Stage.add(stage, ampm, 1218, 140, 1272, 172);
 
         // ------------------------------------------------------------ the dates
         int dl = g.date[0], dt = g.date[1];
+        final float kd = Math.min(1f, (g.date[3] - g.date[1]) / 180f);
         int cx0 = dl + 36, cx1 = g.date[2] - 96;
-        weekday = Stage.text(ctx, "", 34, Theme.cardGold(ctx), true);
+        weekday = Stage.text(ctx, "", sc(34, kd), Theme.cardGold(ctx), true);
         weekday.setGravity(Gravity.CENTER);
-        Stage.add(stage, weekday, cx0, dt + 6, cx1, dt + 46);
-        gregAr = Stage.text(ctx, "", 28, Theme.cardText(ctx), true);
+        Stage.add(stage, weekday, cx0, dt + sc(6, kd), cx1, dt + sc(46, kd));
+        gregAr = Stage.text(ctx, "", sc(28, kd), Theme.cardText(ctx), true);
         gregAr.setGravity(Gravity.CENTER);
-        Stage.fitOneLine(gregAr, 14, 28);
-        Stage.add(stage, gregAr, cx0, dt + 46, cx1, dt + 82);
-        gregEn = Stage.text(ctx, "", 17, Theme.cardDim(ctx), false);
+        Stage.fitOneLine(gregAr, 9, sc(28, kd));
+        Stage.add(stage, gregAr, cx0, dt + sc(46, kd), cx1, dt + sc(82, kd));
+        gregEn = Stage.text(ctx, "", sc(17, kd), Theme.cardDim(ctx), false);
         gregEn.setGravity(Gravity.CENTER);
-        Stage.fitOneLine(gregEn, 9, 17);
-        Stage.add(stage, gregEn, cx0, dt + 82, cx1, dt + 104);
+        Stage.fitOneLine(gregEn, 8, sc(17, kd));
+        Stage.add(stage, gregEn, cx0, dt + sc(82, kd), cx1, dt + sc(104, kd));
         View line = new View(ctx);
         line.setBackgroundColor(kids ? Color.parseColor("#88FFE9D2") : Color.parseColor("#88E8C15C"));
-        Stage.add(stage, line, dl + 26, dt + 111, g.date[2] - 26, dt + 112);
-        hijriAr = Stage.text(ctx, "", 27, Theme.cardText(ctx), true);
+        Stage.add(stage, line, dl + 26, dt + sc(111, kd), g.date[2] - 26, dt + sc(112, kd));
+        hijriAr = Stage.text(ctx, "", sc(27, kd), Theme.cardText(ctx), true);
         hijriAr.setGravity(Gravity.CENTER);
-        Stage.fitOneLine(hijriAr, 14, 27);
-        Stage.add(stage, hijriAr, cx0, dt + 116, cx1, dt + 152);
-        hijriEn = Stage.text(ctx, "", 16, Theme.cardDim(ctx), false);
+        Stage.fitOneLine(hijriAr, 9, sc(27, kd));
+        Stage.add(stage, hijriAr, cx0, dt + sc(116, kd), cx1, dt + sc(152, kd));
+        hijriEn = Stage.text(ctx, "", sc(16, kd), Theme.cardDim(ctx), false);
         hijriEn.setGravity(Gravity.CENTER);
-        Stage.fitOneLine(hijriEn, 9, 16);
-        Stage.add(stage, hijriEn, cx0, dt + 152, cx1, dt + 172);
+        Stage.fitOneLine(hijriEn, 8, sc(16, kd));
+        Stage.add(stage, hijriEn, cx0, dt + sc(152, kd), cx1, dt + sc(172, kd));
         ImageView cal = new ImageView(ctx);
         cal.setImageResource(R.drawable.ic_calendar);
         cal.setColorFilter(Theme.cardGold(ctx));
-        Stage.add(stage, cal, g.date[2] - 78, dt + 36, g.date[2] - 30, dt + 84);
+        Stage.add(stage, cal, g.date[2] - 78, dt + sc(36, kd), g.date[2] - 30, dt + sc(84, kd));
         ImageView moon = new ImageView(ctx);
         moon.setImageResource(R.drawable.ic_crescent);
         moon.setColorFilter(Theme.cardGold(ctx));
-        Stage.add(stage, moon, g.date[2] - 78, dt + 118, g.date[2] - 36, dt + 160);
+        Stage.add(stage, moon, g.date[2] - 78, dt + sc(118, kd), g.date[2] - 36, dt + sc(160, kd));
         View dateFocus = new View(ctx);
         focusable(dateFocus, 22, openDate);
         Stage.add(stage, dateFocus, dl, dt, g.date[2], g.date[3]);
@@ -230,27 +234,28 @@ final class PrayerBoard {
         int[] icons = {R.drawable.ic_sunset, R.drawable.ic_mosque};
         for (int i = 0; i < 2; i++) {
             int l = boxes[i][0], t = boxes[i][1], r = boxes[i][2], b = boxes[i][3];
-            TextView label = Stage.text(ctx, ctx.getString(labels[i]), 16, Theme.cardDim(ctx), false);
+            float kc = Math.min(1f, (b - t) / 150f);
+            TextView label = Stage.text(ctx, ctx.getString(labels[i]), sc(16, kc), Theme.cardDim(ctx), false);
             label.setGravity(Gravity.CENTER);
-            Stage.fitOneLine(label, 9, 16);
-            Stage.add(stage, label, l + 12, t + 10, r - 12, t + 36);
-            names[i] = Stage.text(ctx, "", 25, Theme.cardGold(ctx), true);
+            Stage.fitOneLine(label, 8, sc(16, kc));
+            Stage.add(stage, label, l + 12, t + sc(10, kc), r - 12, t + sc(36, kc));
+            names[i] = Stage.text(ctx, "", sc(25, kc), Theme.cardGold(ctx), true);
             names[i].setGravity(Gravity.CENTER);
-            Stage.fitOneLine(names[i], 12, 25);
-            Stage.add(stage, names[i], l + 36, t + 38, r - 70, t + 74);
+            Stage.fitOneLine(names[i], 10, sc(25, kc));
+            Stage.add(stage, names[i], l + 36, t + sc(38, kc), r - 70, t + sc(74, kc));
             ImageView ic = new ImageView(ctx);
             ic.setImageResource(icons[i]);
             ic.setColorFilter(Theme.cardGold(ctx));
-            Stage.add(stage, ic, r - 66, t + 38, r - 28, t + 76);
+            Stage.add(stage, ic, r - 66, t + sc(38, kc), r - 28, t + sc(76, kc));
             if (kids) {
                 View pill = new View(ctx);
                 pill.setBackground(Theme.timePill(ctx));
-                Stage.add(stage, pill, l + 24, t + 84, r - 24, t + 140);
+                Stage.add(stage, pill, l + 24, t + sc(84, kc), r - 24, t + sc(140, kc));
             }
-            times[i] = Stage.text(ctx, "--:--:--", 40, kids ? Color.parseColor("#FF9A3D55") : Theme.cardGold(ctx), true);
+            times[i] = Stage.text(ctx, "--:--:--", sc(40, kc), kids ? Color.parseColor("#FF9A3D55") : Theme.cardGold(ctx), true);
             times[i].setGravity(Gravity.CENTER);
-            Stage.fitOneLine(times[i], 18, 40);
-            Stage.add(stage, times[i], l + 24, t + 84, r - 24, t + 140);
+            Stage.fitOneLine(times[i], 14, sc(40, kc));
+            Stage.add(stage, times[i], l + 24, t + sc(84, kc), r - 24, t + sc(140, kc));
             View hit = new View(ctx);
             focusable(hit, 24, new Runnable() {
                 @Override
@@ -487,12 +492,16 @@ final class PrayerBoard {
         hijriEn.setText(Hijri.hijriEn(h));
     }
 
-    /** -2 during Ramadan; otherwise the days left until its first day when that is within 45 days; otherwise -1. */
+    private static int sc(int v, float k) {
+        return Math.round(v * k);
+    }
+
+    /** -2 during Ramadan; otherwise the days left until its first day when that is at any time of the year; otherwise -1. */
     private int ramadanState(Calendar today) {
         int adj = Hijri.adjust(ctx);
         if (Hijri.of(today, adj)[1] == 9) return -2;
         Calendar d = (Calendar) today.clone();
-        for (int i = 1; i <= 45; i++) {
+        for (int i = 1; i <= 400; i++) {
             d.add(Calendar.DAY_OF_MONTH, 1);
             int[] h = Hijri.of(d, adj);
             if (h[1] == 9 && h[2] == 1) return i;

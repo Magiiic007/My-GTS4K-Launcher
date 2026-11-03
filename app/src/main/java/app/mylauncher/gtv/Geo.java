@@ -17,9 +17,9 @@ final class Geo {
     }
 
     private static final Geo ROYAL = new Geo(
-        new int[] {46, 196, 298, 566}, new int[] {344, 214, 842, 512}, new int[] {354, 518, 829, 576},
-        new int[] {886, 232, 1336, 412}, new int[] {870, 429, 1099, 579}, new int[] {1114, 429, 1341, 579},
-        new int[] {40, 606, 1336, 736});
+        new int[] {64, 214, 292, 556}, new int[] {360, 232, 826, 498}, new int[] {412, 529, 790, 573},
+        new int[] {898, 250, 1304, 396}, new int[] {886, 442, 1084, 568}, new int[] {1130, 442, 1324, 568},
+        new int[] {46, 610, 1326, 730});
     private static final Geo KIDS = new Geo(
         new int[] {46, 186, 296, 566}, new int[] {338, 212, 842, 512}, new int[] {358, 522, 826, 578},
         new int[] {886, 234, 1336, 414}, new int[] {872, 430, 1098, 582}, new int[] {1115, 430, 1338, 582},
