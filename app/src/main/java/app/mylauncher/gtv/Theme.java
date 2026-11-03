@@ -14,12 +14,22 @@ import android.graphics.drawable.StateListDrawable;
 final class Theme {
     private Theme() {}
 
-    static final int ROYAL = 0, KIDS = 1;
+    static final int ROYAL = 0, KIDS = 1, MIHRAB = 2;
     private static final String PREFS = "magiic";
     private static final String KEY = "theme";
 
     static int id(Context c) {
-        return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY, ROYAL) == KIDS ? KIDS : ROYAL;
+        int v = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY, ROYAL);
+        return v == KIDS ? KIDS : v == MIHRAB ? MIHRAB : ROYAL;
+    }
+
+    /** The third look: navy and gold, with the prayer cards and the mihrab arch (see MihrabHome). */
+    static boolean mihrab(Context c) {
+        return id(c) == MIHRAB;
+    }
+
+    private static int pick3(Context c, String royal, String kids, String mih) {
+        return Color.parseColor(mihrab(c) ? mih : kids(c) ? kids : royal);
     }
 
     static void set(Context c, int id) {
@@ -77,19 +87,19 @@ final class Theme {
 
     /** The first-row gradient of the popups (adhan, iqama, reminders). */
     static int popupTop(Context c) {
-        return pick(c, "#FF126B50", "#FFFFB6C8");
+        return pick3(c, "#FF126B50", "#FFFFB6C8", "#FF1E3A78");
     }
 
     static int popupBottom(Context c) {
-        return pick(c, "#FF052B20", "#FFE5667F");
+        return pick3(c, "#FF052B20", "#FFE5667F", "#FF0A1838");
     }
 
     static int popupText(Context c) {
-        return pick(c, "#FFFFF8E7", "#FF6B2237");
+        return pick3(c, "#FFFFF8E7", "#FF6B2237", "#FFF4EEDC");
     }
 
     static int popupDim(Context c) {
-        return pick(c, "#FFE4D8B0", "#FF8A4558");
+        return pick3(c, "#FFE4D8B0", "#FF8A4558", "#FFB9C6E6");
     }
 
     // ---------------------------------------------------------------- shapes
@@ -237,17 +247,17 @@ final class Theme {
     }
 
     static int edgeColour(Context c) {
-        return Color.parseColor(kids(c) ? "#FFF4B4C6" : "#FF04251A");
+        return Color.parseColor(mihrab(c) ? "#FF050D22" : kids(c) ? "#FFF4B4C6" : "#FF04251A");
     }
 
     // ---------------------------------------------------------------- the dome popup
-    static int popTitle(Context c) { return pick(c, "#FFFFF1C2", "#FF8A3B52"); }
-    static int popSub(Context c) { return pick(c, "#FFFFF8E7", "#FFFFFFFF"); }
-    static int popHint(Context c) { return pick(c, "#FFE8C15C", "#FFFFF0CC"); }
-    static int scrim(Context c) { return pick(c, "#D9031A12", "#D9C8607F"); }
+    static int popTitle(Context c) { return pick3(c, "#FFFFF1C2", "#FF8A3B52", "#FFF0D58C"); }
+    static int popSub(Context c) { return pick3(c, "#FFFFF8E7", "#FFFFFFFF", "#FFF4EEDC"); }
+    static int popHint(Context c) { return pick3(c, "#FFE8C15C", "#FFFFF0CC", "#FFE0B960"); }
+    static int scrim(Context c) { return pick3(c, "#D9031A12", "#D9C8607F", "#E6040A1A"); }
 
     /** The dialog style of the chosen look: gold-framed dark green, or the soft pink one. */
     static int dialogStyle(Context c) {
-        return kids(c) ? R.style.MagiicDialogKids : R.style.MagiicDialogRoyal;
+        return mihrab(c) ? R.style.MagiicDialogMihrab : kids(c) ? R.style.MagiicDialogKids : R.style.MagiicDialogRoyal;
     }
 }

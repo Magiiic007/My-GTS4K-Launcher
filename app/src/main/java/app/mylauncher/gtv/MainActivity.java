@@ -49,7 +49,7 @@ import java.util.Set;
 public class MainActivity extends Activity {
 
     /** One app in the row. */
-    private static final class AppItem {
+    static final class AppItem {
         String label;
         ComponentName component;
         Drawable image;
@@ -84,6 +84,7 @@ public class MainActivity extends Activity {
         }
     };
     private LinearLayout settingsList;
+    private MihrabHome mih;
     private ImageView art;
     private long weatherAt;
     private PrayerBoard board;
@@ -103,11 +104,11 @@ public class MainActivity extends Activity {
         }
     };
     /** Run after any prayer or iqama setting changes: new alarm, new numbers on screen. */
-    private final Runnable prayerChanged = new Runnable() {
+    final Runnable prayerChanged = new Runnable() {
         @Override
         public void run() {
             Scheduler.scheduleNext(MainActivity.this);
-            board.refresh();
+            refreshBoard();
         }
     };
 
@@ -116,6 +117,10 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         final boolean kids = Theme.kids(this);
         Geo g = Geo.of(this);
+        if (Theme.mihrab(this)) {
+            createMihrab();
+            return;
+        }
 
         final FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Theme.edgeColour(this));
@@ -344,9 +349,137 @@ public class MainActivity extends Activity {
         return scroll;
     }
 
+    /** Redraws the prayer numbers of whichever look is on. */
+    private void refreshBoard() {
+        if (mih != null) mih.refresh();
+        else if (board != null) board.refresh();
+    }
+
+    private void refreshBoardDates() {
+        if (mih != null) mih.refreshDates();
+        else if (board != null) board.refreshDates();
+    }
+
+    /** The third look (see MihrabHome): its own canvas, with the same dialogs and services behind it. */
+    private void createMihrab() {
+        final FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Theme.edgeColour(this));
+        rootView = root;
+        final FrameLayout stage = new FrameLayout(this);
+        stage.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        Motion.fadeIn(root, 350L);
+        root.addView(stage, new FrameLayout.LayoutParams(Stage.W, Stage.H, Gravity.TOP | Gravity.LEFT));
+        root.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                Stage.fit(root, stage);
+            }
+        });
+        mih = new MihrabHome(this, stage);
+        weatherView = mih.weather;
+        radioBtn = mih.radio;
+        noticeChip = mih.notice;
+        status = new StatusIcons(this, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SettingsMenu.launch(MainActivity.this, Settings.ACTION_WIFI_SETTINGS);
+            }
+        });
+        status.view.setFocusable(false);
+        Stage.add(stage, status.view, 128, 40, 248, 92);
+        updateRadioButton();
+        setContentView(root);
+    }
+
+    void openTiming() {
+        TimingDialogs.open(this, prayerChanged);
+    }
+
+    /** The gear of the third look: every setting of the left-hand list, in one dialog. */
+    void showMihrabSettings() {
+        final List<String> names = new ArrayList<>();
+        final List<Runnable> acts = new ArrayList<>();
+        if (!lastIssues.isEmpty()) {
+            names.add(getString(R.string.menu_notices));
+            acts.add(new Runnable() { public void run() { Health.show(MainActivity.this, lastIssues); } });
+        }
+        names.add(getString(R.string.menu_adhan));
+        acts.add(new Runnable() { public void run() { openTiming(); } });
+        names.add(getString(R.string.menu_radio));
+        acts.add(new Runnable() { public void run() { chooseRadio(); } });
+        names.add(getString(R.string.menu_theme));
+        acts.add(new Runnable() { public void run() { chooseLook(); } });
+        names.add(getString(R.string.menu_reminders));
+        acts.add(new Runnable() { public void run() { ReminderDialogs.open(MainActivity.this); } });
+        names.add(getString(R.string.menu_city));
+        acts.add(new Runnable() { public void run() { chooseCountry(); } });
+        names.add(getString(R.string.menu_hijri));
+        acts.add(new Runnable() { public void run() { chooseHijri(); } });
+        names.add(getString(R.string.menu_apps));
+        acts.add(new Runnable() {
+            public void run() {
+                SettingsMenu.apps(MainActivity.this, appList(), new Runnable() {
+                    public void run() { applyHidden(); }
+                });
+            }
+        });
+        names.add(getString(R.string.menu_device));
+        acts.add(new Runnable() { public void run() { SettingsMenu.device(MainActivity.this); } });
+        names.add(getString(R.string.menu_saver));
+        acts.add(new Runnable() {
+            public void run() {
+                SettingsMenu.launch(MainActivity.this, Settings.ACTION_DREAM_SETTINGS, R.string.saver_tip);
+            }
+        });
+        names.add(getString(R.string.menu_clean));
+        acts.add(new Runnable() { public void run() { Cleaner.open(MainActivity.this); } });
+        names.add(getString(R.string.menu_update));
+        acts.add(new Runnable() { public void run() { Updater.menu(MainActivity.this); } });
+        names.add(getString(R.string.menu_stock));
+        acts.add(new Runnable() { public void run() { StockHome.menu(MainActivity.this); } });
+        if (!Settings.canDrawOverlays(this)) {
+            names.add(getString(R.string.perm_btn));
+            acts.add(new Runnable() { public void run() { askOverlayPermission(); } });
+        }
+        new AlertDialog.Builder(this, Theme.dialogStyle(this))
+            .setTitle(R.string.mih_settings)
+            .setItems(names.toArray(new String[0]), new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int which) {
+                    acts.get(which).run();
+                }
+            })
+            .setNegativeButton(R.string.close, null)
+            .show();
+    }
+
+    /** Hold OK on a favourite or a "more" tile: take it off the favourites, see its info, uninstall it. */
+    void favMenu(final AppItem item) {
+        final String pkg = item.component.getPackageName();
+        String[] items = {getString(R.string.fav_remove), getString(R.string.app_info), getString(R.string.app_uninstall)};
+        new AlertDialog.Builder(this, Theme.dialogStyle(this))
+            .setTitle(item.label)
+            .setItems(items, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int which) {
+                    if (which == 0) {
+                        if (MihrabHome.isFav(MainActivity.this, pkg)) MihrabHome.toggleFav(MainActivity.this, pkg);
+                        Toast.makeText(MainActivity.this, R.string.fav_removed, Toast.LENGTH_SHORT).show();
+                        applyHidden();
+                    } else if (which == 1) {
+                        SettingsMenu.appInfo(MainActivity.this, pkg);
+                    } else {
+                        SettingsMenu.uninstall(MainActivity.this, pkg);
+                    }
+                }
+            })
+            .setNegativeButton(R.string.close, null)
+            .show();
+    }
+
     /** The two looks, in a list; picking the other one restarts the screen in it. */
     private void chooseLook() {
-        String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids)};
+        String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids), getString(R.string.theme_mihrab)};
         new AlertDialog.Builder(this, Theme.dialogStyle(this))
             .setTitle(R.string.menu_theme)
             .setSingleChoiceItems(names, Theme.id(this), new DialogInterface.OnClickListener() {
@@ -454,6 +587,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (mih != null) {
+            resumeMihrab();
+            return;
+        }
         loadApps();
         // The weather is not fetched again each time the home screen comes back: only when it is 30 minutes old.
         handler.removeCallbacks(weatherTick);
@@ -479,6 +616,32 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(ambienceTick);
         handler.postDelayed(ambienceTick, 60000L);
         sparkle.start();
+        refreshNotices();
+        Updater.checkIfDue(this, new Runnable() {
+            @Override
+            public void run() {
+                refreshNotices();
+            }
+        });
+    }
+
+    private void resumeMihrab() {
+        loadApps();
+        handler.removeCallbacks(weatherTick);
+        long age = System.currentTimeMillis() - weatherAt;
+        handler.postDelayed(weatherTick, weatherAt == 0L || age >= WEATHER_EVERY_MS ? 0L : WEATHER_EVERY_MS - age);
+        mih.start();
+        status.start();
+        RadioService.listen(radioListener);
+        updateRadioButton();
+        final android.content.Context app = getApplicationContext();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Scheduler.scheduleNext(app);
+                Reminders.scheduleNext(app);
+            }
+        }).start();
         refreshNotices();
         Updater.checkIfDue(this, new Runnable() {
             @Override
@@ -541,6 +704,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         handler.removeCallbacks(weatherTick);
+        if (mih != null) {
+            mih.stop();
+            status.stop();
+            RadioService.unlisten(radioListener);
+            super.onPause();
+            return;
+        }
         handler.removeCallbacks(ambienceTick);
         sparkle.stop();
         board.stop();
@@ -565,7 +735,7 @@ public class MainActivity extends Activity {
     }
 
     /** The two stations; the one playing is marked, and Stop appears while the radio is on. */
-    private void chooseRadio() {
+    void chooseRadio() {
         final boolean arabic = isArabic();
         final boolean on = RadioService.on();
         int n = RadioService.STATIONS.length;
@@ -613,7 +783,7 @@ public class MainActivity extends Activity {
                 @Override
                 public void saved(int value) {
                     Hijri.setAdjust(MainActivity.this, value);
-                    board.refreshDates();
+                    refreshBoardDates();
                     // The White Days follow the Hijri date.
                     Reminders.scheduleNext(MainActivity.this);
                 }
@@ -636,7 +806,7 @@ public class MainActivity extends Activity {
     }
 
     /** Step 1 of choosing a city: the country. */
-    private void chooseCountry() {
+    void chooseCountry() {
         String[] countries = {getString(R.string.egypt), getString(R.string.saudi)};
         new AlertDialog.Builder(this, Theme.dialogStyle(this))
             .setTitle(R.string.choose_country)
@@ -671,8 +841,8 @@ public class MainActivity extends Activity {
                     prefs().edit().putString("city", sorted.get(which).key()).apply();
                     loadWeather();
                     Scheduler.scheduleNext(MainActivity.this);
-                    board.refresh();
-                    board.refreshDates();
+                    refreshBoard();
+                    refreshBoardDates();
                 }
             })
             .show();
@@ -784,6 +954,10 @@ public class MainActivity extends Activity {
                 return ia < ib ? -1 : ia > ib ? 1 : 0;
             }
         });
+        if (mih != null) {
+            mih.setApps(apps, allApps.size());
+            return;
+        }
         rebuildRow();
         empty.setVisibility(apps.isEmpty() ? View.VISIBLE : View.GONE);
     }
@@ -886,7 +1060,7 @@ public class MainActivity extends Activity {
         return tile;
     }
 
-    private void openAllApps() {
+    void openAllApps() {
         List<AllApps.Entry> entries = new ArrayList<>();
         for (AppItem a : allApps) {
             AllApps.Entry e = new AllApps.Entry();
@@ -1043,7 +1217,7 @@ public class MainActivity extends Activity {
         return pm.queryIntentActivities(intent, 0);
     }
 
-    private void open(AppItem item) {
+    void open(AppItem item) {
         Intent intent = new Intent(Intent.ACTION_MAIN)
             .setComponent(item.component)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);

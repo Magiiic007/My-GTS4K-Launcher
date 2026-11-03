@@ -249,4 +249,22 @@
     <string name="friday_first">جمعة مباركة · الأذان الأول %1$s</string>
     <string name="rem_kahf_title">سورة الكهف</string>
     <string name="rem_kahf_msg">اليوم الجمعة، لا تنسَ قراءة سورة الكهف</string>
+    <string name="theme_mihrab">المحراب (كحلي وذهبي)</string>
+    <string name="all_apps_hint_fav">اضغط OK لفتح التطبيق، واضغط مطوّلًا لإضافته إلى المفضلة أو إزالته منها ★</string>
+    <string name="fav_added">أُضيف إلى المفضلة</string>
+    <string name="fav_removed">أُزيل من المفضلة</string>
+    <string name="mih_settings">الإعدادات</string>
+    <string name="mih_favs">المفضلة</string>
+    <string name="mih_more">المزيد</string>
+    <string name="mih_all">كل التطبيقات</string>
+    <string name="mih_next_title">الصلاة القادمة</string>
+    <string name="mih_adhan_btn">إعدادات الأذان والإقامة</string>
+    <string name="mih_hint">OK لفتح التطبيق · اضغط مطوّلًا للمزيد</string>
+    <string name="mih_next_tag">التالية</string>
+    <string name="mih_verse_ref">النساء ١٠٣</string>
+    <string name="mih_tile_tip">اضغط مطوّلًا على تطبيق لإضافته إلى المفضلة أو إزالته منها</string>
+    <string name="fav_remove">إزالة من المفضلة</string>
+    <string name="fav_add">إضافة إلى المفضلة</string>
+    <string name="mih_verse">إِنَّ الصَّلَاةَ كَانَتْ عَلَى الْمُؤْمِنِينَ كِتَابًا مَّوْقُوتًا</string>
+    <string name="mih_adhan_at">الأذان %1$s</string>
 </resources>

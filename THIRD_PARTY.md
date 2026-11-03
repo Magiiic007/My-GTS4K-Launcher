@@ -13,3 +13,8 @@
   The app plays these when present and a short alert otherwise.
 
 - `reminder.mp3`: reminder sound supplied by the app owner (the file he chose); its source and rights are not verified here.
+
+## Afnon Android TV Launcher (layout idea for the "Mihrab" look)
+The third look ("Mihrab") follows the screen layout idea of https://github.com/egyjs/afnon-android-tv-launcher
+(MIT licence, Copyright (c) its authors): prayer cards in a row, favourite apps, and a mihrab arch with the next
+prayer. No code or fonts were copied; the implementation (MihrabHome.java) is our own.
