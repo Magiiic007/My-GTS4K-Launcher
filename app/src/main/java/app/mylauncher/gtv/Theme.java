@@ -239,4 +239,10 @@ final class Theme {
     static int edgeColour(Context c) {
         return Color.parseColor(kids(c) ? "#FFF4B4C6" : "#FF04251A");
     }
+
+    // ---------------------------------------------------------------- the dome popup
+    static int popTitle(Context c) { return pick(c, "#FFFFF1C2", "#FF8A3B52"); }
+    static int popSub(Context c) { return pick(c, "#FFFFF8E7", "#FFFFFFFF"); }
+    static int popHint(Context c) { return pick(c, "#FFE8C15C", "#FFFFF0CC"); }
+    static int scrim(Context c) { return pick(c, "#D9031A12", "#D9C8607F"); }
 }
