@@ -3,6 +3,7 @@ package app.mylauncher.gtv;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
@@ -11,24 +12,22 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextClock;
 import android.widget.TextView;
 
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
 
 /**
- * The middle and the right of the home screen. Middle: the prayer card (the six times, each with its iqama, the next
- * prayer, and the city). Right: the big clock, the Gregorian and Hijri dates, and two countdowns (to the next adhan
- * and to the next iqama). Every part can be selected with the remote and opens the matching setting.
+ * The middle and the right of the home screen, placed on the design's canvas (see Stage). Middle: the six prayer
+ * times, each with its iqama, the next prayer and the city. Right: the big clock, the Gregorian and Hijri dates and
+ * two countdowns (to the next adhan and to the next iqama). Every part can be selected with the remote and opens the
+ * matching setting.
  */
 final class PrayerBoard {
-    /** The middle column (prayer times). */
-    final LinearLayout prayers;
-    /** The right column (clock, dates, countdowns). */
-    final LinearLayout clockColumn;
-
     private static final int[] ROW_ICONS = {R.drawable.ic_twilight, R.drawable.ic_sunrise, R.drawable.ic_sunny,
         R.drawable.ic_cloud_sun, R.drawable.ic_sunset, R.drawable.ic_crescent};
     /** Row order: Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha. Maps a row to PrayerCalc's index (-1 for sunrise). */
@@ -38,19 +37,20 @@ final class PrayerBoard {
     private final Context ctx;
     private final Runnable changed;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final boolean kids;
 
     // prayer card
     private final TextView locationText;
-    private final LinearLayout[] rows = new LinearLayout[6];
+    private final Flag flag;
+    private final View[] rows = new View[6];
     private final TextView[] rowName = new TextView[6];
     private final TextView[] rowIqama = new TextView[6];
     private final TextView[] rowTime = new TextView[6];
-    private final ImageView[] rowIcon = new ImageView[6];
     private final TextView nextBar;
 
     // clock column
-    private final TextClock clock;
-    private final TextClock ampm;
+    private final Stage.Outlined clock;
+    private final TextView ampm;
     private final TextView weekday, gregAr, gregEn, hijriAr, hijriEn;
     private final TextView adhanName, adhanTime, iqamaName, iqamaTime;
 
@@ -76,67 +76,59 @@ final class PrayerBoard {
      * @param openClock opens the device's date and time settings
      * @param changed   run after a prayer or iqama setting changes (new alarm, new numbers)
      */
-    PrayerBoard(Context context, Runnable pickCity, Runnable openDate, Runnable openClock, Runnable changed) {
+    PrayerBoard(Context context, FrameLayout stage, Runnable pickCity, Runnable openDate, Runnable openClock,
+                Runnable changed) {
         ctx = context;
         this.changed = changed;
+        kids = Theme.kids(ctx);
+        Geo g = Geo.of(ctx);
 
         // ------------------------------------------------------------ the prayer card
-        prayers = new LinearLayout(ctx);
-        prayers.setOrientation(LinearLayout.VERTICAL);
-        prayers.setBackground(Theme.panel(ctx, 22));
-        prayers.setPadding(dp(14), dp(10), dp(14), dp(10));
+        // The title is part of the picture; the city goes in the band under it.
+        flag = new Flag(ctx);
+        Stage.add(stage, flag, 372, 156, 436, 196);
 
-        LinearLayout titleRow = new LinearLayout(ctx);
-        titleRow.setOrientation(LinearLayout.VERTICAL);
-        titleRow.setGravity(Gravity.CENTER_HORIZONTAL);
-        TextView title = text(ctx.getString(R.string.prayer_card_title), 22, Theme.accent(ctx), true);
-        title.setGravity(Gravity.CENTER);
-        titleRow.addView(title);
-        locationText = text("", 13, Theme.textDim(ctx), false);
+        locationText = Stage.text(ctx, "", 19, kids ? Color.parseColor("#FFFFF4E6") : Theme.cardText(ctx), true);
         locationText.setGravity(Gravity.CENTER);
-        locationText.setCompoundDrawablePadding(dp(6));
+        locationText.setCompoundDrawablePadding(8);
         locationText.setCompoundDrawablesRelativeWithIntrinsicBounds(
-            tinted(R.drawable.ic_location, Theme.accent(ctx), 16), null, null, null);
-        locationText.setPadding(dp(10), dp(3), dp(10), dp(3));
-        focusable(locationText, 10, pickCity);
-        titleRow.addView(locationText);
-        prayers.addView(titleRow, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            null, null, tinted(R.drawable.ic_location, kids ? Color.parseColor("#FFFFF4E6") : Theme.cardGold(ctx), 24), null);
+        Stage.fitOneLine(locationText, 11, 19);
+        focusable(locationText, 14, pickCity);
+        Stage.add(stage, locationText, 448, 156, 812, 198);
 
+        int pl = g.prayers[0], pt = g.prayers[1], pr = g.prayers[2], pb = g.prayers[3];
+        int pitch = (pb - pt) / 6;
         for (int i = 0; i < 6; i++) {
             final int prayer = ROW_PRAYER[i];
-            LinearLayout row = new LinearLayout(ctx);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(8), dp(2), dp(8), dp(2));
+            int top = pt + i * pitch;
+            FrameLayout row = new FrameLayout(ctx);
+            // the row is the highlight/focus area; its contents are placed inside it
+            Stage.add(stage, row, pl, top, pr, top + pitch - 3);
+            int rh = pitch - 3;
 
-            rowIcon[i] = new ImageView(ctx);
-            rowIcon[i].setImageResource(ROW_ICONS[i]);
-            rowIcon[i].setColorFilter(Theme.accent(ctx));
-            row.addView(rowIcon[i], new LinearLayout.LayoutParams(dp(26), dp(26)));
-
-            LinearLayout names = new LinearLayout(ctx);
-            names.setOrientation(LinearLayout.VERTICAL);
-            rowName[i] = text("", 18, Theme.text(ctx), true);
-            rowName[i].setSingleLine(true);
-            names.addView(rowName[i]);
-            rowIqama[i] = text("", 11, Theme.accent(ctx), false);
-            rowIqama[i].setSingleLine(true);
-            names.addView(rowIqama[i]);
-            LinearLayout.LayoutParams namesLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            namesLp.setMarginStart(dp(10));
-            row.addView(names, namesLp);
-
-            rowTime[i] = text("", 17, Theme.pillText(ctx), true);
+            rowTime[i] = Stage.text(ctx, "", 25, Theme.nextText(ctx), true);
             rowTime[i].setGravity(Gravity.CENTER);
-            rowTime[i].setSingleLine(true);
-            rowTime[i].setBackground(Theme.pill(ctx));
-            rowTime[i].setPadding(dp(14), dp(4), dp(14), dp(4));
-            row.addView(rowTime[i], new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            rowTime[i].setBackground(Theme.timePill(ctx));
+            Stage.fitOneLine(rowTime[i], 12, 25);
+            Stage.add(row, rowTime[i], 28, (rh - 38) / 2, 204, (rh - 38) / 2 + 38);
+
+            rowName[i] = Stage.text(ctx, "", 27, Theme.listName(ctx), true);
+            rowName[i].setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+            Stage.fitOneLine(rowName[i], 14, 27);
+            rowIqama[i] = Stage.text(ctx, "", 14, Theme.listDim(ctx), false);
+            rowIqama[i].setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+            Stage.fitOneLine(rowIqama[i], 9, 14);
+            Stage.add(row, rowName[i], 214, 0, 376, rh - 12);
+            Stage.add(row, rowIqama[i], 214, rh - 16, 376, rh - 1);
+
+            ImageView icon = new ImageView(ctx);
+            icon.setImageResource(ROW_ICONS[i]);
+            icon.setColorFilter(kids ? Color.parseColor("#FFD9788E") : Theme.cardGold(ctx));
+            Stage.add(row, icon, 392, (rh - 40) / 2, 432, (rh - 40) / 2 + 40);
 
             if (prayer >= 0) {
-                focusable(row, 12, new Runnable() {
+                focusable(row, 18, new Runnable() {
                     @Override
                     public void run() {
                         TimingDialogs.field(ctx, prayer, PrayerBoard.this.changed);
@@ -144,164 +136,139 @@ final class PrayerBoard {
                 });
             }
             rows[i] = row;
-            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-            rowLp.topMargin = dp(3);
-            prayers.addView(row, rowLp);
         }
 
-        nextBar = text("", 17, Theme.pillText(ctx), true);
+        nextBar = Stage.text(ctx, "", 27, Theme.nextText(ctx), true);
         nextBar.setGravity(Gravity.CENTER);
-        nextBar.setSingleLine(true);
-        nextBar.setBackground(Theme.pill(ctx));
-        nextBar.setPadding(dp(12), dp(7), dp(12), dp(7));
-        nextBar.setCompoundDrawablePadding(dp(8));
+        nextBar.setCompoundDrawablePadding(10);
         nextBar.setCompoundDrawablesRelativeWithIntrinsicBounds(
-            tinted(R.drawable.ic_mosque, Theme.pillText(ctx), 22), null, null, null);
-        focusable(nextBar, 16, new Runnable() {
+            null, null, tinted(R.drawable.ic_mosque, Theme.nextText(ctx), 34), null);
+        Stage.fitOneLine(nextBar, 13, 27);
+        focusable(nextBar, 24, new Runnable() {
             @Override
             public void run() {
                 TimingDialogs.open(ctx, PrayerBoard.this.changed);
             }
         });
-        LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        nextLp.topMargin = dp(6);
-        prayers.addView(nextBar, nextLp);
+        Stage.add(stage, nextBar, g.next[0] + 30, g.next[1], g.next[2] - 30, g.next[3]);
 
-        // ------------------------------------------------------------ the clock column
-        clockColumn = new LinearLayout(ctx);
-        clockColumn.setOrientation(LinearLayout.VERTICAL);
-
-        LinearLayout clockCard = new LinearLayout(ctx);
-        clockCard.setOrientation(LinearLayout.HORIZONTAL);
-        clockCard.setGravity(Gravity.CENTER);
-        clockCard.setBackground(Theme.panel(ctx, 26));
-        clockCard.setPadding(dp(14), dp(4), dp(14), dp(4));
-        clock = new TextClock(ctx);
-        clock.setFormat12Hour("h:mm");
-        clock.setFormat24Hour("HH:mm");
-        clock.setTextColor(Theme.accent(ctx));
-        clock.setTypeface(Typeface.DEFAULT_BOLD);
+        // ------------------------------------------------------------ the clock
+        clock = new Stage.Outlined(ctx);
+        clock.setTextColor(Theme.clockFill(ctx));
+        clock.setTextSize(TypedValue.COMPLEX_UNIT_PX, 118);
+        clock.setTypeface(kids ? Typeface.create("sans-serif-medium", Typeface.BOLD) : Typeface.create("serif", Typeface.BOLD));
+        clock.setIncludeFontPadding(false);
         clock.setGravity(Gravity.CENTER);
-        clock.setAutoSizeTextTypeUniformWithConfiguration(24, 64, 2, TypedValue.COMPLEX_UNIT_SP);
         clock.setMaxLines(1);
-        clockCard.addView(clock, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-        ampm = new TextClock(ctx);
-        ampm.setFormat12Hour("a");
-        ampm.setFormat24Hour("a");
-        ampm.setTextColor(Theme.text(ctx));
-        ampm.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        ampm.setTypeface(Typeface.DEFAULT_BOLD);
-        ampm.setPadding(dp(8), 0, 0, 0);
-        clockCard.addView(ampm, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        focusable(clockCard, 26, openClock);
-        clockColumn.addView(clockCard, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.9f));
+        clock.setAutoSizeTextTypeUniformWithConfiguration(40, 118, 1, TypedValue.COMPLEX_UNIT_PX);
+        if (kids) clock.setOutline(Theme.clockOutline(ctx), 7f);
+        focusable(clock, 30, openClock);
+        Stage.add(stage, clock, 930, 92, 1252, 214);
 
-        LinearLayout dateCard = new LinearLayout(ctx);
-        dateCard.setOrientation(LinearLayout.VERTICAL);
-        dateCard.setGravity(Gravity.CENTER);
-        dateCard.setBackground(Theme.panel(ctx, 22));
-        dateCard.setPadding(dp(12), dp(6), dp(12), dp(6));
-        weekday = text("", 22, Theme.accent(ctx), true);
+        ampm = Stage.text(ctx, "", 22, kids ? Color.parseColor("#FF7A3347") : Theme.cardGold(ctx), true);
+        ampm.setGravity(Gravity.CENTER);
+        GradientDrawable ap = new GradientDrawable();
+        ap.setCornerRadius(18);
+        ap.setColor(Color.parseColor(kids ? "#FFFBDDE0" : "#99062B1F"));
+        ap.setStroke(2, Color.parseColor(kids ? "#FFE5A9B7" : "#FFB88A22"));
+        ampm.setBackground(ap);
+        Stage.add(stage, ampm, 1258, 164, 1324, 202);
+
+        // ------------------------------------------------------------ the dates
+        int dl = g.date[0], dt = g.date[1];
+        int cx0 = dl + 36, cx1 = g.date[2] - 96;
+        weekday = Stage.text(ctx, "", 34, Theme.cardGold(ctx), true);
         weekday.setGravity(Gravity.CENTER);
-        dateCard.addView(weekday);
-        gregAr = text("", 17, Theme.text(ctx), true);
+        Stage.add(stage, weekday, cx0, dt + 6, cx1, dt + 46);
+        gregAr = Stage.text(ctx, "", 28, Theme.cardText(ctx), true);
         gregAr.setGravity(Gravity.CENTER);
-        dateCard.addView(gregAr);
-        gregEn = text("", 11, Theme.textDim(ctx), false);
+        Stage.fitOneLine(gregAr, 14, 28);
+        Stage.add(stage, gregAr, cx0, dt + 46, cx1, dt + 82);
+        gregEn = Stage.text(ctx, "", 17, Theme.cardDim(ctx), false);
         gregEn.setGravity(Gravity.CENTER);
-        dateCard.addView(gregEn);
-        hijriAr = text("", 17, Theme.text(ctx), true);
+        Stage.fitOneLine(gregEn, 9, 17);
+        Stage.add(stage, gregEn, cx0, dt + 82, cx1, dt + 104);
+        View line = new View(ctx);
+        line.setBackgroundColor(kids ? Color.parseColor("#88FFE9D2") : Color.parseColor("#88E8C15C"));
+        Stage.add(stage, line, dl + 26, dt + 111, g.date[2] - 26, dt + 112);
+        hijriAr = Stage.text(ctx, "", 27, Theme.cardText(ctx), true);
         hijriAr.setGravity(Gravity.CENTER);
-        hijriAr.setCompoundDrawablePadding(dp(6));
-        hijriAr.setCompoundDrawablesRelativeWithIntrinsicBounds(
-            tinted(R.drawable.ic_crescent, Theme.accent(ctx), 20), null, null, null);
-        LinearLayout.LayoutParams hAr = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        hAr.topMargin = dp(4);
-        dateCard.addView(hijriAr, hAr);
-        hijriEn = text("", 11, Theme.textDim(ctx), false);
+        Stage.fitOneLine(hijriAr, 14, 27);
+        Stage.add(stage, hijriAr, cx0, dt + 116, cx1, dt + 152);
+        hijriEn = Stage.text(ctx, "", 16, Theme.cardDim(ctx), false);
         hijriEn.setGravity(Gravity.CENTER);
-        dateCard.addView(hijriEn);
-        focusable(dateCard, 22, openDate);
-        LinearLayout.LayoutParams dateLp = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.5f);
-        dateLp.topMargin = dp(8);
-        clockColumn.addView(dateCard, dateLp);
+        Stage.fitOneLine(hijriEn, 9, 16);
+        Stage.add(stage, hijriEn, cx0, dt + 152, cx1, dt + 172);
+        ImageView cal = new ImageView(ctx);
+        cal.setImageResource(R.drawable.ic_calendar);
+        cal.setColorFilter(Theme.cardGold(ctx));
+        Stage.add(stage, cal, g.date[2] - 78, dt + 36, g.date[2] - 30, dt + 84);
+        ImageView moon = new ImageView(ctx);
+        moon.setImageResource(R.drawable.ic_crescent);
+        moon.setColorFilter(Theme.cardGold(ctx));
+        Stage.add(stage, moon, g.date[2] - 78, dt + 118, g.date[2] - 36, dt + 160);
+        View dateFocus = new View(ctx);
+        focusable(dateFocus, 22, openDate);
+        Stage.add(stage, dateFocus, dl, dt, g.date[2], g.date[3]);
 
-        LinearLayout counts = new LinearLayout(ctx);
-        counts.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout[] boxes = new LinearLayout[2];
+        // ------------------------------------------------------------ the two countdowns
         TextView[] names = new TextView[2];
         TextView[] times = new TextView[2];
         int[] labels = {R.string.count_adhan, R.string.count_iqama};
+        int[][] boxes = {g.countAdhan, g.countIqama};
+        int[] icons = {R.drawable.ic_sunset, R.drawable.ic_mosque};
         for (int i = 0; i < 2; i++) {
-            LinearLayout box = new LinearLayout(ctx);
-            box.setOrientation(LinearLayout.VERTICAL);
-            box.setGravity(Gravity.CENTER);
-            box.setBackground(Theme.panel(ctx, 18));
-            box.setPadding(dp(6), dp(4), dp(6), dp(4));
-            TextView label = text(ctx.getString(labels[i]), 11, Theme.textDim(ctx), false);
+            int l = boxes[i][0], t = boxes[i][1], r = boxes[i][2], b = boxes[i][3];
+            TextView label = Stage.text(ctx, ctx.getString(labels[i]), 16, Theme.cardDim(ctx), false);
             label.setGravity(Gravity.CENTER);
-            box.addView(label);
-            names[i] = text("", 15, Theme.accent(ctx), true);
+            Stage.fitOneLine(label, 9, 16);
+            Stage.add(stage, label, l + 12, t + 10, r - 12, t + 36);
+            names[i] = Stage.text(ctx, "", 25, Theme.cardGold(ctx), true);
             names[i].setGravity(Gravity.CENTER);
-            names[i].setSingleLine(true);
-            box.addView(names[i]);
-            times[i] = text("--:--:--", 20, Theme.text(ctx), true);
+            Stage.fitOneLine(names[i], 12, 25);
+            Stage.add(stage, names[i], l + 36, t + 38, r - 70, t + 74);
+            ImageView ic = new ImageView(ctx);
+            ic.setImageResource(icons[i]);
+            ic.setColorFilter(Theme.cardGold(ctx));
+            Stage.add(stage, ic, r - 66, t + 38, r - 28, t + 76);
+            if (kids) {
+                View pill = new View(ctx);
+                pill.setBackground(Theme.timePill(ctx));
+                Stage.add(stage, pill, l + 24, t + 84, r - 24, t + 140);
+            }
+            times[i] = Stage.text(ctx, "--:--:--", 40, kids ? Color.parseColor("#FF9A3D55") : Theme.cardGold(ctx), true);
             times[i].setGravity(Gravity.CENTER);
-            times[i].setSingleLine(true);
-            box.addView(times[i]);
-            focusable(box, 18, new Runnable() {
+            Stage.fitOneLine(times[i], 18, 40);
+            Stage.add(stage, times[i], l + 24, t + 84, r - 24, t + 140);
+            View hit = new View(ctx);
+            focusable(hit, 24, new Runnable() {
                 @Override
                 public void run() {
                     TimingDialogs.open(ctx, PrayerBoard.this.changed);
                 }
             });
-            boxes[i] = box;
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-            if (i == 0) lp.setMarginEnd(dp(4));
-            else lp.setMarginStart(dp(4));
-            counts.addView(box, lp);
+            Stage.add(stage, hit, l, t, r, b);
         }
         adhanName = names[0];
         adhanTime = times[0];
         iqamaName = names[1];
         iqamaTime = times[1];
-        LinearLayout.LayoutParams cLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-        cLp.topMargin = dp(8);
-        clockColumn.addView(counts, cLp);
     }
 
     // ---------------------------------------------------------------- small helpers
 
-    private int dp(float v) {
-        return Theme.dp(ctx, v);
-    }
-
-    private TextView text(String s, float sp, int colour, boolean bold) {
-        TextView t = new TextView(ctx);
-        t.setText(s);
-        t.setTextColor(colour);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
-        return t;
-    }
-
-    private android.graphics.drawable.Drawable tinted(int res, int colour, int sizeDp) {
-        android.graphics.drawable.Drawable d = ctx.getDrawable(res).mutate();
+    private Drawable tinted(int res, int colour, int size) {
+        Drawable d = ctx.getDrawable(res).mutate();
         d.setTint(colour);
-        d.setBounds(0, 0, dp(sizeDp), dp(sizeDp));
+        d.setBounds(0, 0, size, size);
         return d;
     }
 
     /** Makes a view selectable with the remote (a ring around it) and clickable. */
-    private void focusable(final View v, float radiusDp, final Runnable click) {
+    private void focusable(final View v, float radius, final Runnable click) {
         v.setFocusable(true);
         v.setClickable(true);
-        final android.graphics.drawable.Drawable ring = Theme.focusRing(ctx, radiusDp);
+        final Drawable ring = Theme.ring(ctx, radius);
         v.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View view, boolean has) {
@@ -319,8 +286,7 @@ final class PrayerBoard {
     // ---------------------------------------------------------------- life and updates
 
     void start() {
-        boolean h24 = DateFormat.is24HourFormat(ctx);
-        ampm.setVisibility(h24 ? View.GONE : View.VISIBLE);
+        ampm.setVisibility(DateFormat.is24HourFormat(ctx) ? View.GONE : View.VISIBLE);
         handler.removeCallbacks(tick);
         handler.post(tick);
     }
@@ -361,7 +327,16 @@ final class PrayerBoard {
     }
 
     /** Called every second; the times are only recalculated once a minute or when something changes. */
+    /** The big clock, with Western digits like the design. */
+    private void updateClock() {
+        boolean h24 = DateFormat.is24HourFormat(ctx);
+        Date now = new Date();
+        clock.setText(new SimpleDateFormat(h24 ? "HH:mm" : "hh:mm", Locale.US).format(now));
+        if (!h24) ampm.setText(new SimpleDateFormat("a", Locale.US).format(now).toUpperCase(Locale.US));
+    }
+
     void update() {
+        updateClock();
         updateDates();
         Cities.City city = Cities.selected(ctx);
         if (city == null) {
@@ -400,6 +375,7 @@ final class PrayerBoard {
             // After Isha the next adhan is tomorrow's Fajr: show that time in its row.
             if (adhanEvent.at != shown[adhanEvent.index]) shown[adhanEvent.index] = adhanEvent.at;
 
+            flag.setEgypt("EG".equals(city.country));
             locationText.setText(ctx.getString(R.string.location_format,
                 city.name(isArabic()), ctx.getString("EG".equals(city.country) ? R.string.egypt : R.string.saudi)));
             for (int i = 0; i < 6; i++) {
@@ -416,16 +392,8 @@ final class PrayerBoard {
                 } else {
                     rowIqama[i].setVisibility(View.GONE);
                 }
-                rows[i].setAlpha(at <= now && !isNext ? 0.5f : 1f);
-                if (isNext) {
-                    GradientDrawable hl = new GradientDrawable();
-                    hl.setColor((Theme.accent(ctx) & 0x00FFFFFF) | 0x40000000);
-                    hl.setCornerRadius(dp(12));
-                    hl.setStroke(dp(2), Theme.accent(ctx));
-                    rows[i].setBackground(hl);
-                } else {
-                    rows[i].setBackground(null);
-                }
+                rows[i].setAlpha(at <= now && !isNext ? 0.55f : 1f);
+                rows[i].setBackground(isNext ? Theme.highlight(ctx, 18) : null);
             }
             nextBar.setText(ctx.getString(R.string.next_prayer,
                 PrayerCalc.name(ctx, adhanEvent.index, adhanEvent.friday)));

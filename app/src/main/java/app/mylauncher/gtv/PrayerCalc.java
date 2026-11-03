@@ -129,13 +129,13 @@ final class PrayerCalc {
     /** A time of day, following the TV's 12 or 24 hour setting, in the city's own zone. */
     static String time(Context c, Cities.City city, long millis) {
         boolean h24 = DateFormat.is24HourFormat(c);
-        SimpleDateFormat f = new SimpleDateFormat(h24 ? "HH:mm" : "h:mm a", Locale.getDefault());
+        SimpleDateFormat f = new SimpleDateFormat(h24 ? "HH:mm" : "hh:mm a", Locale.US);
         f.setTimeZone(zone(city));
         return f.format(new Date(millis));
     }
 
     static String countdown(long ms) {
         long s = ms / 1000L;
-        return String.format(Locale.getDefault(), "%d:%02d:%02d", s / 3600L, (s / 60L) % 60L, s % 60L);
+        return String.format(Locale.US, "%d:%02d:%02d", s / 3600L, (s / 60L) % 60L, s % 60L);
     }
 }

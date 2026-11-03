@@ -13,7 +13,6 @@ import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -23,14 +22,11 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -45,9 +41,10 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * The home screen. Top: the name, radio, weather and status icons. Middle: the clock and dates (right), the prayer
- * times (centre) and the settings list (left). Bottom: a row of apps. Everything can be selected with the remote.
- * It comes in two looks, chosen from a drop-down in the settings list: royal (green and gold) and kids (pink).
+ * The home screen, laid out on a fixed canvas that is scaled to the TV (see Stage) so it matches the design pictures:
+ * the settings list (left), the prayer times (centre), the clock, dates and countdowns (right) and a row of apps
+ * (bottom), with the weather, radio and status icons in the top corner. Everything can be selected with the remote.
+ * Two looks, chosen in the settings list: royal (green and gold) and kids (pink).
  */
 public class MainActivity extends Activity {
 
@@ -100,47 +97,49 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        final boolean kids = Theme.kids(this);
+        Geo g = Geo.of(this);
 
-        FrameLayout root = new FrameLayout(this);
-        root.setBackground(Theme.background(this));
-        addDecorations(root);
-
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(24), dp(14), dp(24), dp(12));
-        root.addView(content, new FrameLayout.LayoutParams(
+        final FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Theme.edgeColour(this));
+        ImageView art = new ImageView(this);
+        art.setImageResource(kids ? R.drawable.bg_kids : R.drawable.bg_royal);
+        art.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        root.addView(art, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // ---------------------------------------------------------------- top bar
-        LinearLayout top = new LinearLayout(this);
-        top.setOrientation(LinearLayout.HORIZONTAL);
-        top.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView title = new TextView(this);
-        title.setText(R.string.app_name);
-        title.setTextColor(Theme.bgText(this));
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        top.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-        radioBtn = chip(R.drawable.ic_radio, null);
-        radioBtn.setOnClickListener(new View.OnClickListener() {
+        final FrameLayout stage = new FrameLayout(this);
+        stage.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        root.addView(stage, new FrameLayout.LayoutParams(Stage.W, Stage.H, Gravity.TOP | Gravity.LEFT));
+        root.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
             @Override
-            public void onClick(View v) {
-                chooseRadio();
+            public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                Stage.fit(root, stage);
             }
         });
-        top.addView(radioBtn, chipLp(10));
 
+        // ---------------------------------------------------------------- top-left: weather, radio, status icons
         weatherView = chip(0, null);
-        weatherView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        weatherView.setTextSize(TypedValue.COMPLEX_UNIT_PX, 15);
+        weatherView.setMaxLines(2);
         weatherView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 chooseCountry();
             }
         });
-        top.addView(weatherView, chipLp(10));
+        Stage.add(stage, weatherView, 44, 20, 168, 92);
+
+        radioBtn = chip(R.drawable.ic_radio, null);
+        radioBtn.setTextSize(TypedValue.COMPLEX_UNIT_PX, 14);
+        radioBtn.setMaxLines(1);
+        radioBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                chooseRadio();
+            }
+        });
+        Stage.add(stage, radioBtn, 176, 20, 296, 54);
 
         status = new StatusIcons(this, new View.OnClickListener() {
             @Override
@@ -148,14 +147,11 @@ public class MainActivity extends Activity {
                 SettingsMenu.launch(MainActivity.this, Settings.ACTION_WIFI_SETTINGS);
             }
         });
-        top.addView(status.view, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        Stage.add(stage, status.view, 176, 58, 296, 92);
         updateRadioButton();
-        content.addView(top, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // ---------------------------------------------------------------- the middle: clock, prayers, settings
-        board = new PrayerBoard(this,
+        // ---------------------------------------------------------------- the clock, prayers and countdowns
+        board = new PrayerBoard(this, stage,
             new Runnable() {
                 @Override
                 public void run() {
@@ -176,142 +172,48 @@ public class MainActivity extends Activity {
             },
             prayerChanged);
 
-        LinearLayout middle = new LinearLayout(this);
-        middle.setOrientation(LinearLayout.HORIZONTAL);
-        // First child is on the start side: the right in Arabic (as in the design), the left in English.
-        middle.addView(board.clockColumn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 30f));
-        LinearLayout.LayoutParams pLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 38f);
-        pLp.setMarginStart(dp(10));
-        pLp.setMarginEnd(dp(10));
-        middle.addView(board.prayers, pLp);
-        middle.addView(buildSettingsPanel(), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 25f));
-        LinearLayout.LayoutParams mLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 2.7f);
-        mLp.topMargin = dp(8);
-        content.addView(middle, mLp);
+        // ---------------------------------------------------------------- the settings list
+        Stage.add(stage, buildSettingsList(), g.settings[0], g.settings[1], g.settings[2], g.settings[3]);
 
         // ---------------------------------------------------------------- the apps row
         HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
-        scroll.setBackground(Theme.panel(this, 22));
+        scroll.setFillViewport(true);
         scroll.setClipToPadding(false);
-        scroll.setPadding(dp(10), dp(8), dp(10), dp(8));
+        scroll.setClipChildren(false);
         appRow = new LinearLayout(this);
         appRow.setOrientation(LinearLayout.HORIZONTAL);
+        appRow.setGravity(Gravity.CENTER);
         scroll.addView(appRow, new ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        scroll.setFillViewport(true);
-        LinearLayout.LayoutParams aLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.15f);
-        aLp.topMargin = dp(10);
-        content.addView(scroll, aLp);
+        Stage.add(stage, scroll, g.bar[0], g.bar[1], g.bar[2], g.bar[3]);
 
-        empty = new TextView(this);
-        empty.setText(R.string.no_apps);
-        empty.setTextColor(Theme.bgText(this));
-        empty.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        empty = Stage.text(this, getString(R.string.no_apps), 24, Theme.cardText(this), true);
         empty.setGravity(Gravity.CENTER);
         empty.setVisibility(View.GONE);
-        content.addView(empty, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        Stage.add(stage, empty, g.bar[0], g.bar[1], g.bar[2], g.bar[3]);
 
         setContentView(root);
     }
 
-    /** The skyline over the middle of the top bar, and a few stars in the corners. */
-    private void addDecorations(FrameLayout root) {
-        ImageView skyline = new ImageView(this);
-        skyline.setImageResource(Theme.kids(this) ? R.drawable.deco_skyline_kids : R.drawable.deco_skyline_royal);
-        skyline.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        FrameLayout.LayoutParams sLp = new FrameLayout.LayoutParams(dp(420), dp(66),
-            Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        sLp.topMargin = dp(6);
-        root.addView(skyline, sLp);
-
-        int[] stars = {R.drawable.ic_crescent, R.drawable.ic_star, R.drawable.ic_star};
-        int[] sizes = {34, 20, 14};
-        int[] marginTop = {10, 40, 22};
-        int[] marginSide = {250, 210, 300};
-        for (int i = 0; i < 3; i++) {
-            for (int side = 0; side < 2; side++) {
-                ImageView s = new ImageView(this);
-                s.setImageResource(stars[i]);
-                s.setColorFilter(Theme.kids(this) ? Color.WHITE : Theme.accent(this));
-                s.setAlpha(0.55f);
-                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(sizes[i]), dp(sizes[i]),
-                    Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-                lp.topMargin = dp(marginTop[i]);
-                s.setTranslationX(dp(side == 0 ? -marginSide[i] : marginSide[i]));
-                root.addView(s, lp);
-            }
-        }
-    }
-
     // ---------------------------------------------------------------- the settings list (left)
 
-    private LinearLayout buildSettingsPanel() {
-        LinearLayout panel = new LinearLayout(this);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setBackground(Theme.panel(this, 22));
-        panel.setPadding(dp(10), dp(10), dp(10), dp(10));
-
-        TextView head = new TextView(this);
-        head.setText(R.string.menu_title);
-        head.setTextColor(Theme.accent(this));
-        head.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        head.setTypeface(Typeface.DEFAULT_BOLD);
-        head.setGravity(Gravity.CENTER);
-        head.setCompoundDrawablePadding(dp(8));
-        head.setCompoundDrawablesRelativeWithIntrinsicBounds(
-            tinted(R.drawable.ic_settings, Theme.accent(this), 26), null, null, null);
-        panel.addView(head, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
+    private View buildSettingsList() {
         ScrollView scroll = new ScrollView(this);
         scroll.setVerticalScrollBarEnabled(false);
+        scroll.setClipToPadding(false);
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list, new ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        LinearLayout.LayoutParams sLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-        sLp.topMargin = dp(6);
-        panel.addView(scroll, sLp);
 
-        // The look: a drop-down with the two interfaces.
-        Spinner look = new Spinner(this, Spinner.MODE_DIALOG);
-        String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids)};
-        look.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, names) {
+        // The look: a list with the two interfaces (the one in use is marked).
+        addRow(list, R.drawable.ic_palette, R.string.menu_theme, new Runnable() {
             @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                TextView t = (TextView) super.getView(position, convertView, parent);
-                t.setTextColor(Theme.chipText(MainActivity.this));
-                t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-                t.setTypeface(Typeface.DEFAULT_BOLD);
-                t.setSingleLine(true);
-                t.setCompoundDrawablePadding(dp(8));
-                t.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                    tinted(R.drawable.ic_palette, Theme.chipText(MainActivity.this), 22), null, null, null);
-                return t;
+            public void run() {
+                chooseLook();
             }
         });
-        look.setSelection(Theme.id(this), false);
-        look.setPrompt(getString(R.string.menu_theme));
-        look.setBackground(Theme.chip(this));
-        look.setPadding(dp(8), dp(4), dp(8), dp(4));
-        look.setFocusable(true);
-        look.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (position != Theme.id(MainActivity.this)) {
-                    Theme.set(MainActivity.this, position);
-                    recreate();
-                }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
-        list.addView(look, rowLp());
-
         addRow(list, R.drawable.ic_bell, R.string.menu_adhan, new Runnable() {
             @Override
             public void run() {
@@ -359,61 +261,97 @@ public class MainActivity extends Activity {
                 askOverlayPermission();
             }
         });
-        return panel;
+        return scroll;
     }
 
-    private LinearLayout.LayoutParams rowLp() {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = dp(5);
-        return lp;
+    /** The two looks, in a list; picking the other one restarts the screen in it. */
+    private void chooseLook() {
+        String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids)};
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.menu_theme)
+            .setSingleChoiceItems(names, Theme.id(this), new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int which) {
+                    d.dismiss();
+                    if (which != Theme.id(MainActivity.this)) {
+                        Theme.set(MainActivity.this, which);
+                        recreate();
+                    }
+                }
+            })
+            .setNegativeButton(R.string.close, null)
+            .show();
     }
 
-    private LinearLayout.LayoutParams chipLp(int endMarginDp) {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMarginEnd(dp(endMarginDp));
-        return lp;
-    }
-
+    /** One row of the settings list: the icon on the left, the words on the right, as in the design. */
     private TextView addRow(LinearLayout list, int icon, int text, final Runnable click) {
-        TextView row = chip(icon, getString(text));
-        row.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        row.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        final FrameLayout row = new FrameLayout(this);
+        row.setBackground(Theme.button(this, 22));
+        row.setFocusable(true);
+        row.setClickable(true);
         row.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 click.run();
             }
         });
-        list.addView(row, rowLp());
-        return row;
+        ImageView iv = new ImageView(this);
+        iv.setImageResource(icon);
+        iv.setColorFilter(Theme.kids(this) ? Color.parseColor("#FFFFF0CC") : Theme.cardGold(this));
+        FrameLayout.LayoutParams ilp = new FrameLayout.LayoutParams(30, 30, Gravity.LEFT | Gravity.CENTER_VERTICAL);
+        ilp.leftMargin = 14;
+        row.addView(iv, ilp);
+        final TextView label = Stage.text(this, getString(text), 18, Theme.cardText(this), true);
+        label.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        label.setPadding(52, 0, 18, 0);
+        Stage.fitOneLine(label, 11, 18);
+        row.addView(label, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        final Drawable ring = Theme.ring(this, 22);
+        row.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean has) {
+                v.setForeground(has ? ring : null);
+            }
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, 46);
+        lp.bottomMargin = 5;
+        lp.leftMargin = 2;
+        lp.rightMargin = 2;
+        list.addView(row, lp);
+        // The caller wants to hide a row (the permission one): hide the whole row, not just the words.
+        label.setTag(row);
+        return label;
     }
 
-    /** A selectable button with an optional icon at its start. */
+    /** A small selectable chip (weather, radio). */
     private TextView chip(int icon, String text) {
-        TextView b = new TextView(this);
-        if (text != null) b.setText(text);
-        b.setTextColor(Theme.chipText(this));
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        b.setTypeface(Typeface.DEFAULT_BOLD);
+        TextView b = Stage.text(this, text == null ? "" : text, 15, Theme.cardText(this), true);
         b.setGravity(Gravity.CENTER);
-        b.setPadding(dp(12), dp(8), dp(12), dp(8));
-        b.setBackground(Theme.chip(this));
+        b.setPadding(10, 4, 10, 4);
+        b.setBackground(Theme.button(this, 14));
         b.setFocusable(true);
         b.setClickable(true);
         if (icon != 0) {
-            b.setCompoundDrawablePadding(dp(8));
+            b.setCompoundDrawablePadding(6);
             b.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                tinted(icon, Theme.chipText(this), 22), null, null, null);
+                tinted(icon, Theme.cardText(this), 20), null, null, null);
         }
+        final Drawable ring = Theme.ring(this, 14);
+        b.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean has) {
+                v.setForeground(has ? ring : null);
+            }
+        });
         return b;
     }
 
-    private Drawable tinted(int res, int colour, int sizeDp) {
+    private Drawable tinted(int res, int colour, int size) {
         Drawable d = getDrawable(res).mutate();
         d.setTint(colour);
-        d.setBounds(0, 0, dp(sizeDp), dp(sizeDp));
+        d.setBounds(0, 0, size, size);
         return d;
     }
 
@@ -435,7 +373,7 @@ public class MainActivity extends Activity {
         status.start();
         RadioService.listen(radioListener);
         updateRadioButton();
-        permRow.setVisibility(Settings.canDrawOverlays(this) ? View.GONE : View.VISIBLE);
+        ((View) permRow.getTag()).setVisibility(Settings.canDrawOverlays(this) ? View.GONE : View.VISIBLE);
         // Line up the alarms for the next prayer and the next reminder (also set again after a restart).
         Scheduler.scheduleNext(this);
         Reminders.scheduleNext(this);
@@ -612,7 +550,7 @@ public class MainActivity extends Activity {
     }
 
     private void showWeather(Cities.City city, int tempC, int code) {
-        String degrees = NumberFormat.getIntegerInstance().format(tempC) + "°";
+        String degrees = NumberFormat.getIntegerInstance(Locale.US).format(tempC) + "°";
         weatherView.setText(degrees + "  " + conditionText(code) + "\n" + city.name(isArabic()));
     }
 
@@ -710,12 +648,8 @@ public class MainActivity extends Activity {
         LinearLayout tile = new LinearLayout(this);
         tile.setOrientation(LinearLayout.VERTICAL);
         tile.setGravity(Gravity.CENTER_HORIZONTAL);
-        tile.setPadding(dp(6), dp(6), dp(6), dp(6));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(Theme.tileFill(this));
-        bg.setCornerRadius(dp(18));
-        bg.setStroke(dp(2), kids ? Color.parseColor("#FFE58FA3") : Color.parseColor("#88E8B84A"));
-        tile.setBackground(bg);
+        tile.setPadding(6, 6, 6, 4);
+        tile.setBackground(Theme.tile(this, 16));
         tile.setTag(item.component.getPackageName());
         tile.setFocusable(true);
         tile.setClickable(true);
@@ -726,7 +660,7 @@ public class MainActivity extends Activity {
         image.setOutlineProvider(new ViewOutlineProvider() {
             @Override
             public void getOutline(View v, Outline o) {
-                o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(12));
+                o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), 10);
             }
         });
         if (item.banner) {
@@ -734,25 +668,20 @@ public class MainActivity extends Activity {
         } else {
             // A square icon sits in the middle on a lighter backing.
             image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            image.setPadding(dp(12), dp(8), dp(12), dp(8));
+            image.setPadding(10, 6, 10, 6);
             image.setBackgroundColor(kids ? Color.WHITE : Color.parseColor("#33FFFFFF"));
         }
         image.setImageDrawable(item.image);
         tile.addView(image, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        TextView label = new TextView(this);
-        label.setText(item.label);
-        label.setTextColor(Theme.tileLabel(this));
-        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        label.setTypeface(Typeface.DEFAULT_BOLD);
-        label.setSingleLine(true);
+        TextView label = Stage.text(this, item.label, 17, Theme.tileLabel(this), true);
         label.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams lLp = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lLp.topMargin = dp(5);
+        Stage.fitOneLine(label, 10, 17);
+        LinearLayout.LayoutParams lLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 26);
+        lLp.topMargin = 3;
         tile.addView(label, lLp);
 
-        final Drawable ring = Theme.focusRing(this, 18);
+        final Drawable ring = Theme.ring(this, 16);
         tile.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean has) {
@@ -773,9 +702,8 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(126), ViewGroup.LayoutParams.MATCH_PARENT);
-        lp.setMarginStart(dp(5));
-        lp.setMarginEnd(dp(5));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(160, ViewGroup.LayoutParams.MATCH_PARENT);
+        lp.setMargins(12, 6, 12, 6);
         tile.setLayoutParams(lp);
         return tile;
     }
@@ -855,7 +783,4 @@ public class MainActivity extends Activity {
         }
     }
 
-    private int dp(int value) {
-        return Theme.dp(this, value);
-    }
 }

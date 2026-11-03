@@ -13,7 +13,6 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -72,8 +71,8 @@ final class StatusIcons {
         view = new LinearLayout(ctx);
         view.setOrientation(LinearLayout.HORIZONTAL);
         view.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        view.setPadding(dp(10), dp(6), dp(10), dp(6));
-        view.setBackground(Theme.chip(ctx));
+        view.setPadding(dp(8), dp(4), dp(8), dp(4));
+        view.setBackground(Theme.button(ctx, 14));
         view.setFocusable(true);
         view.setClickable(true);
         view.setOnClickListener(open);
@@ -86,16 +85,16 @@ final class StatusIcons {
     private ImageView icon(int res) {
         ImageView v = new ImageView(ctx);
         v.setImageResource(res);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(26), dp(26));
-        lp.setMarginStart(dp(6));
-        lp.setMarginEnd(dp(6));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(24), dp(24));
+        lp.setMarginStart(dp(5));
+        lp.setMarginEnd(dp(5));
         view.addView(v, lp);
         return v;
     }
 
+    /** The home screen is drawn on a scaled canvas (see Stage), so sizes here are canvas units, not dp. */
     private int dp(int value) {
-        return Math.round(TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, value, ctx.getResources().getDisplayMetrics()));
+        return value;
     }
 
     void start() {

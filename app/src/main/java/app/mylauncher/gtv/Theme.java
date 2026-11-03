@@ -175,4 +175,68 @@ final class Theme {
     static int tileColor(String pkg) {
         return Color.WHITE;
     }
+
+    // ---------------------------------------------------------------- the home screen's own colours and shapes
+    // (sizes here are canvas units, not dp: the home screen is drawn on a scaled canvas, see Stage)
+
+    static int listName(Context c) { return pick(c, "#FFFFF8E7", "#FF7A3347"); }
+    static int listDim(Context c) { return pick(c, "#FFD9CDA6", "#FFA5586D"); }
+    static int cardText(Context c) { return pick(c, "#FFFFF8E7", "#FFFFFFFF"); }
+    static int cardGold(Context c) { return pick(c, "#FFF2CE6A", "#FFFFF0CC"); }
+    static int cardDim(Context c) { return pick(c, "#FFD9CDA6", "#FFFFE9EE"); }
+    static int clockFill(Context c) { return pick(c, "#FFF7D878", "#FFFFF6E4"); }
+    static int clockOutline(Context c) { return pick(c, "#FF6B4A06", "#FFB8566F"); }
+    static int nextText(Context c) { return pick(c, "#FF3A2A00", "#FF7A3347"); }
+
+    private static GradientDrawable shape(int fill, float r, int strokePx, int stroke) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(fill);
+        g.setCornerRadius(r);
+        if (strokePx > 0) g.setStroke(strokePx, stroke);
+        return g;
+    }
+
+    /** A button on the canvas: quiet when off, bright outline when the remote is on it. */
+    static Drawable button(Context c, float r) {
+        boolean k = kids(c);
+        StateListDrawable s = new StateListDrawable();
+        s.addState(new int[] {android.R.attr.state_focused},
+            shape(Color.parseColor(k ? "#FFF4A9BC" : "#66E8B84A"), r, 3, Color.parseColor(k ? "#FFFFFFFF" : "#FFF2CE6A")));
+        s.addState(new int[] {},
+            shape(Color.parseColor(k ? "#FFD9788E" : "#B20A3B2C"), r, 2, Color.parseColor(k ? "#FFFFE9D2" : "#B3B88A22")));
+        return s;
+    }
+
+    /** The marker over the thing the remote is on. */
+    static Drawable ring(Context c, float r) {
+        boolean k = kids(c);
+        return shape(Color.parseColor(k ? "#33FFFFFF" : "#26E8B84A"), r, 4, Color.parseColor(k ? "#FFFFFFFF" : "#FFF2CE6A"));
+    }
+
+    /** The time pills (gold in the royal look, cream in the kids' look). */
+    static Drawable timePill(Context c) {
+        boolean k = kids(c);
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+            k ? new int[] {Color.parseColor("#FFFFF8EC"), Color.parseColor("#FFFBE3C6")}
+              : new int[] {Color.parseColor("#FFF8DD84"), Color.parseColor("#FFD9A93A")});
+        g.setCornerRadius(20);
+        g.setStroke(2, Color.parseColor(k ? "#FFE5A9B7" : "#FFB88A22"));
+        return g;
+    }
+
+    /** A soft panel behind small chips and the app tiles. */
+    static Drawable tile(Context c, float r) {
+        boolean k = kids(c);
+        return shape(Color.parseColor(k ? "#FFFFF4E0" : "#CC082F22"), r, 2, Color.parseColor(k ? "#FFE58FA3" : "#FFB88A22"));
+    }
+
+    /** The row of the prayer that is next. */
+    static Drawable highlight(Context c, float r) {
+        boolean k = kids(c);
+        return shape(Color.parseColor(k ? "#59FFFFFF" : "#40E8B84A"), r, 2, Color.parseColor(k ? "#FFFFFFFF" : "#FFF2CE6A"));
+    }
+
+    static int edgeColour(Context c) {
+        return Color.parseColor(kids(c) ? "#FFF4B4C6" : "#FF04251A");
+    }
 }
