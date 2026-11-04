@@ -25,15 +25,14 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 /**
- * Shows a short dhikr card over whatever app is open, every few minutes, with the live tasbih counters. It needs the
+ * Shows a short dhikr card over whatever app is open, every few minutes. It needs the
  * "display over other apps" permission. The adhan never uses it (it plays quietly in the background).
  */
 public class OverlayService extends Service {
     private static final String CHANNEL = "overlay";
-    private static final long SHOWN_MS = 15000L;
+    private static final long SHOWN_MS = 5000L;
 
     private final Handler h = new Handler(Looper.getMainLooper());
     private WindowManager wm;
@@ -149,75 +148,39 @@ public class OverlayService extends Service {
         items.addAll(Adhkar.mine(this));
         int idx = sp.getInt("ov_idx", 0) % items.size();
         sp.edit().putInt("ov_idx", idx + 1).apply();
-        final int fi = idx;
 
+        // A small card at the top right: no buttons, it goes by itself after 5 seconds or when it is tapped.
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
         c.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         c.setPadding(dp(16), dp(12), dp(16), dp(12));
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(0xF2101418);
-        bg.setCornerRadius(dp(18));
+        bg.setCornerRadius(dp(16));
         bg.setStroke(dp(1), 0xFFE8B84A);
         c.setBackground(bg);
-        c.addView(text(items.get(idx), 18, 0xFFF6ECD2, true));
-        final boolean counters = sp.getBoolean("ov_cnt", true);
-        final TextView count = text("", 14, 0xFFE8B84A, true);
-        if (counters) {
-            count.setText(counterLine(fi));
-            c.addView(count);
-        }
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER);
-        if (fi < Adhkar.TASBIH.length) {
-            TextView plus = text("عدّ +1", 15, 0xFF1B1500, true);
-            GradientDrawable pb = new GradientDrawable();
-            pb.setColor(0xFFE8B84A);
-            pb.setCornerRadius(dp(14));
-            plus.setBackground(pb);
-            plus.setPadding(dp(18), dp(8), dp(18), dp(8));
-            plus.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Adhkar.add(OverlayService.this, fi);
-                    if (counters) count.setText(counterLine(fi));
-                    h.removeCallbacks(hide);
-                    h.postDelayed(hide, SHOWN_MS);
-                }
-            });
-            row.addView(plus);
-        }
-        TextView close = text("إغلاق", 15, 0xFFF6ECD2, true);
-        close.setPadding(dp(18), dp(8), dp(18), dp(8));
-        close.setOnClickListener(new View.OnClickListener() {
+        TextView t = text(items.get(idx), 17, 0xFFF6ECD2, true);
+        t.setLineSpacing(0, 1.2f);
+        c.addView(t);
+        c.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 hideCard();
             }
         });
-        row.addView(close);
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
-        rp.topMargin = dp(8);
-        rp.gravity = Gravity.CENTER_HORIZONTAL;
-        c.addView(row, rp);
 
-        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(-1, -2,
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(-2, -2,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT);
-        lp.gravity = Gravity.BOTTOM;
-        lp.width = getResources().getDisplayMetrics().widthPixels - dp(24);
-        lp.y = dp(24);
+        lp.gravity = Gravity.TOP | Gravity.RIGHT;
+        lp.x = dp(12);
+        lp.y = dp(44);
+        lp.width = Math.round(getResources().getDisplayMetrics().widthPixels * 0.72f);
         wm.addView(c, lp);
         card = c;
         h.removeCallbacks(hide);
         h.postDelayed(hide, SHOWN_MS);
-    }
-
-    private String counterLine(int i) {
-        return String.format(Locale.US, "تسبيح %d · استغفار %d",
-            Adhkar.count(this, 0) + Adhkar.count(this, 1) + Adhkar.count(this, 2) + Adhkar.count(this, 4),
-            Adhkar.count(this, 3));
     }
 
     private void hideCard() {

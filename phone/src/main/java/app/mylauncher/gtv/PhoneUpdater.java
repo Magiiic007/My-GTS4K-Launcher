@@ -94,17 +94,14 @@ final class PhoneUpdater {
     }
 
     private static void offer(final Activity a, long latest) {
-        new AlertDialog.Builder(a)
-            .setTitle("تحديث التطبيق")
-            .setMessage(a.getString(R.string.upd_found, (int) latest, (int) installed(a)))
-            .setPositiveButton(R.string.upd_btn_install, new DialogInterface.OnClickListener() {
+        new Pop(a).title("تحديث التطبيق")
+            .message(a.getString(R.string.upd_found, (int) latest, (int) installed(a)))
+            .ok(a.getString(R.string.upd_btn_install), new Runnable() {
                 @Override
-                public void onClick(DialogInterface d, int w) {
+                public void run() {
                     start(a);
                 }
-            })
-            .setNegativeButton("إغلاق", null)
-            .show();
+            }).cancel("إغلاق").show();
     }
 
     private static void start(final Activity a) {

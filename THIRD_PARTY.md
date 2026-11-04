@@ -18,3 +18,11 @@
 The third look ("Mihrab") follows the screen layout idea of https://github.com/egyjs/afnon-android-tv-launcher
 (MIT licence, Copyright (c) its authors): prayer cards in a row, favourite apps, and a mihrab arch with the next
 prayer. No code or fonts were copied; the implementation (MihrabHome.java) is our own.
+
+## Phone app (الصلاة خير)
+
+- **Adhkar text:** the complete "Hisn al-Muslim" (132 chapters) by Sa'id bin Ali bin Wahf al-Qahtani, taken from the
+  JSON file of [rn0x/Adhkar-json](https://github.com/rn0x/Adhkar-json) (`phone/src/main/res/raw/hisn_adhkar.json`).
+  That repository states no licence; the text is used here for personal, non-commercial purposes.
+- **Neighbourhood name:** [OpenStreetMap Nominatim](https://nominatim.org/) (data (c) OpenStreetMap contributors, ODbL).
+  Only the coordinates are sent, once when the location is refreshed.

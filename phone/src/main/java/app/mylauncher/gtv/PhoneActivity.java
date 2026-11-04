@@ -26,6 +26,8 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -156,7 +158,8 @@ public class PhoneActivity extends Activity {
                 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 need.add(Manifest.permission.POST_NOTIFICATIONS);
             }
-            if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                need.add(Manifest.permission.ACCESS_FINE_LOCATION);
                 need.add(Manifest.permission.ACCESS_COARSE_LOCATION);
             }
             if (!need.isEmpty()) {
@@ -202,16 +205,16 @@ public class PhoneActivity extends Activity {
             sp.edit().putBoolean("ph_first", true).apply();
             autoTried = true;
             autoCity(false);
-            new AlertDialog.Builder(this).setTitle("خطوة أخيرة مهمة")
-                .setMessage("لكي يعمل الأذان والراديو والشاشة مقفولة، افتح صفحة «تأكد أن الأذان يعمل» وفعّل كل بند فيها.")
-                .setPositiveButton("فتح الصفحة", new DialogInterface.OnClickListener() {
+            new Pop(this).title("خطوة أخيرة مهمة")
+                .message("لكي يعمل الأذان والراديو والشاشة مقفولة، افتح صفحة «تأكد أن الأذان يعمل» وفعّل كل بند فيها.")
+                .ok("فتح الصفحة", new Runnable() {
                     @Override
-                    public void onClick(DialogInterface d, int w) {
+                    public void run() {
                         tab = 3;
                         sub = "fix";
                         build();
                     }
-                }).setNegativeButton("لاحقًا", null).show();
+                }).cancel("لاحقًا").show();
             return;
         }
         if (code == REQ_LOC) autoCity(false);
@@ -457,7 +460,7 @@ public class PhoneActivity extends Activity {
     private void home() {
         final Cities.City city = Cities.selected(this);
         if (city == null) {
-            title("Magiic", false);
+            title("الصلاة خير", false);
             row("اختر مدينتك", "لحساب مواقيت الصلاة", "تلقائي", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -484,23 +487,27 @@ public class PhoneActivity extends Activity {
             occNear = Reminders.nearest(this);
         }
 
-        // top chips
+        float f = fit();
+        // top row: the menu, the place (down to the neighbourhood when the phone's location is used) and the weather
         LinearLayout top = hbox();
         top.addView(hamburger(), new LinearLayout.LayoutParams(dp(38), dp(38)));
-        View gap0 = new View(this);
-        top.addView(gap0, new LinearLayout.LayoutParams(dp(8), 1));
-        weatherTv = chip(weather.isEmpty() ? city.name(true) : city.name(true) + " · " + weather);
+        TextView place = chip("📍 " + city.name(true));
+        place.setSingleLine(true);
+        place.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        place.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(0, -2, 1f);
+        pp.setMarginStart(dp(8));
+        pp.setMarginEnd(dp(8));
+        top.addView(place, pp);
+        weatherTv = chip(weather.isEmpty() ? "--°" : weather);
         top.addView(weatherTv);
-        View sp1 = new View(this);
-        top.addView(sp1, new LinearLayout.LayoutParams(0, 1, 1f));
-        top.addView(chip(sp.getBoolean("city_auto", true) ? "الموقع تلقائي" : "الموقع يدوي"));
         add(top, 0);
         if (weather.isEmpty()) {
             Weather.fetch(city, new Weather.Callback() {
                 @Override
                 public void onResult(int tempC, int code) {
                     weather = tempC + "°";
-                    if (weatherTv != null) weatherTv.setText(city.name(true) + " · " + weather);
+                    if (weatherTv != null) weatherTv.setText(weather);
                 }
 
                 @Override
@@ -513,12 +520,12 @@ public class PhoneActivity extends Activity {
         LinearLayout clock = hbox();
         clock.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         clock.setGravity(Gravity.CENTER);
-        clockTv = tv("--:--", 62, gold, true);
+        clockTv = tv("--:--", Math.round(62 * f), gold, true);
         apTv = tv("", 15, cream, true);
         apTv.setPadding(dp(8), 0, 0, 0);
         clock.addView(clockTv);
         clock.addView(apTv);
-        add(clock, 4);
+        add(clock, 2);
         TextView d1 = tv(Hijri.weekdayAr(cal) + "، " + Hijri.gregorianAr(cal), 14, cream, false);
         d1.setGravity(Gravity.CENTER);
         add(d1, 0);
@@ -533,29 +540,29 @@ public class PhoneActivity extends Activity {
         hero.setGravity(Gravity.CENTER_HORIZONTAL);
         Deco.Frame frame = new Deco.Frame(look == 1, (gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         hero.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {shape(card, line, 22), frame}));
-        hero.setPadding(dp(14), dp(12), dp(14), dp(12));
+        hero.setPadding(dp(14), dp(Math.round(10 * f)), dp(14), dp(Math.round(10 * f)));
         TextView l1 = tv("الصلاة القادمة", 12, dim, true);
-        l1.setPadding(0, dp(8), 0, 0);
+        l1.setPadding(0, dp(6), 0, 0);
         hero.addView(l1);
-        nameTv = tv("", 30, gold, true);
+        nameTv = tv("", Math.round(30 * f), gold, true);
         hero.addView(nameTv);
-        cdTv = tv("00:00:00", 44, cream, true);
+        cdTv = tv("00:00:00", Math.round(44 * f), cream, true);
         cdTv.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         hero.addView(cdTv);
         altTv = tv("", 14, cream, true);
         altTv.setGravity(Gravity.CENTER);
-        hero.addView(altTv, lp(-2, dp(28), 4));
+        hero.addView(altTv, lp(-2, dp(26), 2));
         LinearLayout iq = hbox();
         iq.setBackground(shape(0x38000000, line, 14));
-        iq.setPadding(dp(12), dp(8), dp(12), dp(8));
+        iq.setPadding(dp(12), dp(6), dp(12), dp(6));
         iqLabel = tv("", 12, dim, false);
         iqValue = tv("", 18, gold, true);
         iq.addView(iqLabel, new LinearLayout.LayoutParams(0, -2, 1f));
         iq.addView(iqValue);
-        hero.addView(iq, lp(-1, dp(54), 8));
-        add(hero, 12);
+        hero.addView(iq, lp(-1, dp(Math.round(50 * f)), 6));
+        add(hero, 8);
 
-        // the six times
+        // the six times: they share whatever height is left, so the page fills the screen
         long[] t = PrayerCalc.day(city, now, 0, adj);
         long sun = PrayerCalc.sunrise(city, now, 0, adj);
         int[] iqm = PrayerPrefs.iqama(this);
@@ -568,16 +575,19 @@ public class PhoneActivity extends Activity {
             boolean next = idx >= 0 && idx == shownNext;
             LinearLayout r = hbox();
             r.setBackground(shape(next ? hl : card, next ? gold : 0, 16));
-            r.setPadding(dp(14), dp(9), dp(14), dp(9));
+            r.setPadding(dp(14), dp(Math.round(8 * f)), dp(14), dp(Math.round(8 * f)));
             LinearLayout v = vbox();
-            v.addView(tv(name, 18, cream, true));
+            v.addView(tv(name, Math.round(18 * f), cream, true));
             if (idx >= 0 && iqm[idx] > 0) v.addView(tv(getString(R.string.iqama_minutes, iqm[idx]), 11, dim, false));
             r.addView(v, new LinearLayout.LayoutParams(0, -2, 1f));
-            TextView tt = tv(ap(PrayerCalc.time(this, city, at)), 19, gold, true);
+            TextView tt = tv(ap(PrayerCalc.time(this, city, at)), Math.round(19 * f), gold, true);
             tt.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
             r.addView(tt);
             if (at < now && !next) r.setAlpha(0.6f);
-            add(r, 6);
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2, 1f);
+            rp.topMargin = dp(5);
+            r.setGravity(Gravity.CENTER_VERTICAL);
+            body.addView(r, rp);
         }
 
         // verse of the day
@@ -586,15 +596,22 @@ public class PhoneActivity extends Activity {
         int vi = (cal.get(Calendar.YEAR) * 366 + cal.get(Calendar.DAY_OF_YEAR)) % vt.length;
         LinearLayout vc = vbox();
         vc.setBackground(shape(card, line, 18));
-        vc.setPadding(dp(14), dp(12), dp(14), dp(12));
-        TextView v1 = tv(vt[vi], 20, cream, false);
+        vc.setPadding(dp(14), dp(Math.round(10 * f)), dp(14), dp(Math.round(10 * f)));
+        TextView v1 = tv(vt[vi], Math.round(19 * f), cream, false);
         v1.setGravity(Gravity.CENTER);
-        v1.setLineSpacing(0, 1.3f);
+        v1.setLineSpacing(0, 1.25f);
         TextView v2 = tv("آية اليوم · " + vr[vi], 12, gold, true);
         v2.setGravity(Gravity.CENTER);
         vc.addView(v1);
         vc.addView(v2);
-        add(vc, 12);
+        add(vc, 8);
+    }
+
+    /** 1.0 on a tall screen; smaller on a short one, so the home page fits without scrolling. */
+    private float fit() {
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        float availDp = dm.heightPixels / dm.density - 60f;
+        return Math.max(0.74f, Math.min(1f, availDp / 840f));
     }
 
     /** The times come with AM/PM; the phone is Arabic only. */
@@ -863,14 +880,13 @@ public class PhoneActivity extends Activity {
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        new AlertDialog.Builder(PhoneActivity.this).setTitle("وقت التنبيه")
-                            .setSingleChoiceItems(new String[] {"وقت ثابت", am ? "مرتبط بالفجر" : "مرتبط بالمغرب"},
-                                linked ? 1 : 0, new DialogInterface.OnClickListener() {
+                        new Pop(PhoneActivity.this).title("وقت التنبيه")
+                            .single(new String[] {"وقت ثابت", am ? "مرتبط بالفجر" : "مرتبط بالمغرب"}, linked ? 1 : 0,
+                                new Pop.Pick() {
                                     @Override
-                                    public void onClick(DialogInterface d, int which) {
+                                    public void on(int which) {
                                         it.relMin = which == 1 ? (it.relMin >= 0 ? it.relMin : 20) : -1;
                                         saveRem(list);
-                                        d.dismiss();
                                         build();
                                     }
                                 }).show();
@@ -895,15 +911,15 @@ public class PhoneActivity extends Activity {
         } else row("الوقت", String.format(Locale.US, "%02d:%02d", it.hour, it.minute), "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                new TimePickerDialog(PhoneActivity.this, new TimePickerDialog.OnTimeSetListener() {
+                timeDialog(it.hour, it.minute, new TimeSetter() {
                     @Override
-                    public void onTimeSet(android.widget.TimePicker p, int hour, int minute) {
+                    public void set(int hour, int minute) {
                         it.hour = hour;
                         it.minute = minute;
                         saveRem(list);
                         build();
                     }
-                }, it.hour, it.minute, true).show();
+                });
             }
         });
         row("مدة بقاء الإشعار", it.durationMin == 0 ? "حتى أغلقه" : it.durationMin + " دقيقة", "›",
@@ -948,14 +964,15 @@ public class PhoneActivity extends Activity {
                 final EditText in = new EditText(PhoneActivity.this);
                 in.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
                 in.setText(cur);
-                new AlertDialog.Builder(PhoneActivity.this).setTitle(title).setView(in)
-                    .setPositiveButton("حفظ", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface d, int w) {
-                            s.set(in.getText().toString().trim());
-                            build();
-                        }
-                    }).setNegativeButton("إلغاء", null).show();
+                in.setTextColor(cream);
+                in.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                new Pop(PhoneActivity.this).title(title).view(in).ok("حفظ", new Runnable() {
+                    @Override
+                    public void run() {
+                        s.set(in.getText().toString().trim());
+                        build();
+                    }
+                }).cancel("إلغاء").show();
             }
         };
     }
@@ -968,24 +985,17 @@ public class PhoneActivity extends Activity {
             names[k] = white ? (13 + k) + " من الشهر الهجري" : Hijri.dayNameAr(k);
             on[k] = (mask & (1 << k)) != 0;
         }
-        new AlertDialog.Builder(this).setTitle("اختر الأيام")
-            .setMultiChoiceItems(names, on, new DialogInterface.OnMultiChoiceClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int which, boolean checked) {
-                    on[which] = checked;
-                }
-            })
-            .setPositiveButton("حفظ", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int w) {
-                    int m = 0;
-                    for (int k = 0; k < n; k++) if (on[k]) m |= 1 << k;
-                    if (white) it.hijriMask = m;
-                    else it.daysMask = m;
-                    saveRem(list);
-                    build();
-                }
-            }).setNegativeButton("إلغاء", null).show();
+        new Pop(this).title("اختر الأيام").multi(names, on).ok("حفظ", new Runnable() {
+            @Override
+            public void run() {
+                int m = 0;
+                for (int k = 0; k < n; k++) if (on[k]) m |= 1 << k;
+                if (white) it.hijriMask = m;
+                else it.daysMask = m;
+                saveRem(list);
+                build();
+            }
+        }).cancel("إلغاء").show();
     }
 
     private static String[] labels(int min, int max) {
@@ -1005,13 +1015,53 @@ public class PhoneActivity extends Activity {
         np.setWrapSelectorWheel(false);
         FrameLayout f = new FrameLayout(this);
         f.addView(np, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
-        new AlertDialog.Builder(this).setTitle(title).setView(f)
-            .setPositiveButton("حفظ", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int w) {
-                    s.set(np.getValue() + off);
-                }
-            }).setNegativeButton("إلغاء", null).show();
+        new Pop(this).title(title).view(f).ok("حفظ", new Runnable() {
+            @Override
+            public void run() {
+                s.set(np.getValue() + off);
+            }
+        }).cancel("إلغاء").show();
+    }
+
+    private interface TimeSetter {
+        void set(int hour, int minute);
+    }
+
+    private void timeDialog(int hour, int minute, final TimeSetter s) {
+        final NumberPicker hp = new NumberPicker(this);
+        hp.setMinValue(0);
+        hp.setMaxValue(23);
+        hp.setValue(hour);
+        hp.setFormatter(new NumberPicker.Formatter() {
+            @Override
+            public String format(int v) {
+                return String.format(Locale.US, "%02d", v);
+            }
+        });
+        final NumberPicker mp = new NumberPicker(this);
+        mp.setMinValue(0);
+        mp.setMaxValue(59);
+        mp.setValue(minute);
+        mp.setFormatter(new NumberPicker.Formatter() {
+            @Override
+            public String format(int v) {
+                return String.format(Locale.US, "%02d", v);
+            }
+        });
+        LinearLayout l = hbox();
+        l.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        l.setGravity(Gravity.CENTER);
+        l.addView(hp, new LinearLayout.LayoutParams(dp(80), -2));
+        TextView colon = tv(":", 26, gold, true);
+        colon.setPadding(dp(8), 0, dp(8), 0);
+        l.addView(colon);
+        l.addView(mp, new LinearLayout.LayoutParams(dp(80), -2));
+        new Pop(this).title("الوقت").view(l).ok("حفظ", new Runnable() {
+            @Override
+            public void run() {
+                s.set(hp.getValue(), mp.getValue());
+            }
+        }).cancel("إلغاء").show();
     }
 
     // ---------------------------------------------------------------- settings
@@ -1131,31 +1181,27 @@ public class PhoneActivity extends Activity {
             row("طريقة الحساب", METHOD_NAMES[Math.min(m, METHOD_NAMES.length - 1)], "›", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    new AlertDialog.Builder(PhoneActivity.this).setTitle("طريقة الحساب")
-                        .setSingleChoiceItems(METHOD_NAMES, m, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface d, int which) {
-                                sp.edit().putInt("calc_method", which).apply();
-                                d.dismiss();
-                                calcChanged();
-                            }
-                        }).show();
+                    new Pop(PhoneActivity.this).title("طريقة الحساب").single(METHOD_NAMES, m, new Pop.Pick() {
+                        @Override
+                        public void on(int which) {
+                            sp.edit().putInt("calc_method", which).apply();
+                            calcChanged();
+                        }
+                    }).show();
                 }
             });
             final boolean han = sp.getBoolean("calc_hanafi", false);
             row("المذهب (وقت العصر)", han ? "الحنفي" : "الجمهور (الشافعي والمالكي والحنبلي)", "›", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    new AlertDialog.Builder(PhoneActivity.this).setTitle("المذهب (وقت العصر)")
-                        .setSingleChoiceItems(new String[] {"الجمهور (الشافعي والمالكي والحنبلي)", "الحنفي"}, han ? 1 : 0,
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface d, int which) {
-                                    sp.edit().putBoolean("calc_hanafi", which == 1).apply();
-                                    d.dismiss();
-                                    calcChanged();
-                                }
-                            }).show();
+                    new Pop(PhoneActivity.this).title("المذهب (وقت العصر)")
+                        .single(new String[] {"الجمهور (الشافعي والمالكي والحنبلي)", "الحنفي"}, han ? 1 : 0, new Pop.Pick() {
+                            @Override
+                            public void on(int which) {
+                                sp.edit().putBoolean("calc_hanafi", which == 1).apply();
+                                calcChanged();
+                            }
+                        }).show();
                 }
             });
         }
@@ -1229,24 +1275,23 @@ public class PhoneActivity extends Activity {
         b.setValue(PrayerPrefs.adjust(this)[idx] + 10);
         LinearLayout c1 = vbox();
         c1.setGravity(Gravity.CENTER);
-        c1.addView(new TextView(this) {{ setText("الإقامة (دقائق)"); }});
+        c1.addView(tv("الإقامة (دقائق)", 13, dim, false));
         c1.addView(a);
         LinearLayout c2 = vbox();
         c2.setGravity(Gravity.CENTER);
-        c2.addView(new TextView(this) {{ setText("تعديل الوقت (دقائق)"); }});
+        c2.addView(tv("تعديل الوقت (دقائق)", 13, dim, false));
         c2.addView(b);
         l.addView(c1, new LinearLayout.LayoutParams(0, -2, 1f));
         l.addView(c2, new LinearLayout.LayoutParams(0, -2, 1f));
-        new AlertDialog.Builder(this).setTitle(PrayerCalc.name(this, idx, false)).setView(l)
-            .setPositiveButton("حفظ", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int w) {
-                    PrayerPrefs.setIqama(PhoneActivity.this, idx, a.getValue());
-                    PrayerPrefs.setAdjust(PhoneActivity.this, idx, b.getValue() - 10);
-                    Scheduler.scheduleNext(PhoneActivity.this);
-                    build();
-                }
-            }).setNegativeButton("إلغاء", null).show();
+        new Pop(this).title(PrayerCalc.name(this, idx, false)).view(l).ok("حفظ", new Runnable() {
+            @Override
+            public void run() {
+                PrayerPrefs.setIqama(PhoneActivity.this, idx, a.getValue());
+                PrayerPrefs.setAdjust(PhoneActivity.this, idx, b.getValue() - 10);
+                Scheduler.scheduleNext(PhoneActivity.this);
+                build();
+            }
+        }).cancel("إلغاء").show();
     }
 
     // ---------------------------------------------------------------- side menu
@@ -1295,7 +1340,7 @@ public class PhoneActivity extends Activity {
         drawerList.removeAllViews();
         LinearLayout head = vbox();
         head.setGravity(Gravity.CENTER_HORIZONTAL);
-        head.addView(tv("Magiic", 24, gold, true));
+        head.addView(tv("الصلاة خير", 24, gold, true));
         head.addView(tv("أوقات الصلاة والأذكار", 12, dim, false));
         drawerList.addView(head, lp(-1, -2, 0));
         menuGroup("الصلاة");
@@ -1341,6 +1386,33 @@ public class PhoneActivity extends Activity {
         return b;
     }
 
+    private LinearLayout catList;
+
+    private void fillCategories(List<Adhkar.Category> all, String q) {
+        catList.removeAllViews();
+        q = q.trim();
+        for (final Adhkar.Category c : all) {
+            if (!q.isEmpty() && !c.name.contains(q)) continue;
+            LinearLayout r = hbox();
+            r.setBackground(shape(card, line, 14));
+            r.setPadding(dp(14), dp(10), dp(14), dp(10));
+            r.setMinimumHeight(dp(48));
+            r.addView(tv(c.name, 16, cream, false), new LinearLayout.LayoutParams(0, -2, 1f));
+            r.addView(tv("›", 16, gold, true));
+            r.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    sub = "cat:" + c.id;
+                    build();
+                }
+            });
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
+            rp.topMargin = dp(6);
+            catList.addView(r, rp);
+        }
+        if (catList.getChildCount() == 0) catList.addView(tv("لا توجد نتائج", 14, dim, false));
+    }
+
     private void adhkarPage() {
         if (sub != null && sub.equals("hadith")) {
             title("أحاديث بشرحها", true);
@@ -1360,49 +1432,73 @@ public class PhoneActivity extends Activity {
             }
             return;
         }
-        if (sub != null) {
-            for (final Adhkar.Section sec : Adhkar.SECTIONS) {
-                if (!sec.key.equals(sub)) continue;
-                title(sec.name, true);
-                for (int i = 0; i < sec.items.length; i++) {
-                    final String key = sec.key + "|" + i;
-                    final int total = Integer.parseInt(sec.items[i][1]);
+        final List<Adhkar.Category> all = Adhkar.all(this);
+        if (sub != null && sub.startsWith("cat:")) {
+            int id = Integer.parseInt(sub.substring(4));
+            for (final Adhkar.Category cat : all) {
+                if (cat.id != id) continue;
+                title(cat.name, true);
+                for (int i = 0; i < cat.texts.length; i++) {
+                    final String key = cat.id + "|" + i;
+                    final int total = cat.counts[i];
                     final TextView ct = tv("", 15, gold, true);
-                    final LinearLayout r = hbox();
+                    final LinearLayout r = vbox();
                     r.setBackground(shape(card, line, 16));
                     r.setPadding(dp(14), dp(12), dp(14), dp(12));
-                    TextView t = tv(sec.items[i][0], 18, cream, false);
-                    t.setLineSpacing(0, 1.3f);
-                    r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
-                    r.addView(ct);
+                    TextView t = tv(cat.texts[i], 18, cream, false);
+                    t.setLineSpacing(0, 1.35f);
+                    r.addView(t);
+                    ct.setGravity(Gravity.CENTER);
+                    r.addView(ct, lp(-1, -2, 6));
                     final int[] left = {done.containsKey(key) ? done.get(key) : total};
-                    ct.setText(left[0] == 0 ? "تم" : left[0] + " / " + total);
+                    ct.setText(left[0] == 0 ? "تم" : total == 1 ? "اضغط عند الانتهاء" : left[0] + " / " + total);
                     r.setAlpha(left[0] == 0 ? 0.55f : 1f);
                     r.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            if (left[0] > 0) left[0]--;
+                            if (left[0] > 0) {
+                                left[0]--;
+                                buzz();
+                            }
                             done.put(key, left[0]);
-                            ct.setText(left[0] == 0 ? "تم" : left[0] + " / " + total);
+                            ct.setText(left[0] == 0 ? "تم" : total == 1 ? "اضغط عند الانتهاء" : left[0] + " / " + total);
                             r.setAlpha(left[0] == 0 ? 0.55f : 1f);
                         }
                     });
                     add(r, 8);
                 }
-                add(tv("اضغط على الذكر لتعدّه.", 12, dim, false), 10);
+                add(tv("اضغط على الذكر لتعدّه. المصدر: حصن المسلم.", 12, dim, false), 10);
                 return;
             }
         }
         title("الأذكار والأدعية", false);
-        for (final Adhkar.Section sec : Adhkar.SECTIONS) {
-            row(sec.name, sec.items.length + " أذكار", "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    sub = sec.key;
-                    build();
-                }
-            });
-        }
+        add(tv("حصن المسلم كاملًا: " + all.size() + " بابًا.", 13, dim, false), 2);
+        final EditText search = new EditText(this);
+        search.setHint("ابحث عن ذكر أو دعاء");
+        search.setHintTextColor(dim);
+        search.setTextColor(cream);
+        search.setSingleLine(true);
+        search.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        search.setBackground(shape(card, line, 14));
+        search.setPadding(dp(14), dp(10), dp(14), dp(10));
+        add(search, 8);
+        catList = vbox();
+        add(catList, 2);
+        fillCategories(all, "");
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int a, int b, int c) {
+                fillCategories(all, s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable e) {
+            }
+        });
         row("أحاديث بشرحها", null, "›", go("hadith"));
         row("أعمالي الخاصة", "أذكار وأدعية بنصك", "›", new View.OnClickListener() {
             @Override
@@ -1410,6 +1506,16 @@ public class PhoneActivity extends Activity {
                 goTab(7);
             }
         });
+    }
+
+    /** A short buzz on every count. */
+    private void buzz() {
+        try {
+            Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+            if (v != null && v.hasVibrator()) v.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE));
+        } catch (RuntimeException ignored) {
+            // no vibration on this phone
+        }
     }
 
     private void tasbihPage() {
@@ -1450,6 +1556,7 @@ public class PhoneActivity extends Activity {
             @Override
             public void onClick(View v) {
                 Adhkar.add(PhoneActivity.this, tk);
+                buzz();
                 refreshTasbih();
             }
         });
@@ -1554,7 +1661,7 @@ public class PhoneActivity extends Activity {
 
     private void overlayPage() {
         title("الأذكار فوق التطبيقات", false);
-        add(tv("يظهر ذكر قصير فوق أي تطبيق تستخدمه، بدون فتح Magiic، مع عدّاد التسبيح والاستغفار. لا علاقة له بالأذان، فالأذان يعمل بإشعار صغير فقط.", 13, dim, false), 4);
+        add(tv("يظهر ذكر قصير فوق أي تطبيق تستخدمه، بدون فتح التطبيق. يختفي وحده بعد 5 ثوانٍ أو بالضغط عليه. لا علاقة له بالأذان، فالأذان يعمل بإشعار صغير فقط.", 13, dim, false), 4);
         final boolean can = Settings.canDrawOverlays(this);
         switchRow("عرض الأذكار فوق التطبيقات", can ? null : "يحتاج إذن العرض فوق التطبيقات", sp.getBoolean("ov_on", false),
             new CompoundListener() {
@@ -1579,13 +1686,6 @@ public class PhoneActivity extends Activity {
                 });
             }
         });
-        switchRow("إظهار عدّاد التسبيح والاستغفار", "العدّاد الحي داخل بطاقة الذكر", sp.getBoolean("ov_cnt", true),
-            new CompoundListener() {
-                @Override
-                public void changed(boolean on) {
-                    sp.edit().putBoolean("ov_cnt", on).apply();
-                }
-            });
         row("إذن العرض فوق التطبيقات", null, can ? "✓" : "فتح", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1717,10 +1817,10 @@ public class PhoneActivity extends Activity {
         permRow("البطارية: بدون قيود", pm.isIgnoringBatteryOptimizations(getPackageName()),
             new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
         permRow("الموقع (للمدينة تلقائيًا)",
-            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED, null);
+            granted(Manifest.permission.ACCESS_FINE_LOCATION), null);
         permRow("التشغيل التلقائي والخلفية", false, new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             Uri.parse("package:" + getPackageName())));
-        TextView tip = tv("بند التشغيل التلقائي لا يمكن قراءته من التطبيق. افتحه وفعّل: التشغيل التلقائي، التشغيل الثانوي، التشغيل في الخلفية (الإعدادات ← التطبيقات ← تشغيل التطبيقات ← Magiic ← إدارة يدويًا). ثم اسحب بطاقة التطبيق لأسفل في شاشة التطبيقات الحديثة لقفله.", 12, dim, false);
+        TextView tip = tv("بند التشغيل التلقائي لا يمكن قراءته من التطبيق. افتحه وفعّل: التشغيل التلقائي، التشغيل الثانوي، التشغيل في الخلفية (الإعدادات ← التطبيقات ← تشغيل التطبيقات ← الصلاة خير ← إدارة يدويًا). ثم اسحب بطاقة التطبيق لأسفل في شاشة التطبيقات الحديثة لقفله.", 12, dim, false);
         add(tip, 10);
     }
 
@@ -1730,7 +1830,7 @@ public class PhoneActivity extends Activity {
             @Override
             public void onClick(View v) {
                 try {
-                    if (location) requestPermissions(new String[] {Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOC);
+                    if (location) requestPermissions(new String[] {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOC);
                     else if (open != null) startActivity(open);
                 } catch (RuntimeException e) {
                     startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -1741,8 +1841,19 @@ public class PhoneActivity extends Activity {
     }
 
     // ---------------------------------------------------------------- city
+    /** A listed city (picked by hand, or found from the internet address). */
     private void applyCity(Cities.City c) {
-        sp.edit().putString("city", c.key()).apply();
+        sp.edit().putString("city", c.key()).remove("city_custom").apply();
+        afterCity();
+    }
+
+    /** The exact place found from the phone's location, kept next to the nearest listed city. */
+    private void applyPlace(Cities.City base, double lat, double lon, String name) {
+        sp.edit().putString("city", base.key()).putString("city_custom", name + "|" + lat + "|" + lon).apply();
+        afterCity();
+    }
+
+    private void afterCity() {
         weather = "";
         Scheduler.scheduleNext(this);
         Reminders.scheduleNext(this);
@@ -1750,32 +1861,82 @@ public class PhoneActivity extends Activity {
         if (tab == 0 || tab == 3) build();
     }
 
-    /** The phone's own location when allowed (nothing is sent anywhere), otherwise the internet address. */
+    private boolean granted(String perm) {
+        return checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** The phone's own location when allowed (only the coordinates go to the name lookup), otherwise the internet address. */
     private void autoCity(boolean userAsked) {
-        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            LocationManager lm = getSystemService(LocationManager.class);
-            Location best = null;
-            try {
-                for (String p : lm.getProviders(true)) {
-                    Location l = lm.getLastKnownLocation(p);
-                    if (l != null && (best == null || l.getTime() > best.getTime())) best = l;
-                }
-            } catch (SecurityException ignored) {
-                best = null;
-            }
-            if (best != null) {
-                Cities.City c = AutoCity.nearest(best.getLatitude(), best.getLongitude());
-                if (c != null) {
-                    sp.edit().putBoolean("city_auto", true).apply();
-                    applyCity(c);
-                    return;
-                }
-            }
+        if (granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)) {
+            locate();
         } else if (!locAsked && (userAsked || Cities.selected(this) == null)) {
             locAsked = true;
-            requestPermissions(new String[] {Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOC);
+            requestPermissions(new String[] {Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_LOC);
+        } else {
+            byAddress();
+        }
+    }
+
+    private void locate() {
+        final LocationManager lm = getSystemService(LocationManager.class);
+        Location best = null;
+        try {
+            for (String p : lm.getProviders(true)) {
+                Location l = lm.getLastKnownLocation(p);
+                if (l != null && (best == null || l.getTime() > best.getTime())) best = l;
+            }
+        } catch (SecurityException ignored) {
+            best = null;
+        }
+        final Location last = best;
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                String provider = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ? LocationManager.NETWORK_PROVIDER
+                    : lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ? LocationManager.GPS_PROVIDER : null;
+                if (provider != null) {
+                    lm.getCurrentLocation(provider, null, getMainExecutor(), new java.util.function.Consumer<Location>() {
+                        @Override
+                        public void accept(Location l) {
+                            useLocation(l != null ? l : last);
+                        }
+                    });
+                    return;
+                }
+            } catch (RuntimeException ignored) {
+                // falls back to the last known place below
+            }
+        }
+        useLocation(last);
+    }
+
+    private void useLocation(final Location l) {
+        if (l == null) {
+            byAddress();
             return;
         }
+        final Cities.City base = AutoCity.nearest(l.getLatitude(), l.getLongitude());
+        if (base == null) {
+            byAddress();
+            return;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String hood = Place.neighbourhood(l.getLatitude(), l.getLongitude());
+                final String name = (hood == null ? "" : hood + "، ") + base.ar.replace("|", " ");
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        sp.edit().putBoolean("city_auto", true).apply();
+                        applyPlace(base, l.getLatitude(), l.getLongitude(), name);
+                    }
+                });
+            }
+        }, "place").start();
+    }
+
+    private void byAddress() {
         AutoCity.find(new AutoCity.Callback() {
             @Override
             public void found(final Cities.City city) {

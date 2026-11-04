@@ -206,10 +206,19 @@ public class RadioService extends Service {
         nm.createNotificationChannel(new NotificationChannel(
             CHANNEL, getString(R.string.radio_btn), NotificationManager.IMPORTANCE_LOW));
         boolean arabic = "ar".equals(Locale.getDefault().getLanguage());
+        android.app.PendingIntent stop = android.app.PendingIntent.getService(this, 41,
+            new Intent(this, RadioService.class).setAction(ACTION_STOP),
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+        Notification.Action stopAction = new Notification.Action.Builder(
+            android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_crescent),
+            getString(R.string.radio_stop), stop).build();
         Notification n = new Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_crescent)
             .setContentTitle(STATIONS[stationIndex].name(arabic))
+            .setContentText(getString(R.string.radio_btn))
             .setOngoing(true)
+            .addAction(stopAction)
+            .setStyle(new Notification.MediaStyle().setShowActionsInCompactView(0))
             .build();
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(NOTE_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);

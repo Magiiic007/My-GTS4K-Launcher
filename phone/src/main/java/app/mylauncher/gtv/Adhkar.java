@@ -16,46 +16,56 @@ import java.util.Locale;
 final class Adhkar {
     private Adhkar() {}
 
-    /** A section: its key, its name and its items as {text, repeat}. */
-    static final class Section {
-        final String key;
+    /** A category of Hisn al-Muslim: its name and its items (the text and how many times to say it). */
+    static final class Category {
+        final int id;
         final String name;
-        final String[][] items;
+        final String[] texts;
+        final int[] counts;
 
-        Section(String key, String name, String[][] items) {
-            this.key = key;
+        Category(int id, String name, String[] texts, int[] counts) {
+            this.id = id;
             this.name = name;
-            this.items = items;
+            this.texts = texts;
+            this.counts = counts;
         }
     }
 
-    static final Section[] SECTIONS = {
-        new Section("am", "أذكار الصباح", new String[][] {
-            {"أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير", "1"},
-            {"بسم الله الذي لا يضر مع اسمه شيء في الأرض ولا في السماء وهو السميع العليم", "3"},
-            {"سبحان الله وبحمده", "100"},
-            {"أستغفر الله وأتوب إليه", "100"}}),
-        new Section("pm", "أذكار المساء", new String[][] {
-            {"أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير", "1"},
-            {"بسم الله الذي لا يضر مع اسمه شيء في الأرض ولا في السماء وهو السميع العليم", "3"},
-            {"سبحان الله وبحمده", "100"},
-            {"أستغفر الله وأتوب إليه", "100"}}),
-        new Section("sleep", "أذكار النوم", new String[][] {
-            {"باسمك اللهم أموت وأحيا", "1"},
-            {"سبحان الله", "33"},
-            {"الحمد لله", "33"},
-            {"الله أكبر", "34"}}),
-        new Section("wake", "أذكار الاستيقاظ", new String[][] {
-            {"الحمد لله الذي أحيانا بعد ما أماتنا وإليه النشور", "1"}}),
-        new Section("mosque", "أذكار المسجد", new String[][] {
-            {"عند الدخول: اللهم افتح لي أبواب رحمتك", "1"},
-            {"عند الخروج: اللهم إني أسألك من فضلك", "1"}}),
-        new Section("duas", "أدعية مأثورة", new String[][] {
-            {"ربنا آتنا في الدنيا حسنة وفي الآخرة حسنة وقنا عذاب النار", "1"},
-            {"ربنا ظلمنا أنفسنا وإن لم تغفر لنا وترحمنا لنكونن من الخاسرين", "1"},
-            {"اللهم إنك عفو تحب العفو فاعف عني", "1"},
-            {"اللهم أعني على ذكرك وشكرك وحسن عبادتك", "1"}})
-    };
+    private static List<Category> cache;
+
+    /**
+     * All 132 categories of "Hisn al-Muslim" (the complete book), read once from the file inside the app.
+     * Source: github.com/rn0x/Adhkar-json, text taken from Hisn al-Muslim by Sa'id bin Ali bin Wahf al-Qahtani.
+     */
+    static synchronized List<Category> all(Context c) {
+        if (cache != null) return cache;
+        List<Category> l = new ArrayList<>();
+        try {
+            java.io.InputStream in = c.getResources().openRawResource(R.raw.hisn_adhkar);
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            in.close();
+            JSONArray a = new JSONArray(out.toString("UTF-8"));
+            for (int i = 0; i < a.length(); i++) {
+                org.json.JSONObject o = a.getJSONObject(i);
+                JSONArray items = o.getJSONArray("array");
+                String[] t = new String[items.length()];
+                int[] k = new int[items.length()];
+                for (int j = 0; j < t.length; j++) {
+                    org.json.JSONObject it = items.getJSONObject(j);
+                    t[j] = it.optString("text", "").trim();
+                    k[j] = Math.max(1, it.optInt("count", 1));
+                }
+                l.add(new Category(o.optInt("id", i + 1), o.optString("category", ""), t, k));
+            }
+        } catch (Exception ignored) {
+            // an unreadable file shows an empty list
+        }
+        cache = l;
+        return l;
+    }
 
     /** Hadiths with a short explanation: {text, source, explanation}. */
     static final String[][] HADITHS = {

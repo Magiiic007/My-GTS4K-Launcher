@@ -114,7 +114,21 @@ final class Cities {
 
     /** The city chosen on this device, or null the first time. */
     static City selected(android.content.Context c) {
-        return find(c.getSharedPreferences("magiic", android.content.Context.MODE_PRIVATE).getString("city", null));
+        android.content.SharedPreferences p = c.getSharedPreferences("magiic", android.content.Context.MODE_PRIVATE);
+        City base = find(p.getString("city", null));
+        // The phone can pin an exact place (a neighbourhood) next to the nearest listed city; the TV never sets it.
+        String custom = p.getString("city_custom", null);
+        if (base != null && custom != null) {
+            String[] a = custom.split("\\|");
+            if (a.length == 3) {
+                try {
+                    return new City(base.country, base.en, a[0], Double.parseDouble(a[1]), Double.parseDouble(a[2]));
+                } catch (NumberFormatException ignored) {
+                    // an unreadable pin is ignored and the listed city is used
+                }
+            }
+        }
+        return base;
     }
 
     /** The saved choice back to its city, or null if nothing was chosen (or the list changed). */
