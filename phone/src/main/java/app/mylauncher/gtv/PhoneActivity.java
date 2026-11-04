@@ -124,6 +124,8 @@ public class PhoneActivity extends Activity {
 
     /** Royal is the day look and Mihrab the night look: they follow the phone's own light/dark setting. */
     private int lookNow() {
+        int forced = sp == null ? -1 : sp.getInt("look_force", -1);
+        if (forced == 0 || forced == 1) return forced;
         int night = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         return night == Configuration.UI_MODE_NIGHT_YES ? 1 : 0;
     }
@@ -1205,9 +1207,32 @@ public class PhoneActivity extends Activity {
         }
         title("الإعدادات", false);
         section("الشكل");
-        row("شكل التطبيق", "تلقائي: أخضر نهاري وكحلي ليلي بحسب وضع الهاتف", look == 0 ? "نهاري" : "ليلي", null);
+        final int forced = sp.getInt("look_force", -1);
+        final String[] looks = {"تلقائي (بحسب وضع الهاتف)", "نهاري (أخضر)", "ليلي (كحلي)"};
+        row("شكل التطبيق", looks[forced + 1], "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new Pop(PhoneActivity.this).title("شكل التطبيق").single(looks, forced + 1, new Pop.Pick() {
+                    @Override
+                    public void on(int which) {
+                        sp.edit().putInt("look_force", which - 1).apply();
+                        look = lookNow();
+                        palette();
+                        root();
+                        build();
+                    }
+                }).show();
+            }
+        });
         section("التشغيل في الخلفية");
         row("تأكد أن الأذان يعمل", "الإشعارات والمنبّه والبطارية", "›", go("fix"));
+        row("العرض فوق التطبيقات", "لتظهر الأذكار فوق التطبيقات الأخرى", Settings.canDrawOverlays(this) ? "✓" : "فتح",
+            new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (!Settings.canDrawOverlays(PhoneActivity.this)) openOverlayPermission();
+                }
+            });
         section("أخرى");
         row("تحديث التطبيق", "النسخة " + PhoneUpdater.installedName(this), "›", new View.OnClickListener() {
             @Override
@@ -1532,16 +1557,6 @@ public class PhoneActivity extends Activity {
                     });
                 }
             });
-        section("إيقاف الأذان");
-        add(tv("الأذان والإقامة يعملان في الخلفية ويتوقفان بقلب الهاتف على وجهه فقط.", 13, dim, false), 4);
-        row("تأكد أن الأذان يعمل", "الإشعارات والمنبّه والبطارية", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tab = 3;
-                sub = "fix";
-                build();
-            }
-        });
     }
 
     private void prayerDialog(final int idx) {
@@ -2113,28 +2128,6 @@ public class PhoneActivity extends Activity {
                 Adhkar.saveOverlay(PhoneActivity.this, ovs);
             }
         }));
-        section("الإذن والتجربة");
-        row("إذن العرض فوق التطبيقات", null, can ? "✓" : "فتح", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (!Settings.canDrawOverlays(PhoneActivity.this)) openOverlayPermission();
-            }
-        });
-        add(button("جرّب الآن", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (!Settings.canDrawOverlays(PhoneActivity.this)) {
-                    openOverlayPermission();
-                    return;
-                }
-                try {
-                    startForegroundService(new Intent(PhoneActivity.this, OverlayService.class).putExtra("now", true));
-                    toast("اخرج من التطبيق لتراها فوق تطبيق آخر");
-                } catch (RuntimeException e) {
-                    toast("تعذّر التشغيل");
-                }
-            }
-        }), 12);
     }
 
     private void openOverlayPermission() {
