@@ -87,7 +87,6 @@ public class RadioService extends Service {
         reciter("عبد الرحمن السديس", "Abdul Rahman Al-Sudais", "abdulrahman_alsudaes"),
         reciter("ياسر الدوسري", "Yasser Al-Dosari", "yasser_aldosari"),
         reciter("ناصر القطامي", "Nasser Al-Qatami", "nasser_alqatami"),
-        reciter("محمد رشاد الشريف", "Mohammad Rashad Al-Shareef", "mohammad_rashad_alshareef"),
     };
 
     /** A reciter's own channel, around the clock (mp3quran.net, through qurango.net). */
