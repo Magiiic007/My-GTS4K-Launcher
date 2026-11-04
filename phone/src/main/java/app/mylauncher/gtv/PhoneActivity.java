@@ -363,7 +363,7 @@ public class PhoneActivity extends Activity {
     private void title(String t, boolean back) {
         LinearLayout r = hbox();
         if (back) {
-            TextView b = tv("›", 22, gold, true);
+            TextView b = tv("‹", 22, gold, true);
             b.setGravity(Gravity.CENTER);
             b.setBackground(shape(0, line, 18));
             b.setOnClickListener(new View.OnClickListener() {
@@ -726,11 +726,13 @@ public class PhoneActivity extends Activity {
         if (extra != null) extra = ap(extra);
         altTv.setText(extra != null && (now / 3000L) % 2L == 1L ? extra : base);
         if (ev != null && ev.iqama) {
+            iqLabel.setVisibility(View.VISIBLE);
             iqLabel.setText("الإقامة بعد");
             long s = Math.max(0, (ev.at - now) / 1000L);
             iqValue.setText(String.format(Locale.US, "%02d:%02d", s / 60, s % 60));
         } else {
-            iqLabel.setText("ذكر");
+            iqLabel.setText("");
+            iqLabel.setVisibility(View.GONE);
             String[] dh = getResources().getStringArray(R.array.dhikr);
             iqValue.setText(dh[(int) ((now / 5000L) % dh.length)]);
         }
