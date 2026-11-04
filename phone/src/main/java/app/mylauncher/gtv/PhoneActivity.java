@@ -501,6 +501,7 @@ public class PhoneActivity extends Activity {
             else if (tab == 5) adhkarPage();
             else if (tab == 6) tasbihPage();
             else if (tab == 8) overlayPage();
+            else if (tab == 10) calendarPage();
             else qiblaPage();
         } catch (Throwable t) {
             // A screen that fails shows what went wrong instead of closing the app.
@@ -1224,6 +1225,10 @@ public class PhoneActivity extends Activity {
             fixPage();
             return;
         }
+        if ("about".equals(sub)) {
+            aboutPage();
+            return;
+        }
         title("الإعدادات", false);
         section("الشكل");
         final int forced = sp.getInt("look_force", -1);
@@ -1259,6 +1264,59 @@ public class PhoneActivity extends Activity {
                 PhoneUpdater.check(PhoneActivity.this);
             }
         });
+        row("عن التطبيق", "المصادر والتشخيص", "›", go("about"));
+    }
+
+    private void aboutPage() {
+        title("عن التطبيق", true);
+        TextView head = tv("الصلاة خير", 22, gold, true);
+        head.setGravity(Gravity.CENTER);
+        add(head, 6);
+        TextView ver = tv("النسخة " + PhoneUpdater.installedName(this), 13, dim, false);
+        ver.setGravity(Gravity.CENTER);
+        add(ver, 2);
+        section("المصادر");
+        add(tv("أوقات الصلاة: مكتبة adhan-java (رخصة MIT).\n"
+            + "الأذكار: حصن المسلم، من ملف rn0x/Adhkar-json.\n"
+            + "الطقس: Open-Meteo. أسماء الأحياء: OpenStreetMap. الدول والمحافظات: dr5hn (ODbL). البحث عن مكان: Open-Meteo Geocoding.\n"
+            + "الإذاعات والقرّاء: بثّ مواقعهم العامة، والتطبيق غير تابع لأي منها.\n"
+            + "تسجيلات الأذان والإقامة من اختيار صاحب التطبيق للاستعمال الشخصي.", 12, dim, false), 4);
+        section("التشخيص");
+        long rx = sp.getLong("dbg_rx", 0L);
+        row("آخر وصول لمنبّه الأذان", rx == 0 ? "لم يصل أي منبّه بعد" : new SimpleDateFormat("dd/MM HH:mm:ss", Locale.US).format(new Date(rx)), null, null);
+        String err = sp.getString("dbg_err", "");
+        row("آخر خطأ في تشغيل الأذان", err.isEmpty() ? "لا يوجد" : err, null, null);
+        String rl = sp.getString("radio_log", "");
+        if (!rl.isEmpty()) {
+            TextView t = tv("سجل الراديو:\n" + rl, 10, dim, false);
+            t.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+            t.setTextIsSelectable(true);
+            add(t, 8);
+        }
+        final String crash = sp.getString("dbg_crash", "");
+        if (crash.isEmpty()) {
+            row("آخر انهيار", "لا يوجد", null, null);
+        } else {
+            TextView ct = tv("آخر انهيار:\n" + crash, 10, dim, false);
+            ct.setTextIsSelectable(true);
+            ct.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+            add(ct, 8);
+            add(button("نسخ تفاصيل الانهيار", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    android.content.ClipboardManager cm = getSystemService(android.content.ClipboardManager.class);
+                    if (cm != null) cm.setPrimaryClip(android.content.ClipData.newPlainText("crash", crash));
+                    toast("تم النسخ");
+                }
+            }), 8);
+            add(button("مسح", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    sp.edit().remove("dbg_crash").apply();
+                    build();
+                }
+            }), 6);
+        }
     }
 
     private String country = "EG";
@@ -1647,6 +1705,7 @@ public class PhoneActivity extends Activity {
     }
 
     private void goTab(int t) {
+        if (t == 10 && tab != 10) calOff = 0;
         tab = t;
         sub = null;
         if (drawerOpen) closeDrawer();
@@ -1682,6 +1741,7 @@ public class PhoneActivity extends Activity {
         menuGroup("الصلاة");
         menuItem("مواقيت الصلاة", 0);
         menuItem("الأذان والإقامة", 4);
+        menuItem("التقويم الهجري", 10);
         menuGroup("الأذكار والتذكيرات");
         menuItem("الأذكار والأدعية", 5);
         menuItem("السبحة والاستغفار", 6);
@@ -2091,6 +2151,128 @@ public class PhoneActivity extends Activity {
                 tcRows[i].setText("آخر عدد: " + Adhkar.last(this, i) + "  ·  اليوم: " + Adhkar.count(this, i));
             }
         }
+    }
+
+    // ---------------------------------------------------------------- Hijri calendar
+    private int calOff;
+
+    private void calendarPage() {
+        title("التقويم الهجري", false);
+        final int adj = Hijri.adjust(this);
+        Calendar today = Hijri.today(this);
+        int[] th = Hijri.of(today, adj);
+        int idx = th[0] * 12 + (th[1] - 1) + calOff;
+        final int year = Math.floorDiv(idx, 12), month0 = Math.floorMod(idx, 12);
+
+        android.icu.util.IslamicCalendar ic = new android.icu.util.IslamicCalendar();
+        ic.setCalculationType(android.icu.util.IslamicCalendar.CalculationType.ISLAMIC_UMALQURA);
+        ic.set(android.icu.util.IslamicCalendar.YEAR, year);
+        ic.set(android.icu.util.IslamicCalendar.MONTH, month0);
+        ic.set(android.icu.util.IslamicCalendar.DAY_OF_MONTH, 1);
+        int len = ic.getActualMaximum(android.icu.util.IslamicCalendar.DAY_OF_MONTH);
+        Calendar first = Calendar.getInstance(today.getTimeZone(), Locale.ENGLISH);
+        first.setTime(ic.getTime());
+        first.set(Calendar.HOUR_OF_DAY, 12);
+        first.add(Calendar.DAY_OF_MONTH, -adj);
+
+        // month header with the arrows
+        LinearLayout nav = hbox();
+        nav.setBackground(shape(card, line, 16));
+        nav.setPadding(dp(8), dp(6), dp(8), dp(6));
+        TextView prev = tv("‹", 24, gold, true);
+        prev.setGravity(Gravity.CENTER);
+        prev.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                calOff--;
+                build();
+            }
+        });
+        TextView next = tv("›", 24, gold, true);
+        next.setGravity(Gravity.CENTER);
+        next.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                calOff++;
+                build();
+            }
+        });
+        nav.addView(prev, new LinearLayout.LayoutParams(dp(48), dp(40)));
+        String gm = Hijri.gregorianAr(first).replaceFirst("^\\d+ ", "");
+        TextView mt = tv(Hijri.hijriAr(new int[] {year, month0 + 1, 1}).replaceFirst("^1 ", ""), 18, gold, true);
+        mt.setGravity(Gravity.CENTER);
+        LinearLayout mid = vbox();
+        mid.setGravity(Gravity.CENTER);
+        mid.addView(mt);
+        TextView gt = tv("يوافق " + gm, 11, dim, false);
+        mid.addView(gt);
+        mid.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                calOff = 0;
+                build();
+            }
+        });
+        nav.addView(mid, new LinearLayout.LayoutParams(0, -2, 1f));
+        nav.addView(next, new LinearLayout.LayoutParams(dp(48), dp(40)));
+        add(nav, 6);
+
+        // the week
+        LinearLayout wk = hbox();
+        String[] wd = {"أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"};
+        for (int d = 0; d < 7; d++) {
+            TextView t = tv(wd[d], 11, d == 5 ? gold : dim, true);
+            t.setGravity(Gravity.CENTER);
+            wk.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+        }
+        add(wk, 10);
+
+        // the days
+        int lead = first.get(Calendar.DAY_OF_WEEK) - 1;
+        int cells = lead + len;
+        int rows = (cells + 6) / 7;
+        final StringBuilder notes = new StringBuilder();
+        for (int r = 0; r < rows; r++) {
+            LinearLayout row = hbox();
+            for (int d = 0; d < 7; d++) {
+                int day = r * 7 + d - lead + 1;
+                LinearLayout cell = vbox();
+                cell.setGravity(Gravity.CENTER);
+                if (day >= 1 && day <= len) {
+                    final Calendar g = (Calendar) first.clone();
+                    g.add(Calendar.DAY_OF_MONTH, day - 1);
+                    boolean isToday = calOff == 0 && day == th[2];
+                    boolean white = day >= 13 && day <= 15;
+                    final int occ = Reminders.occasion(new int[] {year, month0 + 1, day});
+                    boolean fri = g.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY;
+                    TextView hd = tv(String.valueOf(day), 17, fri || occ >= 0 ? gold : cream, true);
+                    hd.setGravity(Gravity.CENTER);
+                    TextView gd = tv(String.valueOf(g.get(Calendar.DAY_OF_MONTH)), 10, dim, false);
+                    gd.setGravity(Gravity.CENTER);
+                    cell.addView(hd);
+                    cell.addView(gd);
+                    cell.setBackground(shape(isToday ? hl : white ? (gold & 0x00FFFFFF) | 0x22000000 : 0, isToday ? gold : occ >= 0 ? line : 0, 12));
+                    if (occ >= 0) notes.append(day).append(" ").append(Hijri.hijriAr(new int[] {year, month0 + 1, day}).replaceFirst("^\\d+ ", "").replaceFirst(" \\d+ هـ$", ""))
+                        .append(": ").append(Reminders.occName(this, occ)).append("\n");
+                    cell.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            int[] hh = Hijri.of(g, adj);
+                            toast(Hijri.weekdayAr(g) + " " + Hijri.hijriAr(hh) + "\nالموافق " + Hijri.gregorianAr(g)
+                                + (occ >= 0 ? "\n" + Reminders.occName(PhoneActivity.this, occ) : ""));
+                        }
+                    });
+                }
+                LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, dp(52), 1f);
+                cp.setMargins(dp(1), dp(1), dp(1), dp(1));
+                row.addView(cell, cp);
+            }
+            add(row, 0);
+        }
+        section("في هذا الشهر");
+        String extra = month0 == 8 ? "شهر رمضان: صيام الشهر كله.\n" : "";
+        add(tv(extra + (notes.length() > 0 ? notes.toString() : "") + "13 و14 و15: الأيام البيض (مظلّلة).\nالإثنين والخميس: صيام السنّة.", 13, dim, false), 4);
+        add(tv("التاريخ بحسب أم القرى، وتعديله من «الأذان والإقامة» ← تعديل التاريخ الهجري.", 11, dim, false), 8);
     }
 
     private void overlayPage() {
