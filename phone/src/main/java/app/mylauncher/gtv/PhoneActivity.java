@@ -254,9 +254,9 @@ public class PhoneActivity extends Activity {
     // ---------------------------------------------------------------- look
     private void palette() {
         if (look == 1) {
-            bg1 = 0xFF091230; bg2 = 0xFF142453; gold = 0xFFDCB860; cream = 0xFFF1E8D0; dim = 0xFFB4BDDB;
+            bg1 = 0xFF011A4E; bg2 = 0xFF02266A; gold = 0xFFDCB860; cream = 0xFFF1E8D0; dim = 0xFFB4BDDB;
         } else {
-            bg1 = 0xFF062B1F; bg2 = 0xFF0D4130; gold = 0xFFE8B84A; cream = 0xFFF6ECD2; dim = 0xFFB9C9BD;
+            bg1 = 0xFF01490E; bg2 = 0xFF05601A; gold = 0xFFE8B84A; cream = 0xFFF6ECD2; dim = 0xFFB9C9BD;
         }
         card = 0x14FFFFFF;
         line = (gold & 0x00FFFFFF) | 0x59000000;
@@ -276,6 +276,42 @@ public class PhoneActivity extends Activity {
     }
 
     private LinearLayout header;
+    private FrameLayout rootFrame;
+    private static android.graphics.Bitmap artBmp;
+    private static int artLook = -1;
+    private int homeTop, homeBottom;
+
+    /** The home page has the picture; the other pages have the same colours with a gold frame line. */
+    private void applyBackground() {
+        int w = getResources().getDisplayMetrics().widthPixels;
+        if (tab == 0) {
+            if (artBmp == null || artLook != look) {
+                try {
+                    artBmp = android.graphics.BitmapFactory.decodeResource(getResources(),
+                        look == 1 ? R.drawable.home_night : R.drawable.home_day);
+                    artLook = look;
+                } catch (RuntimeException | OutOfMemoryError e) {
+                    artBmp = null;
+                }
+            }
+            if (artBmp != null) {
+                homeTop = ArtBg.panelTop(artBmp, w);
+                homeBottom = Math.round(ArtBg.cornerHeight(artBmp, w) * 0.45f);
+                rootFrame.setBackground(new ArtBg(artBmp));
+                header.setPadding(dp(26), homeTop, dp(26), dp(2));
+                body.setPadding(dp(26), dp(8), dp(26), homeBottom);
+                return;
+            }
+        }
+        homeTop = 0;
+        homeBottom = 0;
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
+        Deco.Stars stars = new Deco.Stars((cream & 0x00FFFFFF) | 0x1A000000, dp(56));
+        ArtBg.Border border = new ArtBg.Border((gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
+        rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars, border}));
+        header.setPadding(dp(18), dp(14), dp(18), dp(2));
+        body.setPadding(dp(18), dp(10), dp(18), dp(20));
+    }
 
     private void addHeader(View v) {
         header.addView(v, new LinearLayout.LayoutParams(-1, -2));
@@ -286,9 +322,7 @@ public class PhoneActivity extends Activity {
         getWindow().setNavigationBarColor(bg2);
         FrameLayout f = new FrameLayout(this);
         f.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-        Deco.Stars stars = new Deco.Stars((cream & 0x00FFFFFF) | 0x1A000000, dp(56));
-        f.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars}));
+        rootFrame = f;
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         // the title row (with the menu or back button) stays put while the page scrolls under it
@@ -457,6 +491,7 @@ public class PhoneActivity extends Activity {
         if (tab == 6 && (lastKey == null || !lastKey.startsWith("6:"))) endTasbihRound();
         lastKey = key;
         clockTv = apTv = nameTv = cdTv = altTv = iqLabel = iqValue = weatherTv = null;
+        applyBackground();
         body.removeAllViews();
         header.removeAllViews();
         if (tab != 9) qiblaStop();
@@ -673,8 +708,8 @@ public class PhoneActivity extends Activity {
     /** 1.0 on a tall screen; smaller on a short one, so the home page fits without scrolling. */
     private float fit() {
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-        float availDp = dm.heightPixels / dm.density - 60f;
-        return Math.max(0.74f, Math.min(1f, availDp / 840f));
+        float availDp = (dm.heightPixels - homeTop - homeBottom) / dm.density - 50f;
+        return Math.max(0.62f, Math.min(1f, availDp / 780f));
     }
 
     /** The times come with AM/PM; the phone is Arabic only. */
@@ -1185,7 +1220,7 @@ public class PhoneActivity extends Activity {
         }
         title("الإعدادات", false);
         section("الشكل");
-        row("شكل التطبيق", "تلقائي: الملكي نهارًا والمحراب ليلًا بحسب وضع الهاتف", look == 0 ? "ملكي" : "المحراب", null);
+        row("شكل التطبيق", "تلقائي: أخضر نهاري وكحلي ليلي بحسب وضع الهاتف", look == 0 ? "نهاري" : "ليلي", null);
         section("التشغيل في الخلفية");
         row("تأكد أن الأذان يعمل", "الإشعارات والمنبّه والبطارية", "›", go("fix"));
         section("أخرى");
