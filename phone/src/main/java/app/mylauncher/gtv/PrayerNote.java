@@ -56,6 +56,14 @@ final class PrayerNote {
         return p(c).getInt("silent_after", 15);
     }
 
+    /** Minutes before the time of a prayer runs out at which to warn (0 = off). Fajr and Asr are on at first. */
+    static int warnMin(Context c, int i) {
+        return p(c).getInt("warn_" + i, i == PrayerCalc.FAJR || i == PrayerCalc.ASR ? 30 : 0);
+    }
+
+    /** What the time of each prayer runs out at (for the settings). */
+    static final String[] END_NAMES = {"الشروق", "العصر", "المغرب", "العشاء", "منتصف الليل"};
+
     static boolean policyGranted(Context c) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         return nm != null && nm.isNotificationPolicyAccessGranted();
@@ -68,6 +76,8 @@ final class PrayerNote {
         long q;       // iqama (= adhan when there is none)
         long s;       // silence starts
         long e;       // silence ends
+        long end;     // the prayer's time runs out
+        long w;       // the warning before it (0 = none)
         boolean hasIqama;
     }
 
@@ -78,6 +88,8 @@ final class PrayerNote {
         List<Slot> out = new ArrayList<>();
         for (int off = -1; off <= 1; off++) {
             long[] t = PrayerCalc.day(city, now, off, adj);
+            long[] nx = PrayerCalc.day(city, now, off + 1, adj);
+            long rise = PrayerCalc.sunrise(city, now, off, adj);
             boolean fri = PrayerCalc.isFriday(city, now + off * 86_400_000L);
             for (int i = 0; i < 5; i++) {
                 Slot s = new Slot();
@@ -88,6 +100,12 @@ final class PrayerNote {
                 s.q = s.a + iqm[i] * 60_000L;
                 s.s = s.a + (i == PrayerCalc.FAJR ? FAJR_ADHAN_MS : ADHAN_MS);
                 s.e = Math.max(s.q + after * 60_000L, s.s + 60_000L);
+                // The time of a prayer runs out at the sunrise, the next prayer, or the middle of the night.
+                if (i == PrayerCalc.FAJR) s.end = rise;
+                else if (i < 4) s.end = t[i + 1];
+                else s.end = t[3] + (nx[0] - t[3]) / 2L;
+                int wm = warnMin(c, i);
+                s.w = wm > 0 ? s.end - wm * 60_000L : 0L;
                 out.add(s);
             }
         }
@@ -124,10 +142,11 @@ final class PrayerNote {
         }
 
         silence(c, slots, now);
+        warn(c, nm, city, slots, now);
 
         long next = Long.MAX_VALUE;
         for (Slot s : slots) {
-            long[] ts = {s.a, s.q, s.s, s.e};
+            long[] ts = {s.a, s.q, s.s, s.e, s.w};
             for (long x : ts) if (x > now && x < next) next = x;
         }
         PendingIntent pi = PendingIntent.getBroadcast(c, REQ,
@@ -182,6 +201,36 @@ final class PrayerNote {
             nm.notify(NOTE_ID, n);
         } catch (RuntimeException ignored) {
             // No notification permission yet.
+        }
+    }
+
+    /** Warns once, shortly before the time of a prayer runs out. */
+    private static void warn(Context c, NotificationManager nm, Cities.City city, List<Slot> slots, long now) {
+        for (Slot s : slots) {
+            if (s.w <= 0 || now < s.w || now >= s.end) continue;
+            if (p(c).getLong("warn_at_" + s.index, 0L) == s.a) continue;
+            p(c).edit().putLong("warn_at_" + s.index, s.a).apply();
+            NotificationChannel ch = new NotificationChannel("prayer_warn", "قرب خروج وقت الصلاة", NotificationManager.IMPORTANCE_HIGH);
+            nm.createNotificationChannel(ch);
+            long mins = Math.max(1, (s.end - now + 30_000L) / 60_000L);
+            String name = PrayerCalc.name(c, s.index, s.friday);
+            String until = END_NAMES[s.index] + " " + PrayerCalc.time(c, city, s.end).replace("AM", "ص").replace("PM", "م");
+            PendingIntent open = PendingIntent.getActivity(c, 1, new Intent(c, PhoneActivity.class)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            Notification n = new Notification.Builder(c, "prayer_warn")
+                .setSmallIcon(R.drawable.ic_crescent)
+                .setContentTitle("اقترب خروج وقت " + name)
+                .setContentText("باقي " + mins + " دقيقة، يخرج الوقت عند " + until)
+                .setAutoCancel(true)
+                .setCategory(Notification.CATEGORY_REMINDER)
+                .setContentIntent(open)
+                .build();
+            try {
+                nm.notify(20 + s.index, n);
+            } catch (RuntimeException ignored) {
+                // No notification permission yet.
+            }
         }
     }
 

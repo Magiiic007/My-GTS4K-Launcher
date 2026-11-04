@@ -1560,6 +1560,26 @@ public class PhoneActivity extends Activity {
                     });
             }
         }
+        section("تنبيه قبل خروج الوقت");
+        for (int i = 0; i < 5; i++) {
+            final int idx = i;
+            int wm = PrayerNote.warnMin(this, i);
+            row(PrayerCalc.name(this, i, false) + " — قبل " + PrayerNote.END_NAMES[i], wm == 0 ? "متوقف" : wm + " دقيقة", "›",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        numberDialog("دقائق قبل خروج الوقت (0 = متوقف)", 0, 180, PrayerNote.warnMin(PhoneActivity.this, idx),
+                            new IntSetter() {
+                                @Override
+                                public void set(int val) {
+                                    sp.edit().putInt("warn_" + idx, val).apply();
+                                    PrayerNote.refresh(PhoneActivity.this);
+                                    build();
+                                }
+                            });
+                    }
+                });
+        }
         section("التاريخ الهجري");
         row("تعديل التاريخ الهجري", (Hijri.adjust(this) > 0 ? "+" : "") + Hijri.adjust(this) + " يوم", "›",
             new View.OnClickListener() {
