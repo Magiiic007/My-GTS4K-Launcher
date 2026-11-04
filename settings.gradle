@@ -10,6 +10,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Only the ADB library the phone uses to set up the TV (and what it pulls in) comes from here.
+        maven {
+            url 'https://jitpack.io'
+            content { includeGroupByRegex 'com\\.github\\..*' }
+        }
     }
 }
 rootProject.name = "MyGTS4KLauncher"
