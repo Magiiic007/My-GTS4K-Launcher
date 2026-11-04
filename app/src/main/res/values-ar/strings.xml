@@ -218,7 +218,7 @@
     <string name="rem_adhkar_pm_title">أذكار المساء</string>
     <string name="rem_adhkar_am_msg">حان وقت أذكار الصباح، لا تنسَ وردك</string>
     <string name="rem_adhkar_pm_msg">حان وقت أذكار المساء، لا تنسَ وردك</string>
-    <string name="rem_occasion_title">تحية رمضان والأعياد</string>
+    <string name="rem_occasion_title">تنبيه المناسبات</string>
     <string name="occ_ramadan">رمضان كريم</string>
     <string name="occ_ramadan_msg">أهلّ علينا الشهر الفضيل، كل عام وأنتم بخير</string>
     <string name="occ_fitr">عيد فطر مبارك</string>
@@ -284,4 +284,24 @@
     <string name="city_auto_wait">جارٍ البحث عن مدينتك...</string>
     <string name="city_auto_none">لم أجد مدينة مصرية أو سعودية قريبة من هذا الاتصال، اختر من القائمة</string>
     <string name="city_auto_done">تم اختيار مدينة %1$s</string>
+    <string name="occ_n_ramadan">رمضان</string>
+    <string name="occ_n_fitr">عيد الفطر</string>
+    <string name="occ_n_arafa">يوم عرفة</string>
+    <string name="occ_n_adha">عيد الأضحى</string>
+    <string name="occ_n_newyear">رأس السنة الهجرية</string>
+    <string name="occ_n_hijja10">العشر من ذي الحجة</string>
+    <string name="occ_n_tasua">تاسوعاء</string>
+    <string name="occ_n_ashura">يوم عاشوراء</string>
+    <string name="occ_n_last10">العشر الأواخر من رمضان</string>
+    <string name="occ_line_left">باقي %1$d يوم على %2$s</string>
+    <string name="occ_line_today">اليوم: %1$s</string>
+    <string name="occ_line_tomorrow">غدًا: %1$s</string>
+    <string name="rem_group_fast">الصيام</string>
+    <string name="rem_group_dhikr">الأذكار</string>
+    <string name="rem_group_occ">المناسبات الهجرية</string>
+    <string name="rem_upcoming">المناسبات القادمة</string>
+    <string name="rem_upcoming_row">%1$s · %2$s · %3$s</string>
+    <string name="rem_in_days">بعد %1$d يوم</string>
+    <string name="rem_day_before_occ">قبل المناسبة بيوم</string>
+    <string name="rem_same_day_occ">في يوم المناسبة نفسه</string>
 </resources>

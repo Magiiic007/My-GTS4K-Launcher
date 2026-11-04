@@ -79,6 +79,19 @@ final class Reminders {
             list.add(b);
         }
         ensureExtras(list);
+        android.content.SharedPreferences sp = c.getSharedPreferences("magiic", Context.MODE_PRIVATE);
+        if (!sp.getBoolean("occ_eve_v45", false)) {
+            // Occasion alerts now come the evening before (22:00), so people can prepare (fasting and so on).
+            for (Item it : list) {
+                if (it.kind == OCCASION) {
+                    it.dayBefore = true;
+                    it.hour = 22;
+                    it.minute = 0;
+                }
+            }
+            save(c, list);
+            sp.edit().putBoolean("occ_eve_v45", true).apply();
+        }
         return list;
     }
 
@@ -93,7 +106,11 @@ final class Reminders {
         }
         if (!am) list.add(extra("adhkar_am", ADHKAR_AM, 6, 30));
         if (!pm) list.add(extra("adhkar_pm", ADHKAR_PM, 16, 30));
-        if (!occ) list.add(extra("occasion", OCCASION, 8, 0));
+        if (!occ) {
+            Item o = extra("occasion", OCCASION, 22, 0);
+            o.dayBefore = true;
+            list.add(o);
+        }
         if (!kahf) {
             Item k = extra("kahf", KAHF, 9, 0);
             k.daysMask = 1 << (Calendar.FRIDAY - 1);
@@ -183,7 +200,7 @@ final class Reminders {
     /** The day the reminder is about: the fast's own day (a day after the popup when it shows the day before). */
     static Calendar fastDay(Item it, Calendar show) {
         Calendar t = (Calendar) show.clone();
-        if (isFast(it.kind) && it.dayBefore) t.add(Calendar.DAY_OF_MONTH, 1);
+        if ((isFast(it.kind) || it.kind == OCCASION) && it.dayBefore) t.add(Calendar.DAY_OF_MONTH, 1);
         return t;
     }
 
@@ -202,6 +219,53 @@ final class Reminders {
     private static final int[] OCC_MSG = {R.string.occ_ramadan_msg, R.string.occ_fitr_msg, R.string.occ_arafa_msg,
         R.string.occ_adha_msg, R.string.occ_newyear_msg, R.string.occ_hijja10_msg, R.string.occ_tasua_msg,
         R.string.occ_ashura_msg, R.string.occ_last10_msg};
+
+    private static final int[] OCC_NAME = {R.string.occ_n_ramadan, R.string.occ_n_fitr, R.string.occ_n_arafa,
+        R.string.occ_n_adha, R.string.occ_n_newyear, R.string.occ_n_hijja10, R.string.occ_n_tasua,
+        R.string.occ_n_ashura, R.string.occ_n_last10};
+    /** How many days ahead each occasion starts to show on the board: Ramadan three months, the others 40 days. */
+    private static int window(int occ) {
+        return occ == 0 ? 92 : 40;
+    }
+
+    static String occName(Context c, int occ) {
+        return c.getString(OCC_NAME[occ]);
+    }
+
+    /** The occasion a popup shown at {@code shownAt} is about (the next day when it shows the evening before). */
+    private static int occasionShown(Context c, Item it, long shownAt) {
+        Calendar show = Calendar.getInstance();
+        show.setTimeInMillis(shownAt);
+        return occasion(Hijri.of(fastDay(it, show), Hijri.adjust(c)));
+    }
+
+    /** The coming occasions as {index, days from today}, soonest first, up to {@code max} and one year ahead. */
+    static List<int[]> upcoming(Context c, int max) {
+        List<int[]> out = new ArrayList<>();
+        int adj = Hijri.adjust(c);
+        Calendar d = Hijri.today(c);
+        for (int i = 0; i <= 400 && out.size() < max; i++) {
+            int o = occasion(Hijri.of(d, adj));
+            if (o >= 0) out.add(new int[] {o, i});
+            d.add(Calendar.DAY_OF_MONTH, 1);
+        }
+        return out;
+    }
+
+    /** {index, days} of the occasion to show on the board now (within its window), or null. */
+    static int[] nearest(Context c) {
+        for (int[] u : upcoming(c, 12)) {
+            if (u[1] <= window(u[0])) return u;
+        }
+        return null;
+    }
+
+    static String occLine(Context c, int[] n) {
+        String name = occName(c, n[0]);
+        if (n[1] == 0) return c.getString(R.string.occ_line_today, name);
+        if (n[1] == 1) return c.getString(R.string.occ_line_tomorrow, name);
+        return c.getString(R.string.occ_line_left, n[1], name);
+    }
 
     /** Which occasion a Hijri date {year, month, day} is (index into the lists above), or -1. */
     static int occasion(int[] h) {
@@ -267,10 +331,8 @@ final class Reminders {
 
     static String title(Context c, Item it, long shownAt) {
         if (it.kind == OCCASION) {
-            Calendar day = Calendar.getInstance();
-            day.setTimeInMillis(shownAt);
-            int o = occasion(Hijri.of(day, Hijri.adjust(c)));
-            if (o >= 0) return c.getString(OCC_TITLE[o]);
+            int o = occasionShown(c, it, shownAt);
+            if (o >= 0) return it.dayBefore ? occName(c, o) : c.getString(OCC_TITLE[o]);
         }
         return title(c, it);
     }
@@ -292,10 +354,9 @@ final class Reminders {
         if (it.kind == ADHKAR_PM) return c.getString(R.string.rem_adhkar_pm_msg);
         if (it.kind == KAHF) return c.getString(R.string.rem_kahf_msg);
         if (it.kind == OCCASION) {
-            Calendar day = Calendar.getInstance();
-            day.setTimeInMillis(shownAt);
-            int o = occasion(Hijri.of(day, Hijri.adjust(c)));
-            return o >= 0 ? c.getString(OCC_MSG[o]) : "";
+            int o = occasionShown(c, it, shownAt);
+            if (o < 0) return "";
+            return it.dayBefore ? c.getString(R.string.occ_line_tomorrow, occName(c, o)) : c.getString(OCC_MSG[o]);
         }
         Calendar show = Calendar.getInstance();
         show.setTimeInMillis(shownAt);

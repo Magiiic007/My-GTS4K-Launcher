@@ -218,7 +218,7 @@
     <string name="rem_adhkar_pm_title">Evening adhkar</string>
     <string name="rem_adhkar_am_msg">It is time for the morning adhkar</string>
     <string name="rem_adhkar_pm_msg">It is time for the evening adhkar</string>
-    <string name="rem_occasion_title">Ramadan and Eid greetings</string>
+    <string name="rem_occasion_title">Occasion alerts</string>
     <string name="occ_ramadan">Ramadan Kareem</string>
     <string name="occ_ramadan_msg">The blessed month has begun. Wishing you well</string>
     <string name="occ_fitr">Eid al-Fitr Mubarak</string>
@@ -284,4 +284,24 @@
     <string name="city_auto_wait">Looking for your city...</string>
     <string name="city_auto_none">No Egyptian or Saudi city found near this connection. Choose it from the list</string>
     <string name="city_auto_done">Your city was set to %1$s</string>
+    <string name="occ_n_ramadan">Ramadan</string>
+    <string name="occ_n_fitr">Eid al-Fitr</string>
+    <string name="occ_n_arafa">Day of Arafah</string>
+    <string name="occ_n_adha">Eid al-Adha</string>
+    <string name="occ_n_newyear">Hijri New Year</string>
+    <string name="occ_n_hijja10">First ten days of Dhul Hijja</string>
+    <string name="occ_n_tasua">Tasu\'a</string>
+    <string name="occ_n_ashura">Day of Ashura</string>
+    <string name="occ_n_last10">Last ten nights of Ramadan</string>
+    <string name="occ_line_left">%1$d days until %2$s</string>
+    <string name="occ_line_today">Today: %1$s</string>
+    <string name="occ_line_tomorrow">Tomorrow: %1$s</string>
+    <string name="rem_group_fast">Fasting</string>
+    <string name="rem_group_dhikr">Adhkar</string>
+    <string name="rem_group_occ">Hijri occasions</string>
+    <string name="rem_upcoming">Upcoming occasions</string>
+    <string name="rem_upcoming_row">%1$s · %2$s · %3$s</string>
+    <string name="rem_in_days">in %1$d days</string>
+    <string name="rem_day_before_occ">the day before the occasion</string>
+    <string name="rem_same_day_occ">on the day of the occasion</string>
 </resources>

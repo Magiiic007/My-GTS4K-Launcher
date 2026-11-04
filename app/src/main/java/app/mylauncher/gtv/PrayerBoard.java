@@ -68,6 +68,7 @@ final class PrayerBoard {
 
     /** Ramadan on the "next prayer" bar: days left before it (0 = today is the 1st), -1 = far off, -2 = it is Ramadan. */
     private int ramadan = -1;
+    private int[] occNear;
     private String extraLine;
     private String nextText = "";
     private String barShown = "";
@@ -442,16 +443,12 @@ final class PrayerBoard {
             long firstAt = shown[PrayerCalc.DHUHR] - firstMin * 60000L;
             if (fridayToday && firstMin > 0 && firstAt > now) {
                 extraLine = ctx.getString(R.string.friday_first, PrayerCalc.time(ctx, city, firstAt));
-            } else if (ramadan == -2) {
+            } else if (ramadan == -2 && !(occNear != null && occNear[1] <= 1)) {
                 long[] t = PrayerCalc.day(city, now, 0, adjust);
                 extraLine = ctx.getString(R.string.ramadan_times,
                     PrayerCalc.time(ctx, city, t[PrayerCalc.FAJR]), PrayerCalc.time(ctx, city, t[PrayerCalc.MAGHRIB]));
-            } else if (ramadan == 0) {
-                extraLine = ctx.getString(R.string.ramadan_today);
-            } else if (ramadan == 1) {
-                extraLine = ctx.getString(R.string.ramadan_tomorrow);
-            } else if (ramadan > 1) {
-                extraLine = ctx.getString(R.string.ramadan_left, ramadan);
+            } else if (occNear != null) {
+                extraLine = Reminders.occLine(ctx, occNear);
             }
             adhanName.setText(PrayerCalc.name(ctx, adhanEvent.index, adhanEvent.friday));
             if (iqamaEvent != null) {
@@ -518,6 +515,7 @@ final class PrayerBoard {
         lastDate = key;
         cacheMinute = -1;
         ramadan = ramadanState(today);
+        occNear = Reminders.nearest(ctx);
         weekday.setText(Hijri.weekdayAr(today));
         gregAr.setText(Hijri.gregorianAr(today));
         gregEn.setText(Hijri.gregorianEn(today));

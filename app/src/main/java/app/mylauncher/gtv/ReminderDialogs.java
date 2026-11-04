@@ -12,26 +12,135 @@ import java.util.List;
 final class ReminderDialogs {
     private ReminderDialogs() {}
 
-    static void open(final Context c) {
+    /** Which group the editor goes back to: 0 = the main list, 1 = fasting, 2 = adhkar, 3 = occasions. */
+    private static int group = 0;
+
+    static void open(Context c) {
+        group = 0;
+        showMain(c);
+    }
+
+    private static void back(Context c) {
+        if (group == 0) showMain(c);
+        else showGroup(c, group);
+    }
+
+    /** Groups first, then the Friday reminder and the custom ones: no times in the text (they are set inside). */
+    private static void showMain(final Context c) {
         final List<Reminders.Item> list = Reminders.load(c);
-        String[] items = new String[list.size() + 1];
+        final java.util.ArrayList<String> labels = new java.util.ArrayList<>();
+        final java.util.ArrayList<Integer> target = new java.util.ArrayList<>(); // >= 0 item index, -1..-3 group, -9 add
+        labels.add(c.getString(R.string.rem_group_fast));
+        target.add(-1);
+        labels.add(c.getString(R.string.rem_group_dhikr));
+        target.add(-2);
         for (int i = 0; i < list.size(); i++) {
-            Reminders.Item it = list.get(i);
-            items[i] = (it.enabled ? "● " : "○ ") + Reminders.title(c, it) + "  " + time(it);
+            if (list.get(i).kind == Reminders.KAHF) {
+                labels.add(mark(c, list.get(i)));
+                target.add(i);
+            }
         }
-        items[list.size()] = c.getString(R.string.rem_add);
+        labels.add(c.getString(R.string.rem_group_occ));
+        target.add(-3);
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).kind == Reminders.CUSTOM) {
+                labels.add(mark(c, list.get(i)));
+                target.add(i);
+            }
+        }
+        labels.add(c.getString(R.string.rem_add));
+        target.add(-9);
         new Menu.Builder(c)
             .setTitle(R.string.menu_reminders)
-            .setItems(items, new DialogInterface.OnClickListener() {
+            .setItems(labels.toArray(new String[0]), new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int which) {
-                    if (which < list.size()) {
-                        edit(c, list, which);
-                    } else {
+                    int t = target.get(which);
+                    if (t >= 0) {
+                        group = 0;
+                        edit(c, list, t);
+                    } else if (t == -9) {
+                        group = 0;
                         list.add(Reminders.newCustom());
                         save(c, list);
                         edit(c, list, list.size() - 1);
+                    } else {
+                        showGroup(c, -t);
                     }
+                }
+            })
+            .show();
+    }
+
+    private static String mark(Context c, Reminders.Item it) {
+        return (it.enabled ? "● " : "○ ") + Reminders.title(c, it);
+    }
+
+    private static void showGroup(final Context c, final int g) {
+        group = g;
+        final List<Reminders.Item> list = Reminders.load(c);
+        final java.util.ArrayList<String> labels = new java.util.ArrayList<>();
+        final java.util.ArrayList<Integer> target = new java.util.ArrayList<>(); // item index, or -5 = upcoming list
+        for (int i = 0; i < list.size(); i++) {
+            int k = list.get(i).kind;
+            boolean in = g == 1 ? Reminders.isFast(k)
+                : g == 2 ? (k == Reminders.ADHKAR_AM || k == Reminders.ADHKAR_PM)
+                : k == Reminders.OCCASION;
+            if (in) {
+                labels.add(mark(c, list.get(i)));
+                target.add(i);
+            }
+        }
+        if (g == 3) {
+            labels.add(c.getString(R.string.rem_upcoming));
+            target.add(-5);
+        }
+        int title = g == 1 ? R.string.rem_group_fast : g == 2 ? R.string.rem_group_dhikr : R.string.rem_group_occ;
+        new Menu.Builder(c)
+            .setTitle(title)
+            .setItems(labels.toArray(new String[0]), new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int which) {
+                    int t = target.get(which);
+                    if (t == -5) showUpcoming(c);
+                    else edit(c, list, t);
+                }
+            })
+            .setNegativeButton(R.string.back, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int w) {
+                    open(c);
+                }
+            })
+            .show();
+    }
+
+    /** The coming occasions with their dates and the days left. */
+    private static void showUpcoming(final Context c) {
+        boolean ar = "ar".equals(java.util.Locale.getDefault().getLanguage());
+        List<int[]> up = Reminders.upcoming(c, 12);
+        String[] rows = new String[up.size()];
+        for (int i = 0; i < rows.length; i++) {
+            int[] u = up.get(i);
+            java.util.Calendar d = Hijri.today(c);
+            d.add(java.util.Calendar.DAY_OF_MONTH, u[1]);
+            String date = ar ? Hijri.weekdayAr(d) + " " + Hijri.gregorianAr(d) : Hijri.gregorianEn(d);
+            String left = u[1] == 0 ? c.getString(R.string.rem_today)
+                : u[1] == 1 ? c.getString(R.string.rem_tomorrow) : c.getString(R.string.rem_in_days, u[1]);
+            rows[i] = c.getString(R.string.rem_upcoming_row, Reminders.occName(c, u[0]), date, left);
+        }
+        new Menu.Builder(c)
+            .setTitle(R.string.rem_upcoming)
+            .setItems(rows, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int which) {
+                    showGroup(c, 3);
+                }
+            })
+            .setNegativeButton(R.string.back, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int w) {
+                    showGroup(c, 3);
                 }
             })
             .show();
@@ -93,9 +202,11 @@ final class ReminderDialogs {
             labels.add(c.getString(R.string.rem_days_white, whiteText(c, it.hijriMask)));
             actions.add(WHITE);
         }
-        if (Reminders.isFast(it.kind)) {
-            labels.add(c.getString(R.string.rem_when,
-                c.getString(it.dayBefore ? R.string.rem_day_before : R.string.rem_same_day)));
+        if (Reminders.isFast(it.kind) || it.kind == Reminders.OCCASION) {
+            boolean occ = it.kind == Reminders.OCCASION;
+            labels.add(c.getString(R.string.rem_when, c.getString(it.dayBefore
+                ? (occ ? R.string.rem_day_before_occ : R.string.rem_day_before)
+                : (occ ? R.string.rem_same_day_occ : R.string.rem_same_day))));
             actions.add(BEFORE);
         }
         labels.add(c.getString(R.string.rem_time_item, time(it)));
@@ -160,7 +271,7 @@ final class ReminderDialogs {
             .setNegativeButton(R.string.back, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int w) {
-                    open(c);
+                    back(c);
                 }
             })
             .show();

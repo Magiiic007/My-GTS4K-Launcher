@@ -64,6 +64,7 @@ final class MihrabHome {
     private PrayerCalc.Event adhanEvent;
     private boolean fridayToday;
     private int ramadan = -1;
+    private int[] occNear;
     private String extraLine;
     private String lastDay = "";
     private String infoShown = "";
@@ -452,6 +453,7 @@ final class MihrabHome {
         lastDay = key;
         cacheMinute = -1;
         ramadan = ramadanState(today);
+        occNear = Reminders.nearest(a);
         // One complete verse a day (Tanzil Uthmani text, see res/values/arrays.xml).
         String[] vt = a.getResources().getStringArray(R.array.verse_text);
         String[] vr = a.getResources().getStringArray(R.array.verse_ref);
@@ -538,16 +540,12 @@ final class MihrabHome {
             long firstAt = shown[PrayerCalc.DHUHR] - firstMin * 60000L;
             if (fridayToday && firstMin > 0 && firstAt > now) {
                 extraLine = a.getString(R.string.friday_first, PrayerCalc.time(a, city, firstAt));
-            } else if (ramadan == -2) {
+            } else if (ramadan == -2 && !(occNear != null && occNear[1] <= 1)) {
                 long[] t = PrayerCalc.day(city, now, 0, adjust);
                 extraLine = a.getString(R.string.ramadan_times,
                     PrayerCalc.time(a, city, t[PrayerCalc.FAJR]), PrayerCalc.time(a, city, t[PrayerCalc.MAGHRIB]));
-            } else if (ramadan == 0) {
-                extraLine = a.getString(R.string.ramadan_today);
-            } else if (ramadan == 1) {
-                extraLine = a.getString(R.string.ramadan_tomorrow);
-            } else if (ramadan > 1) {
-                extraLine = a.getString(R.string.ramadan_left, ramadan);
+            } else if (occNear != null) {
+                extraLine = Reminders.occLine(a, occNear);
             }
         }
         String want = extraLine != null && (now / 6000L) % 2L == 1L ? extraLine : baseInfo;
