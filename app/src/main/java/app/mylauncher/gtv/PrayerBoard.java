@@ -52,7 +52,11 @@ final class PrayerBoard {
     private final Stage.Outlined clock;
     private final TextView ampm;
     private final TextView weekday, gregAr, gregEn, hijriAr, hijriEn;
-    private final TextView adhanName, adhanTime, iqamaName, iqamaTime;
+    private final TextView adhanName, adhanTime, iqamaName, iqamaTime, iqamaLabel;
+    private int[] iqamaCfg = new int[5];
+    private String[] dhikr;
+    private String dhikrShown = "";
+    private boolean iqamaLive;
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -227,6 +231,7 @@ final class PrayerBoard {
         Stage.add(stage, dateFocus, dl, dt, g.date[2], g.date[3]);
 
         // ------------------------------------------------------------ the two countdowns
+        TextView iqamaLabelTmp = null;
         TextView[] names = new TextView[2];
         TextView[] times = new TextView[2];
         int[] labels = {R.string.count_adhan, R.string.count_iqama};
@@ -239,6 +244,7 @@ final class PrayerBoard {
             label.setGravity(Gravity.CENTER);
             Stage.fitOneLine(label, 8, sc(16, kc));
             Stage.add(stage, label, l + 12, t + sc(10, kc), r - 12, t + sc(36, kc));
+            if (i == 1) iqamaLabelTmp = label;
             names[i] = Stage.text(ctx, "", sc(25, kc), Theme.cardGold(ctx), true);
             names[i].setGravity(Gravity.CENTER);
             Stage.fitOneLine(names[i], 10, sc(25, kc));
@@ -269,6 +275,10 @@ final class PrayerBoard {
         adhanTime = times[0];
         iqamaName = names[1];
         iqamaTime = times[1];
+        iqamaLabel = iqamaLabelTmp;
+        dhikr = ctx.getResources().getStringArray(R.array.dhikr);
+        // A dhikr may need two lines; the size shrinks to fit.
+        iqamaTime.setMaxLines(2);
     }
 
     // ---------------------------------------------------------------- small helpers
@@ -398,6 +408,7 @@ final class PrayerBoard {
             sunriseAt = PrayerCalc.sunrise(city, now, 0, adjust);
             adhanEvent = PrayerCalc.nextEvent(city, now, adjust, new int[5]);
             iqamaEvent = nextIqama(city, now, adjust, iqama);
+            iqamaCfg = iqama;
             fridayToday = PrayerCalc.isFriday(city, now);
             if (adhanEvent == null) return;
             // After Isha the next adhan is tomorrow's Fajr: show that time in its row.
@@ -414,8 +425,7 @@ final class PrayerBoard {
                 long at = p >= 0 ? shown[p] : sunriseAt;
                 rowTime[i].setText(PrayerCalc.time(ctx, city, at));
                 if (p >= 0 && iqama[p] > 0) {
-                    rowIqama[i].setText(ctx.getString(R.string.iqama_at,
-                        PrayerCalc.time(ctx, city, shown[p] + iqama[p] * 60000L)));
+                    rowIqama[i].setText(ctx.getString(R.string.iqama_in, iqama[p]));
                     rowIqama[i].setVisibility(View.VISIBLE);
                 } else {
                     rowIqama[i].setVisibility(View.GONE);
@@ -466,7 +476,26 @@ final class PrayerBoard {
                 adhanTime.setTextColor(soon ? Color.parseColor(kids ? "#FFD6336C" : "#FFFFF0B0") : baseCountColour);
             }
         }
-        iqamaTime.setText(iqamaEvent != null ? clockText(iqamaEvent.at - now) : "--:--:--");
+        // The iqama counter only counts from the adhan to the iqama; the rest of the day it shows a dhikr.
+        iqamaLive = iqamaEvent != null && now >= iqamaEvent.at - iqamaCfg[iqamaEvent.index] * 60000L;
+        if (iqamaLive) {
+            dhikrShown = "";
+            setIfChanged(iqamaLabel, ctx.getString(R.string.count_iqama));
+            setIfChanged(iqamaName, PrayerCalc.name(ctx, iqamaEvent.index, iqamaEvent.friday));
+            iqamaTime.setText(clockText(iqamaEvent.at - now));
+        } else {
+            setIfChanged(iqamaLabel, ctx.getString(R.string.dhikr_label));
+            setIfChanged(iqamaName, "");
+            String d = dhikr[(int) ((now / 5000L) % dhikr.length)];
+            if (!d.equals(dhikrShown)) {
+                dhikrShown = d;
+                iqamaTime.setText(d);
+            }
+        }
+    }
+
+    private static void setIfChanged(TextView t, String text) {
+        if (!text.contentEquals(t.getText())) t.setText(text);
     }
 
     private String rowLabel(int row, boolean jumuah) {

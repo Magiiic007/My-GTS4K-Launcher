@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown in the iqama box outside the adhan-to-iqama minutes; short enough for the box. -->
+    <string-array name="dhikr">
+        <item>سبحان الله</item>
+        <item>الحمد لله</item>
+        <item>لا إله إلا الله</item>
+        <item>الله أكبر</item>
+        <item>أستغفر الله</item>
+        <item>صلِّ على محمد ﷺ</item>
+        <item>وحِّد الله</item>
+        <item>اذكر الله</item>
+        <item>سبحان الله وبحمده</item>
+        <item>سبحان الله العظيم</item>
+        <item>الحمد لله رب العالمين</item>
+        <item>لا حول ولا قوة إلا بالله</item>
+        <item>حسبي الله ونعم الوكيل</item>
+        <item>اللهم صلِّ وسلِّم على نبينا محمد</item>
+    </string-array>
+</resources>
