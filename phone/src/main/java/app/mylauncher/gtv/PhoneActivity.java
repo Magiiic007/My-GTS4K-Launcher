@@ -184,7 +184,7 @@ public class PhoneActivity extends Activity {
         if (tab == 9) qiblaStart();
         h.post(ticker);
         if (!autoTried && sp.getBoolean("ph_first", false)
-            && (Cities.selected(this) == null || sp.getBoolean("city_auto", true))) {
+            ) {
             autoTried = true;
             autoCity(false);
         }
@@ -495,6 +495,14 @@ public class PhoneActivity extends Activity {
         place.setSingleLine(true);
         place.setEllipsize(android.text.TextUtils.TruncateAt.END);
         place.setGravity(Gravity.CENTER);
+        place.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tab = 3;
+                sub = "country";
+                build();
+            }
+        });
         LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(0, -2, 1f);
         pp.setMarginStart(dp(8));
         pp.setMarginEnd(dp(8));
@@ -551,15 +559,17 @@ public class PhoneActivity extends Activity {
         hero.addView(cdTv);
         altTv = tv("", 14, cream, true);
         altTv.setGravity(Gravity.CENTER);
-        hero.addView(altTv, lp(-2, dp(26), 2));
+        hero.addView(altTv, lp(-2, -2, 2));
         LinearLayout iq = hbox();
         iq.setBackground(shape(0x38000000, line, 14));
         iq.setPadding(dp(12), dp(6), dp(12), dp(6));
         iqLabel = tv("", 12, dim, false);
         iqValue = tv("", 18, gold, true);
-        iq.addView(iqLabel, new LinearLayout.LayoutParams(0, -2, 1f));
+        iq.setGravity(Gravity.CENTER);
+        iqValue.setPadding(dp(10), 0, 0, 0);
+        iq.addView(iqLabel);
         iq.addView(iqValue);
-        hero.addView(iq, lp(-1, dp(Math.round(50 * f)), 6));
+        hero.addView(iq, lp(-2, dp(Math.round(50 * f)), 6));
         add(hero, 8);
 
         // the six times: they share whatever height is left, so the page fills the screen
@@ -681,7 +691,19 @@ public class PhoneActivity extends Activity {
     // ---------------------------------------------------------------- radio
     private void radio() {
         title("الراديو", false);
-        boolean group = false;
+        if (!getSystemService(NotificationManager.class).areNotificationsEnabled()) {
+            row("الإشعارات متوقفة", "بدونها لا يظهر الراديو في شريط الإشعارات ولا زر الإيقاف. اضغط لتفعيلها", "فتح", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (Build.VERSION.SDK_INT >= 33 && !granted(Manifest.permission.POST_NOTIFICATIONS)) {
+                        requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, 12);
+                    } else {
+                        startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
+                    }
+                }
+            });
+        }
         for (int pass = 0; pass < 2; pass++) {
             section(pass == 0 ? "المحطات" : "القرّاء");
             for (int i = 0; i < RadioService.STATIONS.length; i++) {
@@ -922,6 +944,20 @@ public class PhoneActivity extends Activity {
                 });
             }
         });
+        row("تذكير مرة ثانية", it.again == 0 ? "مرة واحدة فقط" : "يتكرر بعد " + it.again + " دقيقة", "›",
+            new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    numberDialog("يتكرر التذكير بعد كم دقيقة (0 = مرة واحدة)", 0, 240, it.again, new IntSetter() {
+                        @Override
+                        public void set(int val) {
+                            it.again = val;
+                            saveRem(list);
+                            build();
+                        }
+                    });
+                }
+            });
         row("مدة بقاء الإشعار", it.durationMin == 0 ? "حتى أغلقه" : it.durationMin + " دقيقة", "›",
             new View.OnClickListener() {
                 @Override
@@ -1066,7 +1102,7 @@ public class PhoneActivity extends Activity {
 
     // ---------------------------------------------------------------- settings
     private void settings() {
-        if ("country".equals(sub) || "cities".equals(sub)) {
+        if ("country".equals(sub) || "cities".equals(sub) || "find".equals(sub)) {
             cityPicker();
             return;
         }
@@ -1083,23 +1119,6 @@ public class PhoneActivity extends Activity {
             return;
         }
         title("الإعدادات", false);
-        Cities.City c = Cities.selected(this);
-        section("الموقع والمواقيت");
-        switchRow("المدينة تلقائيًا", c == null ? "لم تُحدَّد بعد" : c.name(true), sp.getBoolean("city_auto", true),
-            new CompoundListener() {
-                @Override
-                public void changed(boolean on) {
-                    sp.edit().putBoolean("city_auto", on).apply();
-                    if (on) autoCity(true);
-                }
-            });
-        row("الدولة والمدينة", null, "›", go("country"));
-        row("الأذان والإقامة", "طريقة الحساب والمذهب والدقائق لكل صلاة", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                goTab(4);
-            }
-        });
         section("الشكل");
         row("شكل التطبيق", "تلقائي: الملكي نهارًا والمحراب ليلًا بحسب وضع الهاتف", look == 0 ? "ملكي" : "المحراب", null);
         section("التشغيل في الخلفية");
@@ -1111,43 +1130,173 @@ public class PhoneActivity extends Activity {
                 PhoneUpdater.check(PhoneActivity.this);
             }
         });
-        section("تجارب مؤقتة");
-        row("أزرار التجربة", "تشغيل الأذان والإقامة والتذكيرات والحساس", "›", go("tests"));
     }
 
+    private String country = "EG";
+    private String countryName = "مصر";
+    private LinearLayout pickList;
+
+    private EditText searchBox(String hint) {
+        EditText search = new EditText(this);
+        search.setHint(hint);
+        search.setHintTextColor(dim);
+        search.setTextColor(cream);
+        search.setSingleLine(true);
+        search.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        search.setBackground(shape(card, line, 14));
+        search.setPadding(dp(14), dp(10), dp(14), dp(10));
+        return search;
+    }
+
+    /** Picks a place by hand: any country, and the cities, provinces or governorates of it, or a search for a neighbourhood. */
     private void cityPicker() {
-        if ("country".equals(sub)) {
-            title("الدولة", true);
-            row("مصر", null, "›", countryGo("EG"));
-            row("السعودية", null, "›", countryGo("SA"));
+        if ("find".equals(sub)) {
+            findPage();
             return;
         }
-        title(country.equals("EG") ? "مدن مصر" : "مدن السعودية", true);
-        Cities.City[] arr = country.equals("EG") ? Cities.EGYPT : Cities.SAUDI;
+        if ("country".equals(sub)) {
+            title("اختر الدولة", true);
+            row("ابحث باسم مدينتك أو حيّك", "في أي مكان بالعالم، ويحتاج إنترنت", "›", go("find"));
+            final EditText search = searchBox("ابحث عن دولة");
+            add(search, 8);
+            pickList = vbox();
+            add(pickList, 2);
+            fillCountries("");
+            search.addTextChangedListener(new android.text.TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence x, int a, int b, int c) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence x, int a, int b, int c) {
+                    fillCountries(x.toString());
+                }
+
+                @Override
+                public void afterTextChanged(android.text.Editable e) {
+                }
+            });
+            return;
+        }
+        title(countryName, true);
+        final List<Cities.City> arr = new ArrayList<>();
+        if (country.equals("EG")) arr.addAll(java.util.Arrays.asList(Cities.EGYPT));
+        else if (country.equals("SA")) arr.addAll(java.util.Arrays.asList(Cities.SAUDI));
+        else arr.addAll(World.places(this, country));
+        if (arr.isEmpty()) {
+            add(tv("لا توجد مدن مسجّلة لهذه الدولة، استخدم البحث باسم مدينتك.", 14, dim, false), 8);
+            row("ابحث باسم مدينتك أو حيّك", null, "›", go("find"));
+            return;
+        }
         for (final Cities.City c : arr) {
             row(c.name(true), null, null, new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    sp.edit().putBoolean("city_auto", false).apply();
-                    applyCity(c);
-                    sub = null;
-                    build();
+                    pickPlace(c);
                 }
             });
         }
+        row("لم تجد مدينتك؟ ابحث بالاسم", null, "›", go("find"));
     }
 
-    private String country = "EG";
+    private void fillCountries(String q) {
+        pickList.removeAllViews();
+        q = q.trim();
+        for (final String[] c : World.countries(this)) {
+            if (!q.isEmpty() && !c[1].contains(q)) continue;
+            LinearLayout r = hbox();
+            r.setBackground(shape(card, line, 14));
+            r.setPadding(dp(14), dp(10), dp(14), dp(10));
+            r.setMinimumHeight(dp(48));
+            r.addView(tv(c[1], 16, cream, false), new LinearLayout.LayoutParams(0, -2, 1f));
+            r.addView(tv("›", 16, gold, true));
+            r.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    country = c[0];
+                    countryName = c[1];
+                    sub = "cities";
+                    build();
+                }
+            });
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
+            rp.topMargin = dp(6);
+            pickList.addView(r, rp);
+        }
+        if (pickList.getChildCount() == 0) pickList.addView(tv("لا توجد نتائج", 14, dim, false));
+    }
 
-    private View.OnClickListener countryGo(final String code) {
-        return new View.OnClickListener() {
+    /** A place chosen by hand from a list. */
+    private void pickPlace(Cities.City c) {
+        if (country.equals("EG") || country.equals("SA")) {
+            applyCity(c);
+        } else {
+            sp.edit().putString("city", c.country + "|" + c.en).putString("city_custom",
+                c.ar + "|" + c.lat + "|" + c.lon).apply();
+            afterCity();
+        }
+        leavePicker();
+    }
+
+    private void leavePicker() {
+        tab = 0;
+        sub = null;
+        build();
+    }
+
+    private LinearLayout findList;
+
+    private void findPage() {
+        title("ابحث عن مدينتك", true);
+        add(tv("اكتب اسم المدينة أو الحي أو القرية، فتظهر الأماكن المطابقة من أي دولة.", 13, dim, false), 4);
+        final EditText q = searchBox("مثال: المعادي، أو Dubai");
+        add(q, 8);
+        findList = vbox();
+        add(button("بحث", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                country = code;
-                sub = "cities";
-                build();
+                final String text = q.getText().toString().trim();
+                if (text.length() < 2) return;
+                findList.removeAllViews();
+                findList.addView(tv("جارٍ البحث…", 14, dim, false));
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        final List<Place.Hit> hits = Place.search(text);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (findList == null || !"find".equals(sub)) return;
+                                findList.removeAllViews();
+                                if (hits.isEmpty()) {
+                                    findList.addView(tv("لا نتائج. تأكد من الاسم ومن الاتصال بالإنترنت.", 14, dim, false));
+                                }
+                                for (final Place.Hit hit : hits) {
+                                    LinearLayout r = vbox();
+                                    r.setBackground(shape(card, line, 14));
+                                    r.setPadding(dp(14), dp(10), dp(14), dp(10));
+                                    r.addView(tv(hit.name, 16, cream, true));
+                                    r.addView(tv(hit.detail, 12, dim, false));
+                                    r.setOnClickListener(new View.OnClickListener() {
+                                        @Override
+                                        public void onClick(View v2) {
+                                            sp.edit().putString("city", hit.country + "|" + hit.name).putString("city_custom",
+                                                hit.name + "|" + hit.lat + "|" + hit.lon).apply();
+                                            afterCity();
+                                            leavePicker();
+                                        }
+                                    });
+                                    LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
+                                    rp.topMargin = dp(6);
+                                    findList.addView(r, rp);
+                                }
+                            }
+                        });
+                    }
+                }, "find").start();
             }
-        };
+        }), 8);
+        add(findList, 4);
     }
 
     private static final String[] METHOD_NAMES = {"رابطة العالم الإسلامي", "الهيئة المصرية العامة للمساحة", "أم القرى",
@@ -1330,6 +1479,20 @@ public class PhoneActivity extends Activity {
         drawerList.addView(it, lp(-1, -2, 2));
     }
 
+    private void menuTests() {
+        TextView it = tv("أزرار التجربة (مؤقتة)", 14, dim, true);
+        it.setPadding(dp(12), dp(11), dp(12), dp(11));
+        it.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                goTab(3);
+                sub = "tests";
+                build();
+            }
+        });
+        drawerList.addView(it, lp(-1, -2, 2));
+    }
+
     private void menuGroup(String name) {
         TextView g = tv(name, 12, gold, true);
         g.setPadding(dp(8), 0, 0, 0);
@@ -1357,6 +1520,7 @@ public class PhoneActivity extends Activity {
         menuItem("الراديو", 1);
         menuGroup("");
         menuItem("الإعدادات", 3);
+        menuTests();
         drawerOpen = true;
         drawerLayer.setVisibility(View.VISIBLE);
         drawerPanel.setTranslationX(dp(290));
@@ -1402,6 +1566,8 @@ public class PhoneActivity extends Activity {
             r.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    clearDone(c.id);
+                    editCat = false;
                     sub = "cat:" + c.id;
                     build();
                 }
@@ -1438,10 +1604,31 @@ public class PhoneActivity extends Activity {
             for (final Adhkar.Category cat : all) {
                 if (cat.id != id) continue;
                 title(cat.name, true);
+                final List<Adhkar.Entry> es = Adhkar.entries(this, cat);
+                if (editCat) {
+                    catEdit(cat, es);
+                    return;
+                }
+                row("إضافة ذكر أو ترتيب الأذكار", null, "✎", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        editCat = true;
+                        build();
+                    }
+                });
                 int shown = 0;
-                for (int i = 0; i < cat.texts.length; i++) {
-                    final String key = cat.id + "|" + i;
-                    final int total = cat.counts[i];
+                for (int i = 0; i < es.size(); i++) {
+                    final Adhkar.Entry e = es.get(i);
+                    final String key = cat.id + "|" + e.key;
+                    final int total = e.count;
+                    if (e.info) {
+                        // a hadith or an explanation: small, and nothing to count
+                        TextView n = tv(e.text, 13, dim, false);
+                        n.setLineSpacing(0, 1.3f);
+                        n.setPadding(dp(6), dp(4), dp(6), dp(4));
+                        add(n, 8);
+                        continue;
+                    }
                     final int[] left = {done.containsKey(key) ? done.get(key) : total};
                     if (left[0] == 0) continue;
                     shown++;
@@ -1449,16 +1636,16 @@ public class PhoneActivity extends Activity {
                     LinearLayout r = vbox();
                     r.setBackground(shape(card, line, 16));
                     r.setPadding(dp(14), dp(12), dp(14), dp(12));
-                    if (!cat.pre[i].isEmpty()) {
-                        TextView pn = tv(cat.pre[i], 12, dim, false);
+                    if (!e.pre.isEmpty()) {
+                        TextView pn = tv(e.pre, 12, dim, false);
                         pn.setLineSpacing(0, 1.3f);
-                        r.addView(pn, lp(-1, -2, 6));
+                        r.addView(pn, lp(-1, -2, 0));
                     }
-                    TextView t = tv(cat.texts[i], 18, cream, false);
+                    TextView t = tv(e.text, 18, cream, false);
                     t.setLineSpacing(0, 1.35f);
-                    r.addView(t);
-                    if (!cat.post[i].isEmpty()) {
-                        TextView pn = tv(cat.post[i], 12, dim, false);
+                    r.addView(t, lp(-1, -2, e.pre.isEmpty() ? 0 : 6));
+                    if (!e.post.isEmpty()) {
+                        TextView pn = tv(e.post, 12, dim, false);
                         pn.setLineSpacing(0, 1.3f);
                         r.addView(pn, lp(-1, -2, 6));
                     }
@@ -1483,7 +1670,7 @@ public class PhoneActivity extends Activity {
                     row("إعادة الباب من أوله", null, "↺", new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            for (int i = 0; i < cc.texts.length; i++) done.remove(cc.id + "|" + i);
+                            clearDone(cc.id);
                             build();
                         }
                     });
@@ -1522,12 +1709,101 @@ public class PhoneActivity extends Activity {
             }
         });
         row("أحاديث بشرحها", null, "›", go("hadith"));
-        row("أعمالي الخاصة", "أذكار وأدعية بنصك", "›", new View.OnClickListener() {
+    }
+
+    private boolean editCat;
+
+    private void clearDone(int catId) {
+        String pre = catId + "|";
+        for (String k : new ArrayList<>(done.keySet())) if (k.startsWith(pre)) done.remove(k);
+    }
+
+    /** Add a dhikr to a chapter and arrange its adhkar. */
+    private void catEdit(final Adhkar.Category cat, final List<Adhkar.Entry> es) {
+        add(tv("رتّب الأذكار بالأسهم، أو أضف ذكرًا بنصك. الأذكار التي تضيفها يمكن تعديلها وحذفها.", 13, dim, false), 4);
+        for (int i = 0; i < es.size(); i++) {
+            final int idx = i;
+            final Adhkar.Entry e = es.get(i);
+            LinearLayout r = hbox();
+            r.setBackground(shape(card, line, 14));
+            r.setPadding(dp(12), dp(8), dp(12), dp(8));
+            TextView t = tv(e.text.length() > 60 ? e.text.substring(0, 60) + "…" : e.text, 14, e.extra ? gold : cream, false);
+            r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+            LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(dp(34), dp(34));
+            bp.setMarginStart(dp(4));
+            r.addView(smallBtn("▲", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (idx > 0) {
+                        es.add(idx - 1, es.remove(idx));
+                        Adhkar.saveEntries(PhoneActivity.this, cat, es);
+                        build();
+                    }
+                }
+            }), bp);
+            r.addView(smallBtn("▼", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (idx < es.size() - 1) {
+                        es.add(idx + 1, es.remove(idx));
+                        Adhkar.saveEntries(PhoneActivity.this, cat, es);
+                        build();
+                    }
+                }
+            }), bp);
+            if (e.extra) {
+                r.addView(smallBtn("✎", typeText("تعديل الذكر", e.text, new Setter() {
+                    @Override
+                    public void set(String v) {
+                        if (!v.isEmpty()) e.text = v;
+                        Adhkar.saveEntries(PhoneActivity.this, cat, es);
+                    }
+                })), bp);
+                r.addView(smallBtn("✕", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        es.remove(idx);
+                        Adhkar.saveEntries(PhoneActivity.this, cat, es);
+                        build();
+                    }
+                }), bp);
+            }
+            add(r, 6);
+        }
+        row("إضافة ذكر جديد", null, "+", typeText("ذكر جديد", "", new Setter() {
+            @Override
+            public void set(final String v) {
+                if (v.isEmpty()) return;
+                numberDialog("كم مرة يُقال", 1, 1000, 1, new IntSetter() {
+                    @Override
+                    public void set(int n) {
+                        Adhkar.Entry e = new Adhkar.Entry();
+                        e.key = "x" + System.currentTimeMillis();
+                        e.text = v;
+                        e.count = n;
+                        e.extra = true;
+                        es.add(e);
+                        Adhkar.saveEntries(PhoneActivity.this, cat, es);
+                        build();
+                    }
+                });
+            }
+        }));
+        row("استعادة الترتيب الأصلي", "ويحذف ما أضفته هنا", "↺", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                goTab(7);
+                Adhkar.resetEntries(PhoneActivity.this, cat);
+                build();
             }
         });
+        add(button("تم", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                editCat = false;
+                clearDone(cat.id);
+                build();
+            }
+        }), 10);
     }
 
     /** A short buzz on every count. */
@@ -1609,7 +1885,7 @@ public class PhoneActivity extends Activity {
 
     private void minePage() {
         title("أعمالي الخاصة", false);
-        add(tv("أضف أذكارك وأدعيتك بنصك وعدّلها ورتّبها. تظهر أيضًا مع الأذكار فوق التطبيقات.", 13, dim, false), 4);
+        add(tv("أضف أذكارك وأدعيتك بنصك وعدّلها ورتّبها. ", 13, dim, false), 4);
         final List<String> list = Adhkar.mine(this);
         for (int i = 0; i < list.size(); i++) {
             final int idx = i;
@@ -1697,6 +1973,54 @@ public class PhoneActivity extends Activity {
                 });
             }
         });
+        section("الأذكار التي تظهر");
+        final List<String[]> ovs = Adhkar.overlay(this);
+        for (int i = 0; i < ovs.size(); i++) {
+            final int idx = i;
+            final String[] o = ovs.get(i);
+            LinearLayout r = hbox();
+            r.setBackground(shape(card, line, 14));
+            r.setPadding(dp(12), dp(6), dp(8), dp(6));
+            Switch sw = new Switch(this);
+            sw.setChecked(o[1].equals("1"));
+            sw.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(android.widget.CompoundButton b, boolean on) {
+                    o[1] = on ? "1" : "0";
+                    Adhkar.saveOverlay(PhoneActivity.this, ovs);
+                }
+            });
+            r.addView(sw);
+            TextView t = tv(o[0], 15, cream, false);
+            t.setPadding(dp(10), 0, dp(6), 0);
+            r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+            LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(dp(34), dp(34));
+            r.addView(smallBtn("✎", typeText("تعديل الذكر", o[0], new Setter() {
+                @Override
+                public void set(String v) {
+                    if (!v.isEmpty()) o[0] = v;
+                    Adhkar.saveOverlay(PhoneActivity.this, ovs);
+                }
+            })), bp);
+            r.addView(smallBtn("✕", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    ovs.remove(idx);
+                    Adhkar.saveOverlay(PhoneActivity.this, ovs);
+                    build();
+                }
+            }), bp);
+            add(r, 6);
+        }
+        row("إضافة ذكر", null, "+", typeText("ذكر يظهر فوق التطبيقات", "", new Setter() {
+            @Override
+            public void set(String v) {
+                if (v.isEmpty()) return;
+                ovs.add(new String[] {v, "1"});
+                Adhkar.saveOverlay(PhoneActivity.this, ovs);
+            }
+        }));
+        section("الإذن والتجربة");
         row("إذن العرض فوق التطبيقات", null, can ? "✓" : "فتح", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1939,7 +2263,6 @@ public class PhoneActivity extends Activity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        sp.edit().putBoolean("city_auto", true).apply();
                         applyPlace(base, l.getLatitude(), l.getLongitude(), name);
                     }
                 });
@@ -1955,10 +2278,12 @@ public class PhoneActivity extends Activity {
                     @Override
                     public void run() {
                         if (city != null) {
-                            sp.edit().putBoolean("city_auto", true).apply();
-                            applyCity(city);
+                            if (Cities.selected(PhoneActivity.this) == null) applyCity(city);
                         } else if (Cities.selected(PhoneActivity.this) == null) {
-                            toast("تعذّر تحديد المدينة، اخترها يدويًا من الإعدادات");
+                            // the automatic way found nothing: ask for the country and city by hand
+                            tab = 3;
+                            sub = "country";
+                            build();
                         }
                     }
                 });

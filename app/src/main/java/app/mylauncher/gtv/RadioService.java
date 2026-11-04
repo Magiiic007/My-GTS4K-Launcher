@@ -93,7 +93,7 @@ public class RadioService extends Service {
 
     private static final String ACTION_PLAY = "app.mylauncher.gtv.RADIO_PLAY";
     private static final String ACTION_STOP = "app.mylauncher.gtv.RADIO_STOP";
-    private static final String CHANNEL = "radio";
+    private static final String CHANNEL = "radio2";
     private static final int NOTE_ID = 8;
 
     // What the screen reads. Main thread only.
@@ -176,6 +176,7 @@ public class RadioService extends Service {
     /** The listener asked for it; stays true through reconnects and the adhan's pause. */
     private boolean wanted;
     private int failures;
+    private android.media.session.MediaSession session;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -203,8 +204,32 @@ public class RadioService extends Service {
 
     private void goForeground() {
         NotificationManager nm = getSystemService(NotificationManager.class);
-        nm.createNotificationChannel(new NotificationChannel(
-            CHANNEL, getString(R.string.radio_btn), NotificationManager.IMPORTANCE_LOW));
+        NotificationChannel ch = new NotificationChannel(
+            CHANNEL, getString(R.string.radio_btn), NotificationManager.IMPORTANCE_DEFAULT);
+        ch.setSound(null, null);
+        ch.enableVibration(false);
+        ch.setShowBadge(false);
+        ch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        nm.createNotificationChannel(ch);
+        nm.deleteNotificationChannel("radio");
+        if (session == null) {
+            session = new android.media.session.MediaSession(this, "radio");
+            session.setCallback(new android.media.session.MediaSession.Callback() {
+                @Override
+                public void onPause() {
+                    shutdown();
+                }
+
+                @Override
+                public void onStop() {
+                    shutdown();
+                }
+            });
+        }
+        session.setPlaybackState(new android.media.session.PlaybackState.Builder()
+            .setActions(android.media.session.PlaybackState.ACTION_STOP | android.media.session.PlaybackState.ACTION_PAUSE)
+            .setState(android.media.session.PlaybackState.STATE_PLAYING, 0, 1f).build());
+        session.setActive(true);
         boolean arabic = "ar".equals(Locale.getDefault().getLanguage());
         android.app.PendingIntent stop = android.app.PendingIntent.getService(this, 41,
             new Intent(this, RadioService.class).setAction(ACTION_STOP),
@@ -218,7 +243,9 @@ public class RadioService extends Service {
             .setContentText(getString(R.string.radio_btn))
             .setOngoing(true)
             .addAction(stopAction)
-            .setStyle(new Notification.MediaStyle().setShowActionsInCompactView(0))
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()).setShowActionsInCompactView(0))
             .build();
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(NOTE_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
@@ -372,6 +399,11 @@ public class RadioService extends Service {
         wifi(false);
         set(OFF);
         stopForeground(true);
+        if (session != null) {
+            session.setActive(false);
+            session.release();
+            session = null;
+        }
         stopSelf();
     }
 
@@ -385,6 +417,10 @@ public class RadioService extends Service {
             if (audio != null && focus != null) audio.abandonAudioFocusRequest(focus);
             wifi(false);
             set(OFF);
+        }
+        if (session != null) {
+            session.release();
+            session = null;
         }
         super.onDestroy();
     }

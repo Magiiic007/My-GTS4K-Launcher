@@ -54,6 +54,8 @@ final class Reminders {
         int durationMin = 0;
         /** Morning/evening adhkar: minutes after Fajr / before Maghrib, or -1 for the fixed time above. */
         int relMin = -1;
+        /** Shows the reminder a second time this many minutes later; 0 = once only. */
+        int again = 0;
     }
 
     // ---------------------------------------------------------------- saving
@@ -147,7 +149,7 @@ final class Reminders {
             .put("id", it.id).put("kind", it.kind).put("on", it.enabled)
             .put("title", it.title).put("text", it.text)
             .put("days", it.daysMask).put("hijri", it.hijriMask).put("before", it.dayBefore)
-            .put("h", it.hour).put("m", it.minute).put("dur", it.durationMin).put("rel", it.relMin);
+            .put("h", it.hour).put("m", it.minute).put("dur", it.durationMin).put("rel", it.relMin).put("again", it.again);
     }
 
     private static Item fromJson(JSONObject o) {
@@ -164,6 +166,7 @@ final class Reminders {
         it.minute = o.optInt("m", 0);
         it.durationMin = o.optInt("dur", 0);
         it.relMin = o.optInt("rel", -1);
+        it.again = o.optInt("again", 0);
         return it;
     }
 
@@ -182,6 +185,18 @@ final class Reminders {
 
     /** The first moment after {@code after} at which {@code it} should show, or -1 if never (switched off, no days). */
     static long next(Context c, Item it, long after) {
+        long a = nextBase(c, it, after);
+        if (it.again > 0 && it.enabled) {
+            long b = nextBase(c, it, after - it.again * 60000L);
+            if (b > 0 && b + it.again * 60000L > after) {
+                long second = b + it.again * 60000L;
+                if (a < 0 || second < a) a = second;
+            }
+        }
+        return a;
+    }
+
+    private static long nextBase(Context c, Item it, long after) {
         if (!it.enabled) return -1;
         int adj = Hijri.adjust(c);
         // The occasions are spread over the year, so they look further ahead than the weekly and monthly ones.

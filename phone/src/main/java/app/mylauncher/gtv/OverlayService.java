@@ -144,8 +144,8 @@ public class OverlayService extends Service {
         if (AdhanService.playing) return;
         hideCard();
         List<String> items = new ArrayList<>();
-        for (String s : Adhkar.TASBIH) items.add(s);
-        items.addAll(Adhkar.mine(this));
+        for (String[] s : Adhkar.overlay(this)) if (s[1].equals("1") && !s[0].trim().isEmpty()) items.add(s[0]);
+        if (items.isEmpty()) return;
         int idx = sp.getInt("ov_idx", 0) % items.size();
         sp.edit().putInt("ov_idx", idx + 1).apply();
 

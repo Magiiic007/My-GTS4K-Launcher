@@ -58,8 +58,12 @@ def generic(item, drop_brackets=False):
         return out
     blocks = list(re.finditer(r'\(\((.*?)\)\)', text, re.S))
     if not blocks:
+        raw = text.strip()
         t = tidy(text)
-        return [{'pre': '', 'text': t, 'post': '', 'count': count}]
+        info = not (raw.startswith('(') or '﴿' in raw or raw.startswith('بسم'))
+        d = {'pre': '', 'text': t, 'post': '', 'count': 1 if info else count}
+        if info: d['info'] = 1
+        return [d]
     last = 0
     for i, m in enumerate(blocks):
         pre = tidy(text[last:m.start()])

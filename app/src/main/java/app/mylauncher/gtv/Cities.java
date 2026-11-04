@@ -115,7 +115,8 @@ final class Cities {
     /** The city chosen on this device, or null the first time. */
     static City selected(android.content.Context c) {
         android.content.SharedPreferences p = c.getSharedPreferences("magiic", android.content.Context.MODE_PRIVATE);
-        City base = find(p.getString("city", null));
+        String key = p.getString("city", null);
+        City base = find(key);
         // The phone can pin an exact place (a neighbourhood) next to the nearest listed city; the TV never sets it.
         String custom = p.getString("city_custom", null);
         if (base != null && custom != null) {
@@ -125,6 +126,18 @@ final class Cities {
                     return new City(base.country, base.en, a[0], Double.parseDouble(a[1]), Double.parseDouble(a[2]));
                 } catch (NumberFormatException ignored) {
                     // an unreadable pin is ignored and the listed city is used
+                }
+            }
+        }
+        // A place outside the lists (picked by hand on the phone): its country and name are in the key.
+        if (base == null && key != null && custom != null && key.contains("|")) {
+            String[] a = custom.split("\\|");
+            String[] k = key.split("\\|", 2);
+            if (a.length == 3) {
+                try {
+                    return new City(k[0], k[1], a[0], Double.parseDouble(a[1]), Double.parseDouble(a[2]));
+                } catch (NumberFormatException ignored) {
+                    // an unreadable pin means no city
                 }
             }
         }

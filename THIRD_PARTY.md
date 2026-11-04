@@ -26,3 +26,7 @@ prayer. No code or fonts were copied; the implementation (MihrabHome.java) is ou
   That repository states no licence; the text is used here for personal, non-commercial purposes.
 - **Neighbourhood name:** [OpenStreetMap Nominatim](https://nominatim.org/) (data (c) OpenStreetMap contributors, ODbL).
   Only the coordinates are sent, once when the location is refreshed.
+
+## World countries and provinces (phone app)
+- Names and coordinates of countries and their provinces/governorates: [dr5hn/countries-states-cities-database](https://github.com/dr5hn/countries-states-cities-database) (ODbL 1.0). Arabic country names from the Unicode CLDR (through Babel).
+- Searching a place by name: [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api) (data from GeoNames, CC BY 4.0).

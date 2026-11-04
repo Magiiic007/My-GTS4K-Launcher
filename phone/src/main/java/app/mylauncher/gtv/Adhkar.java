@@ -24,6 +24,7 @@ final class Adhkar {
         final int[] counts;
         final String[] pre;
         final String[] post;
+        boolean[] info;
 
         Category(int id, String name, String[] texts, int[] counts, String[] pre, String[] post) {
             this.pre = pre;
@@ -59,14 +60,18 @@ final class Adhkar {
                 int[] k = new int[items.length()];
                 String[] pr = new String[t.length];
                 String[] po = new String[t.length];
+                boolean[] infos = new boolean[t.length];
                 for (int j = 0; j < t.length; j++) {
                     org.json.JSONObject it = items.getJSONObject(j);
                     t[j] = it.optString("text", "").trim();
                     k[j] = Math.max(1, it.optInt("count", 1));
                     pr[j] = it.optString("pre", "").trim();
+                    if (it.optInt("info", 0) == 1) infos[j] = true;
                     po[j] = it.optString("post", "").trim();
                 }
-                l.add(new Category(o.optInt("id", i + 1), o.optString("category", ""), t, k, pr, po));
+                Category cat = new Category(o.optInt("id", i + 1), o.optString("category", ""), t, k, pr, po);
+                cat.info = infos;
+                l.add(cat);
             }
         } catch (Exception ignored) {
             // an unreadable file shows an empty list
@@ -140,5 +145,107 @@ final class Adhkar {
         JSONArray a = new JSONArray();
         for (String s : l) a.put(s);
         p(c).edit().putString("mine", a.toString()).apply();
+    }
+
+    // ---------------------------------------------------------------- a chapter as the user arranged it
+    /** One dhikr in a chapter, in the order the user chose; {@code key} is "i3" (the book's fourth) or "x7" (added by the user). */
+    static final class Entry {
+        String key = "";
+        String text = "";
+        String pre = "";
+        String post = "";
+        int count = 1;
+        boolean info;
+        boolean extra;
+    }
+
+    static List<Entry> entries(Context c, Category cat) {
+        List<Entry> base = new ArrayList<>();
+        for (int i = 0; i < cat.texts.length; i++) {
+            Entry e = new Entry();
+            e.key = "i" + i;
+            e.text = cat.texts[i];
+            e.pre = cat.pre[i];
+            e.post = cat.post[i];
+            e.count = cat.counts[i];
+            e.info = cat.info != null && cat.info[i];
+            base.add(e);
+        }
+        try {
+            JSONArray x = new JSONArray(p(c).getString("cx_" + cat.id, "[]"));
+            for (int i = 0; i < x.length(); i++) {
+                org.json.JSONObject o = x.getJSONObject(i);
+                Entry e = new Entry();
+                e.key = o.getString("k");
+                e.text = o.optString("t", "");
+                e.count = Math.max(1, o.optInt("n", 1));
+                e.extra = true;
+                base.add(e);
+            }
+            JSONArray order = new JSONArray(p(c).getString("co_" + cat.id, "[]"));
+            List<Entry> out = new ArrayList<>();
+            for (int i = 0; i < order.length(); i++) {
+                for (Entry e : base) {
+                    if (e.key.equals(order.getString(i)) && !out.contains(e)) {
+                        out.add(e);
+                        break;
+                    }
+                }
+            }
+            for (Entry e : base) if (!out.contains(e)) out.add(e);
+            return out;
+        } catch (JSONException ignored) {
+            return base;
+        }
+    }
+
+    static void saveEntries(Context c, Category cat, List<Entry> list) {
+        JSONArray order = new JSONArray();
+        JSONArray x = new JSONArray();
+        try {
+            for (Entry e : list) {
+                order.put(e.key);
+                if (e.extra) x.put(new org.json.JSONObject().put("k", e.key).put("t", e.text).put("n", e.count));
+            }
+        } catch (JSONException ignored) {
+            return;
+        }
+        p(c).edit().putString("co_" + cat.id, order.toString()).putString("cx_" + cat.id, x.toString()).apply();
+    }
+
+    static void resetEntries(Context c, Category cat) {
+        p(c).edit().remove("co_" + cat.id).remove("cx_" + cat.id).apply();
+    }
+
+    // ---------------------------------------------------------------- what shows over other apps
+    /** The adhkar of the card over other apps: {text, "1" if on}. First time: the tasbih and the user's own adhkar. */
+    static List<String[]> overlay(Context c) {
+        List<String[]> l = new ArrayList<>();
+        String saved = p(c).getString("ov_list", null);
+        if (saved == null) {
+            for (String s : TASBIH) l.add(new String[] {s, "1"});
+            for (String s : mine(c)) l.add(new String[] {s, "1"});
+            return l;
+        }
+        try {
+            JSONArray a = new JSONArray(saved);
+            for (int i = 0; i < a.length(); i++) {
+                org.json.JSONObject o = a.getJSONObject(i);
+                l.add(new String[] {o.optString("t", ""), o.optBoolean("on", true) ? "1" : "0"});
+            }
+        } catch (JSONException ignored) {
+            // an unreadable list is shown empty
+        }
+        return l;
+    }
+
+    static void saveOverlay(Context c, List<String[]> l) {
+        JSONArray a = new JSONArray();
+        try {
+            for (String[] s : l) a.put(new org.json.JSONObject().put("t", s[0]).put("on", s[1].equals("1")));
+        } catch (JSONException ignored) {
+            return;
+        }
+        p(c).edit().putString("ov_list", a.toString()).apply();
     }
 }
