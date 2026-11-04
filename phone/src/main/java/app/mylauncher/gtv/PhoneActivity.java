@@ -698,7 +698,7 @@ public class PhoneActivity extends Activity {
         TextView v1 = tv(vt[vi], Math.round(19 * f), cream, false);
         v1.setGravity(Gravity.CENTER);
         v1.setLineSpacing(0, 1.25f);
-        TextView v2 = tv("آية · " + vr[vi], 12, gold, true);
+        TextView v2 = tv(vr[vi], 12, gold, true);
         v2.setGravity(Gravity.CENTER);
         vc.addView(v1);
         vc.addView(v2);
