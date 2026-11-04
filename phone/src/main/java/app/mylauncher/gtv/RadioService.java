@@ -175,17 +175,8 @@ public class RadioService extends Service {
      * another app took the sound meanwhile.
      */
     static void resumeIfCutOff(Context c) {
-        boolean cold = !coldChecked;
-        coldChecked = true;
-        if (cold || state == OFF && shouldResume(c)) log(c, "home: cold=" + cold + " state=" + state + " resume=" + shouldResume(c) + " yielded=" + yielded);
-        if (state == OFF && shouldResume(c) && (cold || !yielded)) {
-            try {
-                play(c, lastStation(c));
-            } catch (RuntimeException e) {
-                // Not allowed to start right now; the radio button still works.
-                c.getSharedPreferences("magiic", MODE_PRIVATE).edit().putString("dbg_radio", String.valueOf(e)).apply();
-            }
-        }
+        // On the phone the radio only starts when the user starts it: never by itself after an update, a restart
+        // or a force stop.
     }
 
     static void stop(Context c) {
