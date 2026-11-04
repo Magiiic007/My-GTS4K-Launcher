@@ -198,6 +198,8 @@ final class Reminders {
 
     private static long nextBase(Context c, Item it, long after) {
         if (!it.enabled) return -1;
+        // a custom reminder nobody gave a title or a text is not a reminder (it would only show an empty "reminder")
+        if (it.kind == CUSTOM && it.title.trim().isEmpty() && it.text.trim().isEmpty()) return -1;
         int adj = Hijri.adjust(c);
         // The occasions are spread over the year, so they look further ahead than the weekly and monthly ones.
         int limit = it.kind == OCCASION ? 400 : LOOK_AHEAD_DAYS;

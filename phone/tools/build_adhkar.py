@@ -160,6 +160,15 @@ for c in data:
     items = [x for x in items if x['text']]
     cats.append({'id': c['id'], 'category': ws(c['category']), 'items': items})
 
+# hadiths and explanations: shown small and with nothing to count
+INFO_CHAPTERS = {50, 107, 108, 129, 130, 131, 132}
+INFO_ITEMS = {(52, 1), (88, 1), (102, 1), (116, 1), (120, 1), (123, 1), (84, 1), (51, 2), (44, 1), (110, 1), (111, 1), (113, 1), (74, 1)}
+for c in cats:
+    for k, x in enumerate(c['items'], 1):
+        if c['id'] in INFO_CHAPTERS or (c['id'], k) in INFO_ITEMS:
+            x['info'] = 1
+            x['count'] = 1
+
 # morning/evening right at the top, in order
 for c in cats[:2]:
     for x in c['items']:

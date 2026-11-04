@@ -117,7 +117,17 @@ final class Adhkar {
         return p(c).getInt("tas_last_" + i, 0);
     }
 
+    /** One count for everything (every dhikr and the tasbih), since the app was installed. */
+    static long total(Context c) {
+        return p(c).getLong("tot_all", 0L);
+    }
+
+    static void bump(Context c) {
+        p(c).edit().putLong("tot_all", total(c) + 1L).apply();
+    }
+
     static void add(Context c, int i) {
+        bump(c);
         p(c).edit().putInt("tas_cur_" + i, cur(c, i) + 1).putInt("tas_" + today() + "_" + i, count(c, i) + 1).apply();
     }
 

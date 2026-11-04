@@ -434,7 +434,6 @@ public class PhoneActivity extends Activity {
             else if (tab == 4) adhanPage();
             else if (tab == 5) adhkarPage();
             else if (tab == 6) tasbihPage();
-            else if (tab == 7) minePage();
             else if (tab == 8) overlayPage();
             else qiblaPage();
         } catch (Throwable t) {
@@ -551,11 +550,14 @@ public class PhoneActivity extends Activity {
         hero.setPadding(dp(14), dp(Math.round(10 * f)), dp(14), dp(Math.round(10 * f)));
         TextView l1 = tv("الصلاة القادمة", 12, dim, true);
         l1.setPadding(0, dp(6), 0, 0);
+        l1.setGravity(Gravity.CENTER);
         hero.addView(l1);
         nameTv = tv("", Math.round(30 * f), gold, true);
+        nameTv.setGravity(Gravity.CENTER);
         hero.addView(nameTv);
         cdTv = tv("00:00:00", Math.round(44 * f), cream, true);
         cdTv.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        cdTv.setGravity(Gravity.CENTER);
         hero.addView(cdTv);
         altTv = tv("", 14, cream, true);
         altTv.setGravity(Gravity.CENTER);
@@ -735,6 +737,16 @@ public class PhoneActivity extends Activity {
     private void reminders() {
         final List<Reminders.Item> list = Reminders.load(this);
         if (sub == null) {
+            // blank custom reminders (made by pressing "new" and leaving) are dropped
+            boolean dropped = false;
+            for (int i = list.size() - 1; i >= 0; i--) {
+                Reminders.Item b = list.get(i);
+                if (b.kind == Reminders.CUSTOM && b.title.trim().isEmpty() && b.text.trim().isEmpty()) {
+                    list.remove(i);
+                    dropped = true;
+                }
+            }
+            if (dropped) saveRem(list);
             title("التذكيرات", false);
             row("الصيام", null, "›", go("fast"));
             row("الأذكار", null, "›", go("dhikr"));
@@ -1512,7 +1524,6 @@ public class PhoneActivity extends Activity {
         menuGroup("الأذكار والتذكيرات");
         menuItem("الأذكار والأدعية", 5);
         menuItem("السبحة والاستغفار", 6);
-        menuItem("أعمالي الخاصة", 7);
         menuItem("الأذكار فوق التطبيقات", 8);
         menuItem("التذكيرات", 2);
         menuGroup("القبلة والمزيد");
@@ -1604,6 +1615,7 @@ public class PhoneActivity extends Activity {
             for (final Adhkar.Category cat : all) {
                 if (cat.id != id) continue;
                 title(cat.name, true);
+                totalLine();
                 final List<Adhkar.Entry> es = Adhkar.entries(this, cat);
                 if (editCat) {
                     catEdit(cat, es);
@@ -1650,13 +1662,15 @@ public class PhoneActivity extends Activity {
                         r.addView(pn, lp(-1, -2, 6));
                     }
                     ct.setGravity(Gravity.CENTER);
-                    ct.setText(total == 1 ? "اضغط عند الانتهاء" : left[0] + " / " + total);
+                    ct.setText(left[0] + " / " + total);
                     r.addView(ct, lp(-1, -2, 6));
                     r.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
                             left[0]--;
                             buzz();
+                            Adhkar.bump(PhoneActivity.this);
+                            refreshTotal();
                             done.put(key, left[0]);
                             if (left[0] == 0) build(); // the finished one disappears and the next is at the top
                             else ct.setText(left[0] + " / " + total);
@@ -1682,6 +1696,7 @@ public class PhoneActivity extends Activity {
         }
         title("الأذكار والأدعية", false);
         add(tv("حصن المسلم كاملًا: " + all.size() + " بابًا.", 13, dim, false), 2);
+        totalLine();
         final EditText search = new EditText(this);
         search.setHint("ابحث عن ذكر أو دعاء");
         search.setHintTextColor(dim);
@@ -1712,6 +1727,18 @@ public class PhoneActivity extends Activity {
     }
 
     private boolean editCat;
+    private TextView totTv;
+
+    private void totalLine() {
+        totTv = tv("", 13, gold, true);
+        totTv.setGravity(Gravity.CENTER);
+        add(totTv, 6);
+        refreshTotal();
+    }
+
+    private void refreshTotal() {
+        if (totTv != null) totTv.setText("إجمالي ما عددته منذ تثبيت التطبيق: " + Adhkar.total(this));
+    }
 
     private void clearDone(int catId) {
         String pre = catId + "|";
@@ -1818,6 +1845,7 @@ public class PhoneActivity extends Activity {
 
     private void tasbihPage() {
         title("السبحة والاستغفار", false);
+        totalLine();
         TextView sel = tv(Adhkar.TASBIH[tk], 20, cream, true);
         sel.setGravity(Gravity.CENTER);
         add(sel, 10);
@@ -1875,75 +1903,13 @@ public class PhoneActivity extends Activity {
     }
 
     private void refreshTasbih() {
+        refreshTotal();
         if (tcBig != null) tcBig.setText(String.valueOf(Adhkar.cur(this, tk)));
         if (tcRows != null) {
             for (int i = 0; i < tcRows.length; i++) {
                 tcRows[i].setText("آخر عدد: " + Adhkar.last(this, i) + "  ·  اليوم: " + Adhkar.count(this, i));
             }
         }
-    }
-
-    private void minePage() {
-        title("أعمالي الخاصة", false);
-        add(tv("أضف أذكارك وأدعيتك بنصك وعدّلها ورتّبها. ", 13, dim, false), 4);
-        final List<String> list = Adhkar.mine(this);
-        for (int i = 0; i < list.size(); i++) {
-            final int idx = i;
-            LinearLayout r = hbox();
-            r.setBackground(shape(card, line, 14));
-            r.setPadding(dp(12), dp(10), dp(12), dp(10));
-            TextView t = tv(list.get(i), 16, cream, false);
-            r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
-            LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(dp(34), dp(34));
-            bp.setMarginStart(dp(4));
-            r.addView(smallBtn("▲", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (idx > 0) {
-                        String x = list.remove(idx);
-                        list.add(idx - 1, x);
-                        Adhkar.saveMine(PhoneActivity.this, list);
-                        build();
-                    }
-                }
-            }), bp);
-            r.addView(smallBtn("▼", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (idx < list.size() - 1) {
-                        String x = list.remove(idx);
-                        list.add(idx + 1, x);
-                        Adhkar.saveMine(PhoneActivity.this, list);
-                        build();
-                    }
-                }
-            }), bp);
-            r.addView(smallBtn("✎", typeText("تعديل الذكر", list.get(i), new Setter() {
-                @Override
-                public void set(String v) {
-                    if (!v.isEmpty()) list.set(idx, v);
-                    Adhkar.saveMine(PhoneActivity.this, list);
-                }
-            })), bp);
-            r.addView(smallBtn("✕", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    list.remove(idx);
-                    Adhkar.saveMine(PhoneActivity.this, list);
-                    build();
-                }
-            }), bp);
-            add(r, 8);
-        }
-        row("إضافة ذكر جديد", null, "+", typeText("ذكر أو دعاء جديد", "", new Setter() {
-            @Override
-            public void set(String v) {
-                if (!v.isEmpty()) {
-                    list.add(v);
-                    Adhkar.saveMine(PhoneActivity.this, list);
-                }
-            }
-        }));
     }
 
     private void overlayPage() {
