@@ -84,7 +84,7 @@ public class AdhanService extends Service {
         if (first) title = getString(R.string.first_adhan_title);
         if (test) title = title + " " + getString(R.string.popup_test);
         String text = "اقلب الهاتف على وجهه لإيقاف الصوت";
-        if (city != null && !first) text = city.name("ar".equals(Locale.getDefault().getLanguage())) + " · " + text;
+        if (city != null && !first) text = city.name(true) + " · " + text;
 
         goForeground(title, text);
 

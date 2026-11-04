@@ -12,6 +12,8 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -96,15 +98,54 @@ public class PhoneActivity extends Activity {
 
     // ---------------------------------------------------------------- lifecycle
     @Override
+    protected void attachBaseContext(Context base) {
+        Configuration c = new Configuration(base.getResources().getConfiguration());
+        c.setLocale(PhoneApp.AR);
+        c.setLayoutDirection(PhoneApp.AR);
+        super.attachBaseContext(base.createConfigurationContext(c));
+    }
+
+    /** Royal is the day look and Mihrab the night look: they follow the phone's own light/dark setting. */
+    private int lookNow() {
+        int night = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        return night == Configuration.UI_MODE_NIGHT_YES ? 1 : 0;
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration cfg) {
+        super.onConfigurationChanged(cfg);
+        int l = lookNow();
+        if (l != look) {
+            look = l;
+            palette();
+            root();
+            build();
+        }
+    }
+
+    @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         sp = getSharedPreferences(P, MODE_PRIVATE);
-        look = sp.getInt("ph_look", 0);
+        look = lookNow();
         palette();
         root();
-        if (Build.VERSION.SDK_INT >= 33
-            && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
+        // Everything is asked for at once on the first run: two separate requests cancel each other.
+        if (!sp.getBoolean("ph_first", false)) {
+            ArrayList<String> need = new ArrayList<>();
+            if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                need.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+            if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                need.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+            }
+            if (!need.isEmpty()) {
+                locAsked = true;
+                requestPermissions(need.toArray(new String[0]), REQ_NOTIF);
+            } else {
+                sp.edit().putBoolean("ph_first", true).apply();
+            }
         }
         Scheduler.scheduleNext(this);
         Reminders.scheduleNext(this);
@@ -117,7 +158,8 @@ public class PhoneActivity extends Activity {
         RadioService.listen(radioListener);
         RadioService.resumeIfCutOff(this);
         h.post(ticker);
-        if (!autoTried && (Cities.selected(this) == null || sp.getBoolean("city_auto", true))) {
+        if (!autoTried && sp.getBoolean("ph_first", false)
+            && (Cities.selected(this) == null || sp.getBoolean("city_auto", true))) {
             autoTried = true;
             autoCity(false);
         }
@@ -133,6 +175,22 @@ public class PhoneActivity extends Activity {
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        if (code == REQ_NOTIF) {
+            sp.edit().putBoolean("ph_first", true).apply();
+            autoTried = true;
+            autoCity(false);
+            new AlertDialog.Builder(this).setTitle("خطوة أخيرة مهمة")
+                .setMessage("لكي يعمل الأذان والراديو والشاشة مقفولة، افتح صفحة «تأكد أن الأذان يعمل» وفعّل كل بند فيها.")
+                .setPositiveButton("فتح الصفحة", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        tab = 3;
+                        sub = "fix";
+                        build();
+                    }
+                }).setNegativeButton("لاحقًا", null).show();
+            return;
+        }
         if (code == REQ_LOC) autoCity(false);
         if (tab == 3) build();
     }
@@ -189,7 +247,8 @@ public class PhoneActivity extends Activity {
         FrameLayout f = new FrameLayout(this);
         f.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-        f.setBackground(g);
+        Deco.Stars stars = new Deco.Stars((cream & 0x00FFFFFF) | 0x1A000000, dp(56));
+        f.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars}));
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         scroll = new ScrollView(this);
@@ -419,9 +478,11 @@ public class PhoneActivity extends Activity {
         shownNext = ad == null ? -1 : ad.index;
         LinearLayout hero = vbox();
         hero.setGravity(Gravity.CENTER_HORIZONTAL);
-        hero.setBackground(shape(card, line, 22));
+        Deco.Frame frame = new Deco.Frame(look == 1, (gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
+        hero.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {shape(card, line, 22), frame}));
         hero.setPadding(dp(14), dp(12), dp(14), dp(12));
         TextView l1 = tv("الصلاة القادمة", 12, dim, true);
+        l1.setPadding(0, dp(8), 0, 0);
         hero.addView(l1);
         nameTv = tv("", 30, gold, true);
         hero.addView(nameTv);
@@ -459,7 +520,7 @@ public class PhoneActivity extends Activity {
             v.addView(tv(name, 18, cream, true));
             if (idx >= 0 && iqm[idx] > 0) v.addView(tv(getString(R.string.iqama_minutes, iqm[idx]), 11, dim, false));
             r.addView(v, new LinearLayout.LayoutParams(0, -2, 1f));
-            TextView tt = tv(PrayerCalc.time(this, city, at), 19, gold, true);
+            TextView tt = tv(ap(PrayerCalc.time(this, city, at)), 19, gold, true);
             tt.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
             r.addView(tt);
             if (at < now && !next) r.setAlpha(0.6f);
@@ -481,6 +542,11 @@ public class PhoneActivity extends Activity {
         vc.addView(v1);
         vc.addView(v2);
         add(vc, 12);
+    }
+
+    /** The times come with AM/PM; the phone is Arabic only. */
+    private static String ap(String s) {
+        return s.replace("AM", "ص").replace("PM", "م");
     }
 
     private TextView chip(String s) {
@@ -517,7 +583,7 @@ public class PhoneActivity extends Activity {
         int[] adj = PrayerPrefs.adjust(this);
         Date d = new Date(now);
         clockTv.setText(new SimpleDateFormat("h:mm", Locale.US).format(d));
-        apTv.setText(new SimpleDateFormat("a", Locale.ENGLISH).format(d));
+        apTv.setText(Calendar.getInstance().get(Calendar.AM_PM) == Calendar.AM ? "ص" : "م");
         PrayerCalc.Event ad = PrayerCalc.nextEvent(city, now, adj, new int[5]);
         PrayerCalc.Event ev = PrayerCalc.nextEvent(city, now, adj, PrayerPrefs.iqama(this));
         if (ad == null) return;
@@ -527,8 +593,9 @@ public class PhoneActivity extends Activity {
         }
         nameTv.setText(PrayerCalc.name(this, ad.index, ad.friday));
         cdTv.setText(PrayerCalc.countdown(Math.max(0, ad.at - now)));
-        String base = "الأذان " + PrayerCalc.time(this, city, ad.at) + " · " + city.name(true);
+        String base = "الأذان " + ap(PrayerCalc.time(this, city, ad.at)) + " · " + city.name(true);
         String extra = extraLine(city, now, adj);
+        if (extra != null) extra = ap(extra);
         altTv.setText(extra != null && (now / 3000L) % 2L == 1L ? extra : base);
         if (ev != null && ev.iqama) {
             iqLabel.setText("الإقامة بعد");
@@ -900,16 +967,7 @@ public class PhoneActivity extends Activity {
                 }
             });
         section("الشكل");
-        row("شكل التطبيق", look == 0 ? "ملكي" : "المحراب", "تبديل", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                look = look == 0 ? 1 : 0;
-                sp.edit().putInt("ph_look", look).apply();
-                palette();
-                root();
-                build();
-            }
-        });
+        row("شكل التطبيق", "تلقائي: الملكي نهارًا والمحراب ليلًا بحسب وضع الهاتف", look == 0 ? "ملكي" : "المحراب", null);
         section("التشغيل في الخلفية");
         row("تأكد أن الأذان يعمل", "الإشعارات والمنبّه والبطارية", "›", go("fix"));
         section("أخرى");
@@ -1142,6 +1200,10 @@ public class PhoneActivity extends Activity {
                 }
             }
         });
+        long rx = sp.getLong("dbg_rx", 0L);
+        row("آخر وصول لمنبّه الأذان", rx == 0 ? "لم يصل أي منبّه بعد" : new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date(rx)), null, null);
+        String err = sp.getString("dbg_err", "");
+        row("آخر خطأ في تشغيل الخدمة", err.isEmpty() ? "لا يوجد" : err, null, null);
         section("الحساس");
         row("اختبار قلب الهاتف وهزّه", "يعرض قراءات الحساس مباشرة", "›", go("flip"));
         section("التذكيرات والعدّاد");

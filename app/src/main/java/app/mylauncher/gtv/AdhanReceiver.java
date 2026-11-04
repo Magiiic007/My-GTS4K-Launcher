@@ -12,6 +12,9 @@ public class AdhanReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context c, Intent i) {
+        // For the phone's test screen: when the alarm last reached us, and why the service could not start.
+        c.getSharedPreferences("magiic", Context.MODE_PRIVATE).edit()
+            .putLong("dbg_rx", System.currentTimeMillis()).apply();
         boolean test = i.getBooleanExtra("test", false);
         boolean iqama = i.getBooleanExtra("iqama", false);
         long at = i.getLongExtra("at", 0L);
@@ -32,6 +35,8 @@ public class AdhanReceiver extends BroadcastReceiver {
         try {
             c.startForegroundService(s);
         } catch (RuntimeException e) {
+            c.getSharedPreferences("magiic", Context.MODE_PRIVATE).edit()
+                .putString("dbg_err", String.valueOf(e)).apply();
             // Android refused to start it from the background; there is nothing more this receiver can do.
         }
     }
