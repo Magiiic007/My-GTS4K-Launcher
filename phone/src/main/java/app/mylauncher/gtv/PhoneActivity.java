@@ -1449,9 +1449,19 @@ public class PhoneActivity extends Activity {
                     LinearLayout r = vbox();
                     r.setBackground(shape(card, line, 16));
                     r.setPadding(dp(14), dp(12), dp(14), dp(12));
+                    if (!cat.pre[i].isEmpty()) {
+                        TextView pn = tv(cat.pre[i], 12, dim, false);
+                        pn.setLineSpacing(0, 1.3f);
+                        r.addView(pn, lp(-1, -2, 6));
+                    }
                     TextView t = tv(cat.texts[i], 18, cream, false);
                     t.setLineSpacing(0, 1.35f);
                     r.addView(t);
+                    if (!cat.post[i].isEmpty()) {
+                        TextView pn = tv(cat.post[i], 12, dim, false);
+                        pn.setLineSpacing(0, 1.3f);
+                        r.addView(pn, lp(-1, -2, 6));
+                    }
                     ct.setGravity(Gravity.CENTER);
                     ct.setText(total == 1 ? "اضغط عند الانتهاء" : left[0] + " / " + total);
                     r.addView(ct, lp(-1, -2, 6));

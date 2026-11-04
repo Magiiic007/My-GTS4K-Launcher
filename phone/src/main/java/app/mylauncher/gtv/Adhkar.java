@@ -22,8 +22,12 @@ final class Adhkar {
         final String name;
         final String[] texts;
         final int[] counts;
+        final String[] pre;
+        final String[] post;
 
-        Category(int id, String name, String[] texts, int[] counts) {
+        Category(int id, String name, String[] texts, int[] counts, String[] pre, String[] post) {
+            this.pre = pre;
+            this.post = post;
             this.id = id;
             this.name = name;
             this.texts = texts;
@@ -50,15 +54,19 @@ final class Adhkar {
             JSONArray a = new JSONArray(out.toString("UTF-8"));
             for (int i = 0; i < a.length(); i++) {
                 org.json.JSONObject o = a.getJSONObject(i);
-                JSONArray items = o.getJSONArray("array");
+                JSONArray items = o.getJSONArray("items");
                 String[] t = new String[items.length()];
                 int[] k = new int[items.length()];
+                String[] pr = new String[t.length];
+                String[] po = new String[t.length];
                 for (int j = 0; j < t.length; j++) {
                     org.json.JSONObject it = items.getJSONObject(j);
                     t[j] = it.optString("text", "").trim();
                     k[j] = Math.max(1, it.optInt("count", 1));
+                    pr[j] = it.optString("pre", "").trim();
+                    po[j] = it.optString("post", "").trim();
                 }
-                l.add(new Category(o.optInt("id", i + 1), o.optString("category", ""), t, k));
+                l.add(new Category(o.optInt("id", i + 1), o.optString("category", ""), t, k, pr, po));
             }
         } catch (Exception ignored) {
             // an unreadable file shows an empty list
