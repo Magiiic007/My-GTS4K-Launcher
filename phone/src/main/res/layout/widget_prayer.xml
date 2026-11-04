@@ -93,7 +93,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="26dp">
 
-                <View
+                <ImageView
                     android:id="@+id/w_l0"
                     android:layout_width="match_parent"
                     android:layout_height="3dp"
@@ -138,7 +138,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="26dp">
 
-                <View
+                <ImageView
                     android:id="@+id/w_l1"
                     android:layout_width="match_parent"
                     android:layout_height="3dp"
@@ -183,7 +183,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="26dp">
 
-                <View
+                <ImageView
                     android:id="@+id/w_l2"
                     android:layout_width="match_parent"
                     android:layout_height="3dp"
@@ -228,7 +228,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="26dp">
 
-                <View
+                <ImageView
                     android:id="@+id/w_l3"
                     android:layout_width="match_parent"
                     android:layout_height="3dp"
@@ -273,7 +273,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="26dp">
 
-                <View
+                <ImageView
                     android:id="@+id/w_l4"
                     android:layout_width="match_parent"
                     android:layout_height="3dp"
