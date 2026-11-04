@@ -103,6 +103,8 @@ public class RadioService extends Service {
 
     private static final String ACTION_PLAY = "app.mylauncher.gtv.RADIO_PLAY";
     private static final String ACTION_STOP = "app.mylauncher.gtv.RADIO_STOP";
+    private static final String ACTION_NEXT = "app.mylauncher.gtv.RADIO_NEXT";
+    private static final String ACTION_PREV = "app.mylauncher.gtv.RADIO_PREV";
     private static final String CHANNEL = "radio2";
     private static final int NOTE_ID = 8;
 
@@ -262,8 +264,11 @@ public class RadioService extends Service {
             return START_NOT_STICKY;
         }
         yielded = false;
-        log(this, "start station " + intent.getIntExtra("station", 0));
-        stationIndex = Math.max(0, Math.min(STATIONS.length - 1, intent.getIntExtra("station", 0)));
+        int want = intent.getIntExtra("station", 0);
+        if (ACTION_NEXT.equals(intent.getAction())) want = (stationIndex + 1) % STATIONS.length;
+        if (ACTION_PREV.equals(intent.getAction())) want = (stationIndex + STATIONS.length - 1) % STATIONS.length;
+        log(this, "start station " + want);
+        stationIndex = Math.max(0, Math.min(STATIONS.length - 1, want));
         getSharedPreferences("magiic", MODE_PRIVATE).edit().putInt("radio_station", stationIndex)
             .putBoolean("radio_resume", true).apply();
         goForeground();
@@ -297,6 +302,16 @@ public class RadioService extends Service {
                 }
 
                 @Override
+                public void onSkipToNext() {
+                    startService(new Intent(RadioService.this, RadioService.class).setAction(ACTION_NEXT));
+                }
+
+                @Override
+                public void onSkipToPrevious() {
+                    startService(new Intent(RadioService.this, RadioService.class).setAction(ACTION_PREV));
+                }
+
+                @Override
                 public void onStop() {
                     log(RadioService.this, "media stop");
                     shutdown();
@@ -304,7 +319,8 @@ public class RadioService extends Service {
             });
         }
         session.setPlaybackState(new android.media.session.PlaybackState.Builder()
-            .setActions(android.media.session.PlaybackState.ACTION_STOP | android.media.session.PlaybackState.ACTION_PAUSE)
+            .setActions(android.media.session.PlaybackState.ACTION_STOP | android.media.session.PlaybackState.ACTION_PAUSE
+                | android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT | android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
             .setState(android.media.session.PlaybackState.STATE_PLAYING, 0, 1f).build());
         session.setActive(true);
         boolean arabic = "ar".equals(Locale.getDefault().getLanguage());
@@ -314,15 +330,27 @@ public class RadioService extends Service {
         Notification.Action stopAction = new Notification.Action.Builder(
             android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_crescent),
             getString(R.string.radio_stop), stop).build();
+        Notification.Action prevAction = new Notification.Action.Builder(
+            android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_media_previous),
+            "السابق", android.app.PendingIntent.getService(this, 42,
+                new Intent(this, RadioService.class).setAction(ACTION_PREV),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE)).build();
+        Notification.Action nextAction = new Notification.Action.Builder(
+            android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_media_next),
+            "التالي", android.app.PendingIntent.getService(this, 43,
+                new Intent(this, RadioService.class).setAction(ACTION_NEXT),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE)).build();
         Notification n = new Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_crescent)
             .setContentTitle(STATIONS[stationIndex].name(arabic))
             .setContentText(getString(R.string.radio_btn))
             .setOngoing(true)
+            .addAction(prevAction)
             .addAction(stopAction)
+            .addAction(nextAction)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setCategory(Notification.CATEGORY_TRANSPORT)
-            .setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()).setShowActionsInCompactView(0))
+            .setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()).setShowActionsInCompactView(0, 1, 2))
             .build();
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(NOTE_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
