@@ -143,13 +143,24 @@ public class RadioService extends Service {
         return c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("radio_resume", false);
     }
 
-    /** The home screen calls this: bring the radio back if it was cut off rather than stopped. */
+    /** True from the moment another app took the sound until the radio is started again (this process only). */
+    private static boolean yielded;
+    private static boolean coldChecked;
+
+    /**
+     * The home screen calls this: bring the radio back if it was cut off rather than stopped. After a fresh start of
+     * the app (an update, a force stop, a crash) it always comes back if it was on; later it stays quiet only when
+     * another app took the sound meanwhile.
+     */
     static void resumeIfCutOff(Context c) {
-        if (state == OFF && shouldResume(c)) {
+        boolean cold = !coldChecked;
+        coldChecked = true;
+        if (state == OFF && shouldResume(c) && (cold || !yielded)) {
             try {
                 play(c, lastStation(c));
-            } catch (RuntimeException ignored) {
+            } catch (RuntimeException e) {
                 // Not allowed to start right now; the radio button still works.
+                c.getSharedPreferences("magiic", MODE_PRIVATE).edit().putString("dbg_radio", String.valueOf(e)).apply();
             }
         }
     }
@@ -189,6 +200,7 @@ public class RadioService extends Service {
             shutdown();
             return START_NOT_STICKY;
         }
+        yielded = false;
         stationIndex = Math.max(0, Math.min(STATIONS.length - 1, intent.getIntExtra("station", 0)));
         getSharedPreferences("magiic", MODE_PRIVATE).edit().putInt("radio_station", stationIndex)
             .putBoolean("radio_resume", true).apply();
@@ -279,8 +291,10 @@ public class RadioService extends Service {
     private void onFocus(int change) {
         switch (change) {
             case AudioManager.AUDIOFOCUS_LOSS:
-                // Another app is playing sound now (a video, music): the radio steps aside for good.
-                shutdown();
+                // Another app is playing sound now (a video, music): the radio steps aside. It is still "on" for a
+                // fresh start of the app (see resumeIfCutOff), only not for the rest of this run.
+                yielded = true;
+                shutdown(false);
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                 // The call to prayer. A live stream can't pause, so drop it and reconnect afterwards.
@@ -389,8 +403,12 @@ public class RadioService extends Service {
 
     /** Stop for good: the listener asked, or another app took the audio. */
     private void shutdown() {
-        // Stopped on purpose (or another app took the sound): do not bring it back on its own.
-        getSharedPreferences("magiic", MODE_PRIVATE).edit().putBoolean("radio_resume", false).apply();
+        shutdown(true);
+    }
+
+    private void shutdown(boolean onPurpose) {
+        // Stopped on purpose: do not bring it back on its own.
+        if (onPurpose) getSharedPreferences("magiic", MODE_PRIVATE).edit().putBoolean("radio_resume", false).apply();
         wanted = false;
         handler.removeCallbacksAndMessages(null);
         release();
