@@ -155,11 +155,17 @@ public class OverlayService extends Service {
         c.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         c.setPadding(dp(16), dp(12), dp(16), dp(12));
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0xF2101418);
+        boolean night = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        // The colours of the look (Mihrab at night, Royal by day), a little lighter so the card stands out.
+        final int fill = night ? 0xF2284583 : 0xF2186548;
+        final int gold = night ? 0xFFDCB860 : 0xFFE8B84A;
+        final int cream = night ? 0xFFF1E8D0 : 0xFFF6ECD2;
+        bg.setColor(fill);
         bg.setCornerRadius(dp(16));
-        bg.setStroke(dp(1), 0xFFE8B84A);
+        bg.setStroke(dp(1), gold);
         c.setBackground(bg);
-        TextView t = text(items.get(idx), 17, 0xFFF6ECD2, true);
+        TextView t = text(items.get(idx), 17, cream, true);
         t.setLineSpacing(0, 1.2f);
         c.addView(t);
         c.setOnClickListener(new View.OnClickListener() {

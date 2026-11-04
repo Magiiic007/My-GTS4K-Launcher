@@ -89,18 +89,31 @@ final class Adhkar {
         return new SimpleDateFormat("yyyyMMdd", Locale.US).format(new Date());
     }
 
+    /** Today's total for one dhikr. */
     static int count(Context c, int i) {
         return p(c).getInt("tas_" + today() + "_" + i, 0);
     }
 
-    static int add(Context c, int i) {
-        int v = count(c, i) + 1;
-        p(c).edit().putInt("tas_" + today() + "_" + i, v).apply();
-        return v;
+    /** The count of the current round (since the last reset). */
+    static int cur(Context c, int i) {
+        return p(c).getInt("tas_cur_" + i, 0);
     }
 
+    /** The count the previous round ended on. */
+    static int last(Context c, int i) {
+        return p(c).getInt("tas_last_" + i, 0);
+    }
+
+    static void add(Context c, int i) {
+        p(c).edit().putInt("tas_cur_" + i, cur(c, i) + 1).putInt("tas_" + today() + "_" + i, count(c, i) + 1).apply();
+    }
+
+    /** Ends the round: its count becomes "the last count" and a new round starts from 0. Today's total stays. */
     static void reset(Context c, int i) {
-        p(c).edit().putInt("tas_" + today() + "_" + i, 0).apply();
+        int cur = cur(c, i);
+        SharedPreferences.Editor e = p(c).edit().putInt("tas_cur_" + i, 0);
+        if (cur > 0) e.putInt("tas_last_" + i, cur);
+        e.apply();
     }
 
     // ---------------------------------------------------------------- the user's own adhkar

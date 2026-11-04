@@ -1438,36 +1438,48 @@ public class PhoneActivity extends Activity {
             for (final Adhkar.Category cat : all) {
                 if (cat.id != id) continue;
                 title(cat.name, true);
+                int shown = 0;
                 for (int i = 0; i < cat.texts.length; i++) {
                     final String key = cat.id + "|" + i;
                     final int total = cat.counts[i];
+                    final int[] left = {done.containsKey(key) ? done.get(key) : total};
+                    if (left[0] == 0) continue;
+                    shown++;
                     final TextView ct = tv("", 15, gold, true);
-                    final LinearLayout r = vbox();
+                    LinearLayout r = vbox();
                     r.setBackground(shape(card, line, 16));
                     r.setPadding(dp(14), dp(12), dp(14), dp(12));
                     TextView t = tv(cat.texts[i], 18, cream, false);
                     t.setLineSpacing(0, 1.35f);
                     r.addView(t);
                     ct.setGravity(Gravity.CENTER);
+                    ct.setText(total == 1 ? "اضغط عند الانتهاء" : left[0] + " / " + total);
                     r.addView(ct, lp(-1, -2, 6));
-                    final int[] left = {done.containsKey(key) ? done.get(key) : total};
-                    ct.setText(left[0] == 0 ? "تم" : total == 1 ? "اضغط عند الانتهاء" : left[0] + " / " + total);
-                    r.setAlpha(left[0] == 0 ? 0.55f : 1f);
                     r.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            if (left[0] > 0) {
-                                left[0]--;
-                                buzz();
-                            }
+                            left[0]--;
+                            buzz();
                             done.put(key, left[0]);
-                            ct.setText(left[0] == 0 ? "تم" : total == 1 ? "اضغط عند الانتهاء" : left[0] + " / " + total);
-                            r.setAlpha(left[0] == 0 ? 0.55f : 1f);
+                            if (left[0] == 0) build(); // the finished one disappears and the next is at the top
+                            else ct.setText(left[0] + " / " + total);
                         }
                     });
                     add(r, 8);
                 }
-                add(tv("اضغط على الذكر لتعدّه. المصدر: حصن المسلم.", 12, dim, false), 10);
+                if (shown == 0) {
+                    add(tv("أتممت هذا الباب، تقبّل الله منك.", 17, gold, true), 16);
+                    final Adhkar.Category cc = cat;
+                    row("إعادة الباب من أوله", null, "↺", new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            for (int i = 0; i < cc.texts.length; i++) done.remove(cc.id + "|" + i);
+                            build();
+                        }
+                    });
+                } else {
+                    add(tv("اضغط على الذكر لتعدّه. المصدر: حصن المسلم.", 12, dim, false), 10);
+                }
                 return;
             }
         }
@@ -1520,29 +1532,9 @@ public class PhoneActivity extends Activity {
 
     private void tasbihPage() {
         title("السبحة والاستغفار", false);
-        LinearLayout chips = hbox();
-        chips.setGravity(Gravity.CENTER);
-        android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this);
-        hs.setHorizontalScrollBarEnabled(false);
-        LinearLayout in = hbox();
-        for (int i = 0; i < Adhkar.TASBIH.length; i++) {
-            final int idx = i;
-            TextView c = tv(Adhkar.TASBIH[i], 14, i == tk ? 0xFF1B1500 : cream, true);
-            c.setBackground(shape(i == tk ? gold : card, line, 18));
-            c.setPadding(dp(14), dp(7), dp(14), dp(7));
-            c.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tk = idx;
-                    build();
-                }
-            });
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
-            p.setMarginEnd(dp(6));
-            in.addView(c, p);
-        }
-        hs.addView(in);
-        add(hs, 8);
+        TextView sel = tv(Adhkar.TASBIH[tk], 20, cream, true);
+        sel.setGravity(Gravity.CENTER);
+        add(sel, 10);
         tcBig = tv("", 64, gold, true);
         tcBig.setGravity(Gravity.CENTER);
         tcBig.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
@@ -1551,7 +1543,7 @@ public class PhoneActivity extends Activity {
         ring.setColor(0x14FFFFFF);
         ring.setStroke(dp(3), gold);
         tcBig.setBackground(ring);
-        tcBig.setText(String.valueOf(Adhkar.count(this, tk)));
+        tcBig.setText(String.valueOf(Adhkar.cur(this, tk)));
         tcBig.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1560,39 +1552,48 @@ public class PhoneActivity extends Activity {
                 refreshTasbih();
             }
         });
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(200), dp(200));
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(190), dp(190));
         rp.gravity = Gravity.CENTER_HORIZONTAL;
-        rp.topMargin = dp(18);
+        rp.topMargin = dp(10);
         body.addView(tcBig, rp);
         TextView hint = tv("اضغط الدائرة للعدّ", 12, dim, false);
         hint.setGravity(Gravity.CENTER);
         add(hint, 6);
-        LinearLayout box = vbox();
-        box.setBackground(shape(card, line, 18));
-        box.setPadding(dp(14), dp(10), dp(14), dp(10));
-        box.addView(tv("عدّاد اليوم", 13, gold, true));
-        tcRows = new TextView[Adhkar.TASBIH.length];
-        for (int i = 0; i < Adhkar.TASBIH.length; i++) {
-            LinearLayout r = hbox();
-            r.addView(tv(Adhkar.TASBIH[i], 14, cream, false), new LinearLayout.LayoutParams(0, -2, 1f));
-            tcRows[i] = tv(String.valueOf(Adhkar.count(this, i)), 14, gold, true);
-            r.addView(tcRows[i]);
-            box.addView(r, lp(-1, -2, 4));
-        }
-        add(box, 14);
-        row("تصفير عدّاد " + Adhkar.TASBIH[tk], null, "↺", new View.OnClickListener() {
+        row("إنهاء الجولة وبدء جولة جديدة", "يُحفظ عدد هذه الجولة كـ«آخر عدد»", "↺", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Adhkar.reset(PhoneActivity.this, tk);
                 refreshTasbih();
             }
         });
+        section("الأذكار");
+        tcRows = new TextView[Adhkar.TASBIH.length];
+        for (int i = 0; i < Adhkar.TASBIH.length; i++) {
+            final int idx = i;
+            LinearLayout c = vbox();
+            c.setBackground(shape(i == tk ? hl : card, i == tk ? gold : line, 14));
+            c.setPadding(dp(14), dp(9), dp(14), dp(9));
+            c.addView(tv(Adhkar.TASBIH[i], 16, cream, true));
+            tcRows[i] = tv("", 13, dim, false);
+            c.addView(tcRows[i]);
+            c.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    tk = idx;
+                    build();
+                }
+            });
+            add(c, 6);
+        }
+        refreshTasbih();
     }
 
     private void refreshTasbih() {
-        if (tcBig != null) tcBig.setText(String.valueOf(Adhkar.count(this, tk)));
+        if (tcBig != null) tcBig.setText(String.valueOf(Adhkar.cur(this, tk)));
         if (tcRows != null) {
-            for (int i = 0; i < tcRows.length; i++) tcRows[i].setText(String.valueOf(Adhkar.count(this, i)));
+            for (int i = 0; i < tcRows.length; i++) {
+                tcRows[i].setText("آخر عدد: " + Adhkar.last(this, i) + "  ·  اليوم: " + Adhkar.count(this, i));
+            }
         }
     }
 
