@@ -12,5 +12,20 @@ public class PhoneApp extends Application {
     public void onCreate() {
         super.onCreate();
         Locale.setDefault(AR);
+        // Keep the reason of any crash, so the next start can show it.
+        final Thread.UncaughtExceptionHandler old = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread t, Throwable e) {
+                try {
+                    java.io.StringWriter w = new java.io.StringWriter();
+                    e.printStackTrace(new java.io.PrintWriter(w));
+                    getSharedPreferences("magiic", MODE_PRIVATE).edit().putString("dbg_crash", w.toString()).commit();
+                } catch (RuntimeException ignored) {
+                    // Nothing more can be done.
+                }
+                if (old != null) old.uncaughtException(t, e);
+            }
+        });
     }
 }

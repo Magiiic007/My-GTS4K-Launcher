@@ -395,12 +395,28 @@ public class PhoneActivity extends Activity {
             nav.addView(t, new LinearLayout.LayoutParams(0, -1, 1f));
         }
         nav.setBackgroundColor(0x73000000);
-        if (tab == 0) home();
-        else if (tab == 1) radio();
-        else if (tab == 2) reminders();
-        else settings();
+        try {
+            if (tab == 0) home();
+            else if (tab == 1) radio();
+            else if (tab == 2) reminders();
+            else settings();
+        } catch (Throwable t) {
+            // A screen that fails shows what went wrong instead of closing the app.
+            body.removeAllViews();
+            java.io.StringWriter w = new java.io.StringWriter();
+            t.printStackTrace(new java.io.PrintWriter(w));
+            sp.edit().putString("dbg_crash", w.toString()).apply();
+            TextView e = tv("حدث خطأ في هذه الصفحة. أرسل هذا النص للمطوّر:\n\n" + w, 11, cream, false);
+            e.setTextIsSelectable(true);
+            e.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+            add(e, 10);
+        }
         scroll.scrollTo(0, 0);
-        tick();
+        try {
+            tick();
+        } catch (RuntimeException ignored) {
+            // The next tick tries again.
+        }
     }
 
     // ---------------------------------------------------------------- home
@@ -1204,6 +1220,13 @@ public class PhoneActivity extends Activity {
         row("آخر وصول لمنبّه الأذان", rx == 0 ? "لم يصل أي منبّه بعد" : new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date(rx)), null, null);
         String err = sp.getString("dbg_err", "");
         row("آخر خطأ في تشغيل الخدمة", err.isEmpty() ? "لا يوجد" : err, null, null);
+        String crash = sp.getString("dbg_crash", "");
+        if (!crash.isEmpty()) {
+            TextView ct = tv("آخر انهيار:\n" + crash, 10, dim, false);
+            ct.setTextIsSelectable(true);
+            ct.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+            add(ct, 8);
+        }
         section("الحساس");
         row("اختبار قلب الهاتف وهزّه", "يعرض قراءات الحساس مباشرة", "›", go("flip"));
         section("التذكيرات والعدّاد");
