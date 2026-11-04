@@ -287,6 +287,7 @@ final class PrayerNote {
         for (Slot s : slots) {
             if (s.w <= 0 || now < s.w || now >= s.end) continue;
             if (p(c).getLong("warn_at_" + s.index, 0L) == s.a) continue;
+            if (Track.done(c, s.a, s.index)) continue; // already prayed: no warning
             p(c).edit().putLong("warn_at_" + s.index, s.a).apply();
             NotificationChannel ch = new NotificationChannel("prayer_warn", "قرب خروج وقت الصلاة", NotificationManager.IMPORTANCE_HIGH);
             nm.createNotificationChannel(ch);

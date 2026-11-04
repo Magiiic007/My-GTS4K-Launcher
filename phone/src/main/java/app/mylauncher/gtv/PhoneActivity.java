@@ -502,6 +502,7 @@ public class PhoneActivity extends Activity {
             else if (tab == 6) tasbihPage();
             else if (tab == 8) overlayPage();
             else if (tab == 10) calendarPage();
+            else if (tab == 11) trackPage();
             else qiblaPage();
         } catch (Throwable t) {
             // A screen that fails shows what went wrong instead of closing the app.
@@ -679,6 +680,25 @@ public class PhoneActivity extends Activity {
             TextView tt = tv(ap(PrayerCalc.time(this, city, at)), Math.round(19 * f), gold, true);
             tt.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
             r.addView(tt);
+            if (idx >= 0 && at <= now) {
+                final int pi = idx;
+                final long pat = at;
+                final TextView ck = tv(Track.done(this, at, idx) ? "✓" : "○", 22, Track.done(this, at, idx) ? gold : dim, true);
+                ck.setGravity(Gravity.CENTER);
+                ck.setContentDescription("صليت");
+                ck.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        boolean on = Track.toggle(PhoneActivity.this, pat, pi);
+                        ck.setText(on ? "✓" : "○");
+                        ck.setTextColor(on ? gold : dim);
+                        PrayerNote.refresh(PhoneActivity.this);
+                    }
+                });
+                LinearLayout.LayoutParams kp = new LinearLayout.LayoutParams(dp(44), dp(40));
+                kp.setMarginStart(dp(6));
+                r.addView(ck, kp);
+            }
             if (at < now && !next) r.setAlpha(0.6f);
             LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2, 1f);
             rp.topMargin = dp(5);
@@ -1871,6 +1891,7 @@ public class PhoneActivity extends Activity {
         menuGroup("الصلاة");
         menuItem("مواقيت الصلاة", 0);
         menuItem("الأذان والإقامة", 4);
+        menuItem("متابعة الصلوات", 11);
         menuItem("التقويم الهجري", 10);
         menuGroup("الأذكار والتذكيرات");
         menuItem("الأذكار والأدعية", 5);
@@ -2278,6 +2299,83 @@ public class PhoneActivity extends Activity {
 
     // ---------------------------------------------------------------- Hijri calendar
     private int calOff;
+
+    private void trackPage() {
+        title("متابعة الصلوات", false);
+        Calendar today = Track.cal(this, System.currentTimeMillis());
+        String[] names = {"الفجر", "الظهر", "العصر", "المغرب", "العشاء"};
+        add(tv("علّم كل صلاة بعد أدائها من علامة ○ بجانبها في الصفحة الرئيسية. وإذا علّمتها لا يصلك تنبيه قرب خروج وقتها. تُحفظ مع النسخة الاحتياطية.", 12, dim, false), 4);
+
+        int week = 0, month = 0, monthDays = 0, full = 0, streak = 0;
+        boolean streakOn = true;
+        for (int i = 0; i < 31; i++) {
+            Calendar k = (Calendar) today.clone();
+            k.add(Calendar.DAY_OF_MONTH, -i);
+            int b = Track.count(Track.bits(this, k));
+            if (i < 7) week += b;
+            if (k.get(Calendar.MONTH) == today.get(Calendar.MONTH) && k.get(Calendar.YEAR) == today.get(Calendar.YEAR)) {
+                month += b;
+                monthDays++;
+            }
+            if (b == 5) {
+                full++;
+                if (streakOn) streak++;
+            } else if (i > 0) {
+                streakOn = false; // today still being open does not break the streak
+            }
+        }
+        section("الإحصائية");
+        LinearLayout st = hbox();
+        String[][] cards = {
+            {week + " / 35", "آخر 7 أيام"},
+            {month + " / " + (monthDays * 5), "هذا الشهر"},
+            {String.valueOf(streak), "أيام متتالية كاملة"}};
+        for (String[] cd : cards) {
+            LinearLayout c1 = vbox();
+            c1.setGravity(Gravity.CENTER);
+            c1.setBackground(shape(card, line, 14));
+            c1.setPadding(dp(4), dp(10), dp(4), dp(10));
+            TextView a = tv(cd[0], 20, gold, true);
+            a.setGravity(Gravity.CENTER);
+            TextView b2 = tv(cd[1], 11, dim, false);
+            b2.setGravity(Gravity.CENTER);
+            c1.addView(a);
+            c1.addView(b2);
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1f);
+            cp.setMargins(dp(3), 0, dp(3), 0);
+            st.addView(c1, cp);
+        }
+        add(st, 6);
+        add(tv("أيام كاملة (الخمس) خلال آخر 31 يوم: " + full, 12, dim, false), 6);
+
+        section("آخر 7 أيام");
+        LinearLayout head = hbox();
+        head.addView(tv("", 11, dim, false), new LinearLayout.LayoutParams(0, -2, 1.6f));
+        for (String n : names) {
+            TextView t = tv(n, 11, dim, true);
+            t.setGravity(Gravity.CENTER);
+            head.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+        }
+        add(head, 4);
+        for (int i = 0; i < 7; i++) {
+            final Calendar k = (Calendar) today.clone();
+            k.add(Calendar.DAY_OF_MONTH, -i);
+            int b = Track.bits(this, k);
+            LinearLayout r = hbox();
+            r.setBackground(shape(i == 0 ? hl : card, i == 0 ? gold : 0, 12));
+            r.setPadding(dp(8), dp(8), dp(8), dp(8));
+            String lab = i == 0 ? "اليوم" : i == 1 ? "أمس" : Hijri.weekdayAr(k);
+            r.addView(tv(lab, 13, cream, true), new LinearLayout.LayoutParams(0, -2, 1.6f));
+            for (int j = 0; j < 5; j++) {
+                boolean on = (b >> j & 1) != 0;
+                TextView t = tv(on ? "✓" : "·", 18, on ? gold : dim, true);
+                t.setGravity(Gravity.CENTER);
+                r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+            }
+            add(r, 3);
+        }
+        add(tv("التعديل على الأيام السابقة غير متاح؛ تُعلَّم الصلاة في يومها فقط.", 11, dim, false), 8);
+    }
 
     private void calendarPage() {
         title("التقويم الهجري", false);
