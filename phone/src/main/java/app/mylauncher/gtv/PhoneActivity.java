@@ -273,6 +273,12 @@ public class PhoneActivity extends Activity {
         return g;
     }
 
+    private LinearLayout header;
+
+    private void addHeader(View v) {
+        header.addView(v, new LinearLayout.LayoutParams(-1, -2));
+    }
+
     private void root() {
         getWindow().setStatusBarColor(bg1);
         getWindow().setNavigationBarColor(bg2);
@@ -283,6 +289,11 @@ public class PhoneActivity extends Activity {
         f.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars}));
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
+        // the title row (with the menu or back button) stays put while the page scrolls under it
+        header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.VERTICAL);
+        header.setPadding(dp(14), dp(10), dp(14), dp(2));
+        col.addView(header, new LinearLayout.LayoutParams(-1, -2));
         scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         body = new LinearLayout(this);
@@ -367,7 +378,7 @@ public class PhoneActivity extends Activity {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
         p.setMarginStart(dp(10));
         r.addView(t1, p);
-        add(r, 6);
+        addHeader(r);
     }
 
     private void section(String t) {
@@ -436,6 +447,7 @@ public class PhoneActivity extends Activity {
         lastKey = key;
         clockTv = apTv = nameTv = cdTv = altTv = iqLabel = iqValue = weatherTv = null;
         body.removeAllViews();
+        header.removeAllViews();
         if (tab != 9) qiblaStop();
         try {
             if (tab == 0) home();
@@ -535,7 +547,7 @@ public class PhoneActivity extends Activity {
         top.addView(place, pp);
         weatherTv = chip(weather.isEmpty() ? "--°" : weather);
         top.addView(weatherTv);
-        add(top, 0);
+        addHeader(top);
         if (weather.isEmpty()) {
             Weather.fetch(city, new Weather.Callback() {
                 @Override
