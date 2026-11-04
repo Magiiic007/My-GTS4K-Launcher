@@ -59,7 +59,7 @@ import java.util.Locale;
 /**
  * The phone app: one portrait screen with a side menu (prayer, adhkar and reminders, qibla and radio, settings). It shares the engine with the
  * TV app (prayer times, Hijri dates, reminders, radio) and draws everything with plain views in two looks, Royal and
- * Mihrab. The "tests" section in the settings is temporary.
+ * Mihrab.
  */
 public class PhoneActivity extends Activity {
     private static final String P = "magiic";
@@ -90,13 +90,10 @@ public class PhoneActivity extends Activity {
     private TextView[] tcRows;
     private boolean autoTried;
     private boolean locAsked;
-    private int dbg;          // test: 0 none, 1 occasion, 2 Ramadan, 3 Friday
     private String weather = "";
     private int[] occNear;
     private String occDay = "";
     private int shownNext = -1;
-    private FlipDetector testFlip;
-    private int flipCount;
 
     // views of the home screen that change every second
     private TextView clockTv, apTv, nameTv, cdTv, altTv, iqLabel, iqValue, weatherTv;
@@ -105,8 +102,7 @@ public class PhoneActivity extends Activity {
         @Override
         public void run() {
             tick();
-            if ("flip".equals(sub) && tab == 3) flipInfo();
-            h.postDelayed(this, "flip".equals(sub) ? 200L : 1000L);
+            h.postDelayed(this, 1000L);
         }
     };
 
@@ -128,8 +124,6 @@ public class PhoneActivity extends Activity {
 
     /** Royal is the day look and Mihrab the night look: they follow the phone's own light/dark setting. */
     private int lookNow() {
-        int forced = sp == null ? -1 : sp.getInt("look_force", -1);
-        if (forced == 0 || forced == 1) return forced;
         int night = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         return night == Configuration.UI_MODE_NIGHT_YES ? 1 : 0;
     }
@@ -183,6 +177,7 @@ public class PhoneActivity extends Activity {
         RadioService.listen(radioListener);
         RadioService.resumeIfCutOff(this);
         OverlayService.sync(this);
+        PrayerNote.refresh(this);
         if (tab == 8 || tab == 6 || (tab == 0 && sub == null)) build();
         if (tab == 9) qiblaStart();
         h.post(ticker);
@@ -199,7 +194,7 @@ public class PhoneActivity extends Activity {
         if (tab == 6) endTasbihRound();
         RadioService.unlisten(radioListener);
         h.removeCallbacks(ticker);
-        stopFlipTest();
+        PrayerNote.refresh(this);
         qiblaStop();
     }
 
@@ -232,7 +227,6 @@ public class PhoneActivity extends Activity {
             return;
         }
         if (sub != null) {
-            if (sub.equals("flip")) stopFlipTest();
             sub = backTarget(sub);
             backNav = true;
             build();
@@ -247,7 +241,6 @@ public class PhoneActivity extends Activity {
 
     private String backTarget(String s) {
         if (s.equals("up")) return "occ";
-        if (s.equals("flip")) return "tests";
         if (s.startsWith("item:")) return itemBack;
         if (s.equals("country") || s.equals("cities")) return null;
         return null;
@@ -728,9 +721,6 @@ public class PhoneActivity extends Activity {
     }
 
     private String extraLine(Cities.City city, long now, int[] adj) {
-        if (dbg == 1) return "باقي 3 أيام على يوم عرفة";
-        if (dbg == 2) return "باقي 12 يوم على رمضان";
-        if (dbg == 3) return "جمعة مباركة · الأذان الأول 11:45";
         long[] t = PrayerCalc.day(city, now, 0, adj);
         int firstMin = PrayerPrefs.firstAdhan(this);
         long firstAt = t[PrayerCalc.DHUHR] - firstMin * 60000L;
@@ -764,7 +754,7 @@ public class PhoneActivity extends Activity {
         }
         nameTv.setText(PrayerCalc.name(this, ad.index, ad.friday));
         cdTv.setText(PrayerCalc.countdown(Math.max(0, ad.at - now)));
-        String base = "الأذان " + ap(PrayerCalc.time(this, city, ad.at)) + " · " + city.name(true);
+        String base = "الأذان " + ap(PrayerCalc.time(this, city, ad.at));
         String extra = extraLine(city, now, adj);
         if (extra != null) extra = ap(extra);
         altTv.setText(extra != null && (now / 3000L) % 2L == 1L ? extra : base);
@@ -1213,14 +1203,6 @@ public class PhoneActivity extends Activity {
             fixPage();
             return;
         }
-        if ("tests".equals(sub)) {
-            testsPage();
-            return;
-        }
-        if ("flip".equals(sub)) {
-            flipPage();
-            return;
-        }
         title("الإعدادات", false);
         section("الشكل");
         row("شكل التطبيق", "تلقائي: أخضر نهاري وكحلي ليلي بحسب وضع الهاتف", look == 0 ? "نهاري" : "ليلي", null);
@@ -1409,6 +1391,7 @@ public class PhoneActivity extends Activity {
         PrayerCalc.configure(this);
         Scheduler.scheduleNext(this);
         Reminders.scheduleNext(this);
+        PrayerNote.refresh(this);
         occDay = "";
         build();
     }
@@ -1485,6 +1468,54 @@ public class PhoneActivity extends Activity {
                         });
                 }
             });
+        section("الإشعار والصامت");
+        switchRow("إشعار الصلاة الدائم", "عدّاد للأذان القادم، وخلال الإقامة يعدّ للإقامة", PrayerNote.noteOn(this),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("note_on", on).apply();
+                    PrayerNote.refresh(PhoneActivity.this);
+                }
+            });
+        final boolean silent = PrayerNote.silentOn(this);
+        switchRow("الصامت وقت الصلاة", "يحوّل الهاتف لصامت بعد انتهاء الأذان، ويرجعه بعد الإقامة", silent,
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("silent_on", on).apply();
+                    PrayerNote.refresh(PhoneActivity.this);
+                    build();
+                }
+            });
+        if (silent) {
+            row("يرجع الصوت بعد الإقامة بـ", PrayerNote.silentAfter(this) + " دقيقة", "›", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    numberDialog("دقائق بعد الإقامة حتى يرجع الصوت", 0, 90, PrayerNote.silentAfter(PhoneActivity.this),
+                        new IntSetter() {
+                            @Override
+                            public void set(int val) {
+                                sp.edit().putInt("silent_after", val).apply();
+                                PrayerNote.refresh(PhoneActivity.this);
+                                build();
+                            }
+                        });
+                }
+            });
+            if (!PrayerNote.policyGranted(this)) {
+                row("السماح بالتحكم في الصامت", "مطلوب مرة واحدة: فعّل «الصلاة خير» في القائمة", "فتح",
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            try {
+                                startActivity(new Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+                            } catch (RuntimeException e) {
+                                toast("افتح إعدادات الهاتف ← عدم الإزعاج ← الوصول");
+                            }
+                        }
+                    });
+            }
+        }
         section("التاريخ الهجري");
         row("تعديل التاريخ الهجري", (Hijri.adjust(this) > 0 ? "+" : "") + Hijri.adjust(this) + " يوم", "›",
             new View.OnClickListener() {
@@ -1562,7 +1593,6 @@ public class PhoneActivity extends Activity {
     }
 
     private void goTab(int t) {
-        if ("flip".equals(sub)) stopFlipTest();
         tab = t;
         sub = null;
         if (drawerOpen) closeDrawer();
@@ -1577,20 +1607,6 @@ public class PhoneActivity extends Activity {
             @Override
             public void onClick(View v) {
                 goTab(t);
-            }
-        });
-        drawerList.addView(it, lp(-1, -2, 2));
-    }
-
-    private void menuTests() {
-        TextView it = tv("أزرار التجربة (مؤقتة)", 14, dim, true);
-        it.setPadding(dp(12), dp(11), dp(12), dp(11));
-        it.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                goTab(3);
-                sub = "tests";
-                build();
             }
         });
         drawerList.addView(it, lp(-1, -2, 2));
@@ -1622,7 +1638,6 @@ public class PhoneActivity extends Activity {
         menuItem("الراديو", 1);
         menuGroup("");
         menuItem("الإعدادات", 3);
-        menuTests();
         drawerOpen = true;
         drawerLayer.setVisibility(View.VISIBLE);
         drawerPanel.setTranslationX(dp(290));
@@ -2367,158 +2382,5 @@ public class PhoneActivity extends Activity {
                 });
             }
         });
-    }
-
-    // ---------------------------------------------------------------- temporary tests
-    private void testsPage() {
-        title("أزرار التجربة", true);
-        TextView n = tv("هذه الأزرار مؤقتة وستُحذف بعد انتهاء التجربة.", 12, dim, false);
-        add(n, 4);
-        section("الشكل");
-        final int forced = sp.getInt("look_force", -1);
-        row("تبديل الشكل للتجربة", forced == 0 ? "نهاري (مفروض)" : forced == 1 ? "ليلي (مفروض)" : "تلقائي بحسب وضع الهاتف", "تبديل",
-            new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    int next = forced == -1 ? 0 : forced == 0 ? 1 : -1;
-                    sp.edit().putInt("look_force", next).apply();
-                    look = lookNow();
-                    palette();
-                    root();
-                    build();
-                }
-            });
-        section("الأذان والإقامة");
-        row("تشغيل الأذان الآن", "اقلب الهاتف على وجهه لإيقافه", "تشغيل", testAdhan(PrayerCalc.ASR, false));
-        row("أذان الفجر الآن", null, "تشغيل", testAdhan(PrayerCalc.FAJR, false));
-        row("الإقامة الآن", null, "تشغيل", testAdhan(PrayerCalc.MAGHRIB, true));
-        row("أذان بعد دقيقة", "اقفل الشاشة وضع الهاتف جانبًا وانتظر", "ابدأ", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                AlarmManager am = getSystemService(AlarmManager.class);
-                Intent i = new Intent(PhoneActivity.this, AdhanReceiver.class).setAction("app.mylauncher.gtv.ADHAN_TEST")
-                    .putExtra("index", PrayerCalc.ASR).putExtra("test", true);
-                PendingIntent pi = PendingIntent.getBroadcast(PhoneActivity.this, 99, i,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-                long at = System.currentTimeMillis() + 60000L;
-                try {
-                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
-                    toast("سيعمل الأذان بعد دقيقة");
-                } catch (SecurityException e) {
-                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
-                    toast("المنبّه الدقيق غير مسموح، قد يتأخر قليلًا");
-                }
-            }
-        });
-        long rx = sp.getLong("dbg_rx", 0L);
-        row("آخر وصول لمنبّه الأذان", rx == 0 ? "لم يصل أي منبّه بعد" : new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date(rx)), null, null);
-        String err = sp.getString("dbg_err", "");
-        row("آخر خطأ في تشغيل الخدمة", err.isEmpty() ? "لا يوجد" : err, null, null);
-        String crash = sp.getString("dbg_crash", "");
-        if (!crash.isEmpty()) {
-            TextView ct = tv("آخر انهيار:\n" + crash, 10, dim, false);
-            ct.setTextIsSelectable(true);
-            ct.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
-            add(ct, 8);
-        }
-        section("الحساس");
-        row("اختبار قلب الهاتف وهزّه", "يعرض قراءات الحساس مباشرة", "›", go("flip"));
-        section("التذكيرات والعدّاد");
-        row("إشعار تذكير الآن", null, "إرسال", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                ArrayList<String> t = new ArrayList<>();
-                ArrayList<String> x = new ArrayList<>();
-                ArrayList<Integer> m = new ArrayList<>();
-                t.add("تذكير تجريبي");
-                x.add("غدًا: يوم عرفة");
-                m.add(0);
-                startForegroundService(new Intent(PhoneActivity.this, ReminderService.class)
-                    .putStringArrayListExtra("titles", t).putStringArrayListExtra("texts", x)
-                    .putIntegerArrayListExtra("minutes", m));
-            }
-        });
-        row("تجربة العدّاد تحت المواقيت", dbg == 0 ? "الوضع العادي" : dbg == 1 ? "مناسبة" : dbg == 2 ? "رمضان" : "الجمعة",
-            "تبديل", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    dbg = (dbg + 1) % 4;
-                    build();
-                }
-            });
-    }
-
-    private View.OnClickListener testAdhan(final int index, final boolean iqama) {
-        return new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startForegroundService(new Intent(PhoneActivity.this, AdhanService.class)
-                    .putExtra("index", index).putExtra("friday", false).putExtra("test", true)
-                    .putExtra("iqama", iqama));
-            }
-        };
-    }
-
-    private TextView flipText;
-
-    private void flipPage() {
-        title("اختبار الحساس", true);
-        TextView n = tv("اضغط ابدأ، ثم اقلب الهاتف على وجهه أو هزّه وهو على وجهه. العدّاد يزيد كلما كانت الحركة ستوقف الأذان.", 13, dim, false);
-        add(n, 4);
-        flipText = tv("", 18, cream, true);
-        flipText.setBackground(shape(card, line, 14));
-        flipText.setPadding(dp(14), dp(12), dp(14), dp(12));
-        add(flipText, 10);
-        Button b = button("ابدأ الاختبار", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startFlipTest();
-            }
-        });
-        add(b, 10);
-        Button s = button("إيقاف الاختبار", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                stopFlipTest();
-            }
-        });
-        add(s, 8);
-        flipInfo();
-    }
-
-    private void startFlipTest() {
-        stopFlipTest();
-        flipCount = 0;
-        testFlip = new FlipDetector(this, new Runnable() {
-            @Override
-            public void run() {
-                flipCount++;
-                h.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (testFlip != null) testFlip.start();
-                    }
-                }, 1500L);
-            }
-        });
-        if (!testFlip.available()) {
-            toast("لا يوجد حساس تسارع في هذا الهاتف");
-            return;
-        }
-        testFlip.start();
-    }
-
-    private void stopFlipTest() {
-        if (testFlip != null) {
-            testFlip.stop();
-            testFlip = null;
-        }
-    }
-
-    private void flipInfo() {
-        if (flipText == null) return;
-        flipText.setText(String.format(Locale.US, "z = %.1f\nالحركة = %.1f (الحد %.1f)\nعلى الوجه: %s\nمرات الإيقاف: %d\nأذان يعمل: %s",
-            FlipDetector.lastZ, FlipDetector.lastMove, FlipDetector.MOVE_THRESHOLD,
-            FlipDetector.lastDown ? "نعم" : "لا", flipCount, AdhanService.playing ? "نعم" : "لا"));
     }
 }
