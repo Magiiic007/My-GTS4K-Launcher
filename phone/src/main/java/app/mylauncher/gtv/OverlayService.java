@@ -206,7 +206,8 @@ public class OverlayService extends Service {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.BOTTOM;
-        lp.setMargins(dp(12), 0, dp(12), dp(24));
+        lp.width = getResources().getDisplayMetrics().widthPixels - dp(24);
+        lp.y = dp(24);
         wm.addView(c, lp);
         card = c;
         h.removeCallbacks(hide);
