@@ -1,6 +1,8 @@
 package app.mylauncher.gtv;
 
 import android.app.AlarmManager;
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -128,18 +130,19 @@ final class PrayerNote {
         long now = System.currentTimeMillis();
         List<Slot> slots = slots(c, city, now);
 
-        if (noteOn(c)) {
-            Slot cur = null;
-            for (Slot s : slots) {
-                if (s.q > now) {
-                    cur = s;
-                    break;
-                }
+        Slot cur = null;
+        for (Slot s : slots) {
+            if (s.q > now) {
+                cur = s;
+                break;
             }
+        }
+        if (noteOn(c)) {
             if (cur != null) post(c, nm, city, cur, now);
         } else {
             nm.cancel(NOTE_ID);
         }
+        if (cur != null) widgets(c, city, cur, now);
 
         silence(c, slots, now);
         warn(c, nm, city, slots, now);
@@ -163,6 +166,30 @@ final class PrayerNote {
             }
         } catch (SecurityException e) {
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pi);
+        }
+    }
+
+    /** Redraws the home-screen widgets (if any). */
+    private static void widgets(Context c, Cities.City city, Slot s, long now) {
+        try {
+            AppWidgetManager awm = AppWidgetManager.getInstance(c);
+            int[] ids = awm.getAppWidgetIds(new ComponentName(c, PrayerWidget.class));
+            if (ids == null || ids.length == 0) return;
+            boolean iqama = s.hasIqama && now >= s.a;
+            long target = iqama ? s.q : s.a;
+            RemoteViews rv = new RemoteViews(c.getPackageName(), R.layout.widget_prayer);
+            rv.setTextViewText(R.id.w_label, iqama ? "باقي على الإقامة" : "الصلاة القادمة");
+            rv.setTextViewText(R.id.w_name, PrayerCalc.name(c, s.index, s.friday));
+            rv.setChronometerCountDown(R.id.w_clock, true);
+            rv.setChronometer(R.id.w_clock, SystemClock.elapsedRealtime() + (target - now), null, true);
+            rv.setTextViewText(R.id.w_time, (iqama ? "الإقامة " : "الأذان ")
+                + PrayerCalc.time(c, city, target).replace("AM", "ص").replace("PM", "م"));
+            rv.setOnClickPendingIntent(R.id.w_root, PendingIntent.getActivity(c, 2, new Intent(c, PhoneActivity.class)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+            awm.updateAppWidget(ids, rv);
+        } catch (RuntimeException ignored) {
+            // The home screen may be busy; the next change redraws it.
         }
     }
 
