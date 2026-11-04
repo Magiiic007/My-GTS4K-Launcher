@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.media.audiofx.LoudnessEnhancer;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -202,12 +203,51 @@ public class RadioService extends Service {
     };
 
     private ExoPlayer player;
+    private LoudnessEnhancer booster;
+    private static RadioService cur;
+
+    /** Extra loudness (dB) for the radio stations, whose streams are much quieter than the reciters' ones. */
+    static int boostDb(Context c) {
+        return c.getSharedPreferences("magiic", MODE_PRIVATE).getInt("radio_boost", 9);
+    }
+
+    /** Applies the chosen boost to what is playing now. */
+    static void refreshBoost() {
+        if (cur != null) cur.applyBoost();
+    }
+
+    private void applyBoost() {
+        if (booster != null) {
+            try {
+                booster.release();
+            } catch (RuntimeException ignored) {
+                // Already gone.
+            }
+            booster = null;
+        }
+        if (player == null || STATIONS[stationIndex].url.contains("qurango")) return;
+        int db = boostDb(this);
+        if (db <= 0) return;
+        try {
+            booster = new LoudnessEnhancer(player.getAudioSessionId());
+            booster.setTargetGain(db * 100);
+            booster.setEnabled(true);
+        } catch (RuntimeException e) {
+            log(this, "boost not available: " + e);
+        }
+    }
     private AudioManager audio;
     private AudioFocusRequest focus;
     /** The listener asked for it; stays true through reconnects and the adhan's pause. */
     private boolean wanted;
     private int failures;
     private android.media.session.MediaSession session;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        cur = this;
+    }
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -371,6 +411,11 @@ public class RadioService extends Service {
         ex.setWakeMode(C.WAKE_MODE_NETWORK);
         ex.addListener(new Player.Listener() {
             @Override
+            public void onAudioSessionIdChanged(int id) {
+                if (ex == player) applyBoost();
+            }
+
+            @Override
             public void onPlaybackStateChanged(int st) {
                 if (ex != player) return;
                 if (st == Player.STATE_READY) {
@@ -397,6 +442,7 @@ public class RadioService extends Service {
             ex.setMediaItem(MediaItem.fromUri(STATIONS[stationIndex].url));
             ex.setPlayWhenReady(true);
             ex.prepare();
+            applyBoost();
             handler.postDelayed(stall, STALL_MS);
         } catch (RuntimeException e) {
             retry();
@@ -415,6 +461,14 @@ public class RadioService extends Service {
     private void release() {
         handler.removeCallbacks(reconnect);
         handler.removeCallbacks(stall);
+        if (booster != null) {
+            try {
+                booster.release();
+            } catch (RuntimeException ignored) {
+                // Already gone.
+            }
+            booster = null;
+        }
         if (player != null) {
             ExoPlayer p = player;
             player = null;
@@ -464,6 +518,7 @@ public class RadioService extends Service {
             session.release();
             session = null;
         }
+        if (cur == this) cur = null;
         super.onDestroy();
     }
 }

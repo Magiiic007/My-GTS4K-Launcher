@@ -810,6 +810,25 @@ public class PhoneActivity extends Activity {
                 });
             }
         }
+        final int db = RadioService.boostDb(this);
+        final int[] steps = {0, 6, 9, 12, 15};
+        final String[] names = {"بدون رفع", "متوسط (+6)", "عالٍ (+9)", "أعلى (+12)", "أقصى (+15)"};
+        int at = 2;
+        for (int i = 0; i < steps.length; i++) if (steps[i] == db) at = i;
+        final int cur = at;
+        row("رفع صوت الإذاعات", names[cur] + " · يطبّق فورًا", "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new Pop(PhoneActivity.this).title("رفع صوت الإذاعات").single(names, cur, new Pop.Pick() {
+                    @Override
+                    public void on(int which) {
+                        sp.edit().putInt("radio_boost", steps[which]).apply();
+                        RadioService.refreshBoost();
+                        build();
+                    }
+                }).show();
+            }
+        });
         TextView n = tv("يتوقف الراديو وقت الأذان ويعود وحده، ويرجع بعد إعادة التشغيل أو التحديث.", 12, dim, false);
         add(n, 12);
     }
