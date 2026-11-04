@@ -117,15 +117,25 @@ final class SettingsMenu {
 
     /** The device and account settings: each opens that screen, or the main settings if this device has no such screen. */
     static void device(final Context c) {
-        String[] items = new String[DEVICE.length + 1];
-        for (int i = 0; i < DEVICE.length; i++) items[i] = c.getString(Integer.parseInt(DEVICE[i][0]));
-        items[DEVICE.length] = c.getString(R.string.menu_about);
+        final int n = DEVICE.length;
+        final boolean tools = c instanceof android.app.Activity;
+        String[] items = new String[n + (tools ? 4 : 1)];
+        for (int i = 0; i < n; i++) items[i] = c.getString(Integer.parseInt(DEVICE[i][0]));
+        items[n] = c.getString(R.string.menu_about);
+        if (tools) {
+            items[n + 1] = c.getString(R.string.menu_saver);
+            items[n + 2] = c.getString(R.string.menu_clean);
+            items[n + 3] = c.getString(R.string.menu_stock);
+        }
         new Menu.Builder(c)
             .setTitle(R.string.menu_device)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int which) {
                     if (which == DEVICE.length) about(c);
+                    else if (which == DEVICE.length + 1) screensaver(c);
+                    else if (which == DEVICE.length + 2) Cleaner.open((android.app.Activity) c);
+                    else if (which == DEVICE.length + 3) StockHome.menu(c);
                     else launch(c, DEVICE[which][1], which == 0 ? R.string.account_hint : 0);
                 }
             })

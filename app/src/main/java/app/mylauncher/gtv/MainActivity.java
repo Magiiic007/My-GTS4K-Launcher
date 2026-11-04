@@ -227,7 +227,10 @@ public class MainActivity extends Activity {
         scroll.setFillViewport(true);
         scroll.setClipToPadding(false);
         scroll.setClipChildren(false);
+        // The apps run from the right, like the Arabic text: the first app is at the right edge.
+        scroll.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         appRow = new LinearLayout(this);
+        appRow.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         appRow.setOrientation(LinearLayout.HORIZONTAL);
         appRow.setGravity(Gravity.CENTER);
         scroll.addView(appRow, new ViewGroup.LayoutParams(
@@ -287,57 +290,16 @@ public class MainActivity extends Activity {
                 ReminderDialogs.open(MainActivity.this);
             }
         });
-        addRow(list, R.drawable.ic_location, R.string.menu_city, new Runnable() {
-            @Override
-            public void run() {
-                chooseCountry();
-            }
-        });
-        addRow(list, R.drawable.ic_calendar, R.string.menu_hijri, new Runnable() {
-            @Override
-            public void run() {
-                chooseHijri();
-            }
-        });
-        addRow(list, R.drawable.ic_apps, R.string.menu_apps, new Runnable() {
-            @Override
-            public void run() {
-                SettingsMenu.apps(MainActivity.this, appList(), new Runnable() {
-                    @Override
-                    public void run() {
-                        applyHidden();
-                    }
-                });
-            }
-        });
         addRow(list, R.drawable.ic_account, R.string.menu_device, new Runnable() {
             @Override
             public void run() {
                 SettingsMenu.device(MainActivity.this);
             }
         });
-        addRow(list, R.drawable.ic_sunny, R.string.menu_saver, new Runnable() {
-            @Override
-            public void run() {
-                SettingsMenu.screensaver(MainActivity.this);
-            }
-        });
-        addRow(list, R.drawable.ic_shield, R.string.menu_clean, new Runnable() {
-            @Override
-            public void run() {
-                Cleaner.open(MainActivity.this);
-            }
-        });
         addRow(list, R.drawable.ic_update, R.string.menu_update, new Runnable() {
             @Override
             public void run() {
                 Updater.menu(MainActivity.this);
-            }
-        });
-        addRow(list, R.drawable.ic_home, R.string.menu_stock, new Runnable() {
-            @Override
-            public void run() {
-                StockHome.menu(MainActivity.this);
             }
         });
         permRow = addRow(list, R.drawable.ic_warning, R.string.perm_btn, new Runnable() {
@@ -411,32 +373,10 @@ public class MainActivity extends Activity {
         acts.add(new Runnable() { public void run() { chooseLook(); } });
         names.add(getString(R.string.menu_reminders));
         acts.add(new Runnable() { public void run() { ReminderDialogs.open(MainActivity.this); } });
-        names.add(getString(R.string.menu_city));
-        acts.add(new Runnable() { public void run() { chooseCountry(); } });
-        names.add(getString(R.string.menu_hijri));
-        acts.add(new Runnable() { public void run() { chooseHijri(); } });
-        names.add(getString(R.string.menu_apps));
-        acts.add(new Runnable() {
-            public void run() {
-                SettingsMenu.apps(MainActivity.this, appList(), new Runnable() {
-                    public void run() { applyHidden(); }
-                });
-            }
-        });
         names.add(getString(R.string.menu_device));
         acts.add(new Runnable() { public void run() { SettingsMenu.device(MainActivity.this); } });
-        names.add(getString(R.string.menu_saver));
-        acts.add(new Runnable() {
-            public void run() {
-                SettingsMenu.screensaver(MainActivity.this);
-            }
-        });
-        names.add(getString(R.string.menu_clean));
-        acts.add(new Runnable() { public void run() { Cleaner.open(MainActivity.this); } });
         names.add(getString(R.string.menu_update));
         acts.add(new Runnable() { public void run() { Updater.menu(MainActivity.this); } });
-        names.add(getString(R.string.menu_stock));
-        acts.add(new Runnable() { public void run() { StockHome.menu(MainActivity.this); } });
         if (!Settings.canDrawOverlays(this)) {
             names.add(getString(R.string.perm_btn));
             acts.add(new Runnable() { public void run() { askOverlayPermission(); } });
@@ -792,7 +732,7 @@ public class MainActivity extends Activity {
     }
 
     /** Moves the Hijri date by up to three days either way, for when the local moon sighting differs. */
-    private void chooseHijri() {
+    void chooseHijri() {
         NumberDialog.show(this, getString(R.string.hijri_title), -3, 3, Hijri.adjust(this),
             getString(R.string.days_plain), getString(R.string.days_signed), true, getString(R.string.no_adjust),
             new NumberDialog.OnSave() {
@@ -1026,7 +966,7 @@ public class MainActivity extends Activity {
             link(r, r, r, r == firstRow ? r : null, r == lastRow ? (firstTile != null ? firstTile : r) : null);
         }
         for (View t : tiles) {
-            link(t, t == firstTile ? t : null, t == lastTile ? t : null, firstRow != null ? firstRow : t, t);
+            link(t, t == lastTile ? t : null, t == firstTile ? t : null, firstRow != null ? firstRow : t, t);
         }
     }
 

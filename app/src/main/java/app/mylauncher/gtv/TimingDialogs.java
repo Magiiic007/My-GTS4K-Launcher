@@ -13,8 +13,13 @@ final class TimingDialogs {
     static void open(final Context c, final Runnable changed) {
         int[] adj = PrayerPrefs.adjust(c);
         int[] iq = PrayerPrefs.iqama(c);
-        String[] items = new String[6];
+        final boolean home = c instanceof MainActivity;
+        String[] items = new String[home ? 8 : 6];
         items[5] = c.getString(R.string.first_adhan_item, PrayerPrefs.firstAdhanText(c, PrayerPrefs.firstAdhan(c)));
+        if (home) {
+            items[6] = c.getString(R.string.menu_city);
+            items[7] = c.getString(R.string.menu_hijri);
+        }
         for (int i = 0; i < 5; i++) {
             items[i] = c.getString(R.string.main_row, PrayerCalc.name(c, i, false),
                 PrayerPrefs.adjustText(c, adj[i]), PrayerPrefs.iqamaText(c, iq[i]));
@@ -25,7 +30,11 @@ final class TimingDialogs {
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int which) {
-                    if (which == 5) {
+                    if (which == 6) {
+                        ((MainActivity) c).chooseCountry();
+                    } else if (which == 7) {
+                        ((MainActivity) c).chooseHijri();
+                    } else if (which == 5) {
                         NumberDialog.show(c, c.getString(R.string.first_adhan_set_title), 0, 90,
                             PrayerPrefs.firstAdhan(c), false, c.getString(R.string.first_adhan_off),
                             new NumberDialog.OnSave() {
