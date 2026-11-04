@@ -610,6 +610,12 @@ public class PhoneActivity extends Activity {
             });
         }
 
+        // one card holds the clock, the dates and the next prayer (same dotted frame in both looks)
+        LinearLayout hero = vbox();
+        hero.setGravity(Gravity.CENTER_HORIZONTAL);
+        Deco.Frame frame = new Deco.Frame(false, (gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
+        hero.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {shape(card, line, 22), frame}));
+        hero.setPadding(dp(14), dp(Math.round(10 * f)), dp(14), dp(Math.round(10 * f)));
         // clock and dates
         LinearLayout clock = hbox();
         clock.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
@@ -619,22 +625,17 @@ public class PhoneActivity extends Activity {
         apTv.setPadding(dp(8), 0, 0, 0);
         clock.addView(clockTv);
         clock.addView(apTv);
-        add(clock, 2);
+        hero.addView(clock, lp(-2, -2, 0));
         TextView d1 = tv(Hijri.weekdayAr(cal) + "، " + Hijri.gregorianAr(cal), 14, cream, false);
         d1.setGravity(Gravity.CENTER);
-        add(d1, 0);
+        hero.addView(d1, lp(-2, -2, 0));
         TextView d2 = tv(Hijri.hijriAr(hij), 14, gold, true);
         d2.setGravity(Gravity.CENTER);
-        add(d2, 0);
+        hero.addView(d2, lp(-2, -2, 0));
 
         // the next prayer
         PrayerCalc.Event ad = PrayerCalc.nextEvent(city, now, adj, new int[5]);
         shownNext = ad == null ? -1 : ad.index;
-        LinearLayout hero = vbox();
-        hero.setGravity(Gravity.CENTER_HORIZONTAL);
-        Deco.Frame frame = new Deco.Frame(look == 1, (gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
-        hero.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {shape(card, line, 22), frame}));
-        hero.setPadding(dp(14), dp(Math.round(10 * f)), dp(14), dp(Math.round(10 * f)));
         TextView l1 = tv("الصلاة القادمة", 12, dim, true);
         l1.setPadding(0, dp(6), 0, 0);
         l1.setGravity(Gravity.CENTER);
