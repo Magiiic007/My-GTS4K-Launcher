@@ -12,6 +12,7 @@ public class PhoneApp extends Application {
     public void onCreate() {
         super.onCreate();
         Locale.setDefault(AR);
+        PrayerCalc.configure(this);
         // Keep the reason of any crash, so the next start can show it.
         final Thread.UncaughtExceptionHandler old = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {

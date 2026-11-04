@@ -6,6 +6,7 @@ import android.text.format.DateFormat;
 
 import com.batoulapps.adhan.CalculationMethod;
 import com.batoulapps.adhan.CalculationParameters;
+import com.batoulapps.adhan.Madhab;
 import com.batoulapps.adhan.Coordinates;
 import com.batoulapps.adhan.PrayerAdjustments;
 import com.batoulapps.adhan.PrayerTimes;
@@ -26,6 +27,21 @@ final class PrayerCalc {
     private PrayerCalc() {}
 
     static final int FAJR = 0, DHUHR = 1, ASR = 2, MAGHRIB = 3, ISHA = 4;
+
+    /** The calculation methods the phone lets you pick (index 0 of the setting means "automatic by country"). */
+    static final CalculationMethod[] METHODS = {CalculationMethod.MUSLIM_WORLD_LEAGUE, CalculationMethod.EGYPTIAN,
+        CalculationMethod.UMM_AL_QURA, CalculationMethod.KARACHI, CalculationMethod.NORTH_AMERICA,
+        CalculationMethod.KUWAIT, CalculationMethod.QATAR};
+    /** -1 = by country (the TV always does this). Set from the phone's settings. */
+    private static volatile int methodIndex = -1;
+    private static volatile boolean hanafi;
+
+    static void configure(Context c) {
+        android.content.SharedPreferences p = c.getSharedPreferences("magiic", Context.MODE_PRIVATE);
+        int m = p.getInt("calc_method", -1);
+        methodIndex = m >= 0 && m < METHODS.length ? m : -1;
+        hanafi = p.getBoolean("calc_hanafi", false);
+    }
 
     /** The next thing that rings: an adhan or an iqama, which prayer, when, and whether its Dhuhr is a Friday's. */
     static final class Event {
@@ -83,11 +99,13 @@ final class PrayerCalc {
             cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH));
 
         boolean egypt = "EG".equals(city.country);
-        CalculationParameters params = (egypt ? CalculationMethod.EGYPTIAN : CalculationMethod.UMM_AL_QURA)
-            .getParameters();
+        CalculationMethod method = methodIndex >= 0 ? METHODS[methodIndex]
+            : (egypt ? CalculationMethod.EGYPTIAN : CalculationMethod.UMM_AL_QURA);
+        CalculationParameters params = method.getParameters();
+        if (hanafi) params.madhab = Madhab.HANAFI;
         // Umm al-Qura: Isha is 2 hours after Maghrib in Ramadan (1.5 hours otherwise). The evening belongs to the
         // next Hijri day, so this starts on the night before the 1st of Ramadan.
-        if (!egypt && nextHijriDayIsRamadan(cal)) params.ishaInterval = 120;
+        if (method == CalculationMethod.UMM_AL_QURA && nextHijriDayIsRamadan(cal)) params.ishaInterval = 120;
         params.adjustments = new PrayerAdjustments(adjust[FAJR], 0, adjust[DHUHR], adjust[ASR],
             adjust[MAGHRIB], adjust[ISHA]);
 

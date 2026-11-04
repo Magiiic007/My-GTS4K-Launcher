@@ -52,6 +52,8 @@ final class Reminders {
         int minute = 0;
         /** Minutes it stays on screen; 0 = until it is closed by hand. */
         int durationMin = 0;
+        /** Morning/evening adhkar: minutes after Fajr / before Maghrib, or -1 for the fixed time above. */
+        int relMin = -1;
     }
 
     // ---------------------------------------------------------------- saving
@@ -145,7 +147,7 @@ final class Reminders {
             .put("id", it.id).put("kind", it.kind).put("on", it.enabled)
             .put("title", it.title).put("text", it.text)
             .put("days", it.daysMask).put("hijri", it.hijriMask).put("before", it.dayBefore)
-            .put("h", it.hour).put("m", it.minute).put("dur", it.durationMin);
+            .put("h", it.hour).put("m", it.minute).put("dur", it.durationMin).put("rel", it.relMin);
     }
 
     private static Item fromJson(JSONObject o) {
@@ -161,6 +163,7 @@ final class Reminders {
         it.hour = o.optInt("h", 21);
         it.minute = o.optInt("m", 0);
         it.durationMin = o.optInt("dur", 0);
+        it.relMin = o.optInt("rel", -1);
         return it;
     }
 
@@ -192,6 +195,16 @@ final class Reminders {
             show.set(Calendar.SECOND, 0);
             show.set(Calendar.MILLISECOND, 0);
             long at = show.getTimeInMillis();
+            if (it.relMin >= 0 && (it.kind == ADHKAR_AM || it.kind == ADHKAR_PM)) {
+                Cities.City city = Cities.selected(c);
+                if (city != null) {
+                    show.set(Calendar.HOUR_OF_DAY, 12);
+                    show.set(Calendar.MINUTE, 0);
+                    long[] t = PrayerCalc.day(city, show.getTimeInMillis(), 0, PrayerPrefs.adjust(c));
+                    at = it.kind == ADHKAR_AM ? t[PrayerCalc.FAJR] + it.relMin * 60000L
+                        : t[PrayerCalc.MAGHRIB] - it.relMin * 60000L;
+                }
+            }
             if (at <= after) continue;
             Calendar target = fastDay(it, show);
             if (matches(it, target, adj)) return at;

@@ -14,6 +14,11 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.drawable.LayerDrawable;
+import android.hardware.GeomagneticField;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -45,11 +50,12 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * The phone app: one portrait screen with four tabs (home, radio, reminders, settings). It shares the engine with the
+ * The phone app: one portrait screen with a side menu (prayer, adhkar and reminders, qibla and radio, settings). It shares the engine with the
  * TV app (prayer times, Hijri dates, reminders, radio) and draws everything with plain views in two looks, Royal and
  * Mihrab. The "tests" section in the settings is temporary.
  */
@@ -66,7 +72,20 @@ public class PhoneActivity extends Activity {
     private int bg1, bg2, gold, cream, dim, card, line, hl;
     private LinearLayout body;
     private ScrollView scroll;
-    private LinearLayout nav;
+    private FrameLayout drawerLayer;
+    private View scrim;
+    private ScrollView drawerPanel;
+    private LinearLayout drawerList;
+    private boolean drawerOpen;
+    private Qibla.Dial dial;
+    private SensorManager sm;
+    private SensorEventListener qListener;
+    private float heading;
+    private TextView qiblaText;
+    private final HashMap<String, Integer> done = new HashMap<>();
+    private int tk;
+    private TextView tcBig;
+    private TextView[] tcRows;
     private boolean autoTried;
     private boolean locAsked;
     private int dbg;          // test: 0 none, 1 occasion, 2 Ramadan, 3 Friday
@@ -157,6 +176,9 @@ public class PhoneActivity extends Activity {
         super.onResume();
         RadioService.listen(radioListener);
         RadioService.resumeIfCutOff(this);
+        OverlayService.sync(this);
+        if (tab == 8) build();
+        if (tab == 9) qiblaStart();
         h.post(ticker);
         if (!autoTried && sp.getBoolean("ph_first", false)
             && (Cities.selected(this) == null || sp.getBoolean("city_auto", true))) {
@@ -171,6 +193,7 @@ public class PhoneActivity extends Activity {
         RadioService.unlisten(radioListener);
         h.removeCallbacks(ticker);
         stopFlipTest();
+        qiblaStop();
     }
 
     @Override
@@ -192,11 +215,15 @@ public class PhoneActivity extends Activity {
             return;
         }
         if (code == REQ_LOC) autoCity(false);
-        if (tab == 3) build();
+        if (tab == 3 || tab == 8) build();
     }
 
     @Override
     public void onBackPressed() {
+        if (drawerOpen) {
+            closeDrawer();
+            return;
+        }
         if (sub != null) {
             if (sub.equals("flip")) stopFlipTest();
             sub = backTarget(sub);
@@ -258,11 +285,28 @@ public class PhoneActivity extends Activity {
         body.setPadding(dp(14), dp(10), dp(14), dp(16));
         scroll.addView(body, new ViewGroup.LayoutParams(-1, -2));
         col.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
-        nav = new LinearLayout(this);
-        nav.setOrientation(LinearLayout.HORIZONTAL);
-        nav.setBackgroundColor(0x73000000);
-        col.addView(nav, new LinearLayout.LayoutParams(-1, dp(58)));
         f.addView(col, new FrameLayout.LayoutParams(-1, -1));
+        drawerOpen = false;
+        drawerLayer = new FrameLayout(this);
+        drawerLayer.setVisibility(View.GONE);
+        scrim = new View(this);
+        scrim.setBackgroundColor(0x99000000);
+        scrim.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                closeDrawer();
+            }
+        });
+        drawerLayer.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
+        drawerPanel = new ScrollView(this);
+        GradientDrawable pg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
+        pg.setStroke(dp(1), gold);
+        drawerPanel.setBackground(pg);
+        drawerList = vbox();
+        drawerList.setPadding(dp(12), dp(30), dp(12), dp(16));
+        drawerPanel.addView(drawerList, new ViewGroup.LayoutParams(-1, -2));
+        drawerLayer.addView(drawerPanel, new FrameLayout.LayoutParams(dp(290), -1, Gravity.START));
+        f.addView(drawerLayer, new FrameLayout.LayoutParams(-1, -1));
         setContentView(f);
     }
 
@@ -313,9 +357,10 @@ public class PhoneActivity extends Activity {
             });
             r.addView(b, new LinearLayout.LayoutParams(dp(38), dp(38)));
         }
+        else r.addView(hamburger(), new LinearLayout.LayoutParams(dp(38), dp(38)));
         TextView t1 = tv(t, 22, gold, true);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
-        p.setMarginStart(dp(back ? 10 : 2));
+        p.setMarginStart(dp(10));
         r.addView(t1, p);
         add(r, 6);
     }
@@ -377,29 +422,18 @@ public class PhoneActivity extends Activity {
         palette();
         clockTv = apTv = nameTv = cdTv = altTv = iqLabel = iqValue = weatherTv = null;
         body.removeAllViews();
-        String[] names = {"الرئيسية", "الراديو", "التذكيرات", "الإعدادات"};
-        nav.removeAllViews();
-        for (int i = 0; i < 4; i++) {
-            final int idx = i;
-            TextView t = tv(names[i], 12, i == tab ? gold : dim, true);
-            t.setGravity(Gravity.CENTER);
-            t.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if ("flip".equals(sub)) stopFlipTest();
-                    tab = idx;
-                    sub = null;
-                    build();
-                }
-            });
-            nav.addView(t, new LinearLayout.LayoutParams(0, -1, 1f));
-        }
-        nav.setBackgroundColor(0x73000000);
+        if (tab != 9) qiblaStop();
         try {
             if (tab == 0) home();
             else if (tab == 1) radio();
             else if (tab == 2) reminders();
-            else settings();
+            else if (tab == 3) settings();
+            else if (tab == 4) adhanPage();
+            else if (tab == 5) adhkarPage();
+            else if (tab == 6) tasbihPage();
+            else if (tab == 7) minePage();
+            else if (tab == 8) overlayPage();
+            else qiblaPage();
         } catch (Throwable t) {
             // A screen that fails shows what went wrong instead of closing the app.
             body.removeAllViews();
@@ -452,6 +486,9 @@ public class PhoneActivity extends Activity {
 
         // top chips
         LinearLayout top = hbox();
+        top.addView(hamburger(), new LinearLayout.LayoutParams(dp(38), dp(38)));
+        View gap0 = new View(this);
+        top.addView(gap0, new LinearLayout.LayoutParams(dp(8), 1));
         weatherTv = chip(weather.isEmpty() ? city.name(true) : city.name(true) + " · " + weather);
         top.addView(weatherTv);
         View sp1 = new View(this);
@@ -819,7 +856,43 @@ public class PhoneActivity extends Activity {
                     }
                 });
         }
-        row("الوقت", String.format(Locale.US, "%02d:%02d", it.hour, it.minute), "›", new View.OnClickListener() {
+        final boolean linked = it.relMin >= 0 && (it.kind == Reminders.ADHKAR_AM || it.kind == Reminders.ADHKAR_PM);
+        if (it.kind == Reminders.ADHKAR_AM || it.kind == Reminders.ADHKAR_PM) {
+            final boolean am = it.kind == Reminders.ADHKAR_AM;
+            row("وقت التنبيه", linked ? (am ? "بعد الفجر بـ " : "قبل المغرب بـ ") + it.relMin + " دقيقة" : "وقت ثابت", "›",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        new AlertDialog.Builder(PhoneActivity.this).setTitle("وقت التنبيه")
+                            .setSingleChoiceItems(new String[] {"وقت ثابت", am ? "مرتبط بالفجر" : "مرتبط بالمغرب"},
+                                linked ? 1 : 0, new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface d, int which) {
+                                        it.relMin = which == 1 ? (it.relMin >= 0 ? it.relMin : 20) : -1;
+                                        saveRem(list);
+                                        d.dismiss();
+                                        build();
+                                    }
+                                }).show();
+                    }
+                });
+        }
+        if (linked) {
+            final boolean am2 = it.kind == Reminders.ADHKAR_AM;
+            row(am2 ? "الدقائق بعد الفجر" : "الدقائق قبل المغرب", it.relMin + " دقيقة", "›", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    numberDialog(am2 ? "دقائق بعد الفجر" : "دقائق قبل المغرب", 0, 120, it.relMin, new IntSetter() {
+                        @Override
+                        public void set(int val) {
+                            it.relMin = val;
+                            saveRem(list);
+                            build();
+                        }
+                    });
+                }
+            });
+        } else row("الوقت", String.format(Locale.US, "%02d:%02d", it.hour, it.minute), "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 new TimePickerDialog(PhoneActivity.this, new TimePickerDialog.OnTimeSetListener() {
@@ -947,10 +1020,6 @@ public class PhoneActivity extends Activity {
             cityPicker();
             return;
         }
-        if ("prayers".equals(sub)) {
-            prayersPage();
-            return;
-        }
         if ("fix".equals(sub)) {
             fixPage();
             return;
@@ -975,22 +1044,12 @@ public class PhoneActivity extends Activity {
                 }
             });
         row("الدولة والمدينة", null, "›", go("country"));
-        row("الأذان والإقامة", "تعديل الدقائق ومدة الإقامة لكل صلاة", "›", go("prayers"));
-        row("تعديل التاريخ الهجري", (Hijri.adjust(this) > 0 ? "+" : "") + Hijri.adjust(this) + " يوم", "›",
-            new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    numberDialog("تعديل التاريخ الهجري (أيام)", -3, 3, Hijri.adjust(PhoneActivity.this), new IntSetter() {
-                        @Override
-                        public void set(int val) {
-                            Hijri.setAdjust(PhoneActivity.this, val);
-                            Reminders.scheduleNext(PhoneActivity.this);
-                            occDay = "";
-                            build();
-                        }
-                    });
-                }
-            });
+        row("الأذان والإقامة", "طريقة الحساب والمذهب والدقائق لكل صلاة", "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                goTab(4);
+            }
+        });
         section("الشكل");
         row("شكل التطبيق", "تلقائي: الملكي نهارًا والمحراب ليلًا بحسب وضع الهاتف", look == 0 ? "ملكي" : "المحراب", null);
         section("التشغيل في الخلفية");
@@ -1041,8 +1100,66 @@ public class PhoneActivity extends Activity {
         };
     }
 
-    private void prayersPage() {
-        title("الأذان والإقامة", true);
+    private static final String[] METHOD_NAMES = {"رابطة العالم الإسلامي", "الهيئة المصرية العامة للمساحة", "أم القرى",
+        "جامعة العلوم الإسلامية بكراتشي", "أمريكا الشمالية", "الكويت", "قطر"};
+
+    private void calcChanged() {
+        PrayerCalc.configure(this);
+        Scheduler.scheduleNext(this);
+        Reminders.scheduleNext(this);
+        occDay = "";
+        build();
+    }
+
+    private void adhanPage() {
+        title("الأذان والإقامة", false);
+        section("طريقة الحساب");
+        final int m = sp.getInt("calc_method", -1);
+        switchRow("تلقائي حسب الموقع", "يختار الطريقة والمذهب حسب بلد مدينتك", m < 0, new CompoundListener() {
+            @Override
+            public void changed(boolean on) {
+                Cities.City c = Cities.selected(PhoneActivity.this);
+                int def = c != null && "EG".equals(c.country) ? 1 : 2;
+                SharedPreferences.Editor e = sp.edit();
+                if (on) e.putInt("calc_method", -1).putBoolean("calc_hanafi", false);
+                else e.putInt("calc_method", def);
+                e.apply();
+                calcChanged();
+            }
+        });
+        if (m >= 0) {
+            row("طريقة الحساب", METHOD_NAMES[Math.min(m, METHOD_NAMES.length - 1)], "›", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    new AlertDialog.Builder(PhoneActivity.this).setTitle("طريقة الحساب")
+                        .setSingleChoiceItems(METHOD_NAMES, m, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface d, int which) {
+                                sp.edit().putInt("calc_method", which).apply();
+                                d.dismiss();
+                                calcChanged();
+                            }
+                        }).show();
+                }
+            });
+            final boolean han = sp.getBoolean("calc_hanafi", false);
+            row("المذهب (وقت العصر)", han ? "الحنفي" : "الجمهور (الشافعي والمالكي والحنبلي)", "›", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    new AlertDialog.Builder(PhoneActivity.this).setTitle("المذهب (وقت العصر)")
+                        .setSingleChoiceItems(new String[] {"الجمهور (الشافعي والمالكي والحنبلي)", "الحنفي"}, han ? 1 : 0,
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface d, int which) {
+                                    sp.edit().putBoolean("calc_hanafi", which == 1).apply();
+                                    d.dismiss();
+                                    calcChanged();
+                                }
+                            }).show();
+                }
+            });
+        }
+        section("لكل صلاة");
         final int[] adj = PrayerPrefs.adjust(this);
         final int[] iq = PrayerPrefs.iqama(this);
         for (int i = 0; i < 5; i++) {
@@ -1070,6 +1187,32 @@ public class PhoneActivity extends Activity {
                         });
                 }
             });
+        section("التاريخ الهجري");
+        row("تعديل التاريخ الهجري", (Hijri.adjust(this) > 0 ? "+" : "") + Hijri.adjust(this) + " يوم", "›",
+            new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    numberDialog("تعديل التاريخ الهجري (أيام)", -3, 3, Hijri.adjust(PhoneActivity.this), new IntSetter() {
+                        @Override
+                        public void set(int val) {
+                            Hijri.setAdjust(PhoneActivity.this, val);
+                            Reminders.scheduleNext(PhoneActivity.this);
+                            occDay = "";
+                            build();
+                        }
+                    });
+                }
+            });
+        section("إيقاف الأذان");
+        add(tv("الأذان والإقامة يعملان في الخلفية ويتوقفان بقلب الهاتف على وجهه فقط.", 13, dim, false), 4);
+        row("تأكد أن الأذان يعمل", "الإشعارات والمنبّه والبطارية", "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tab = 3;
+                sub = "fix";
+                build();
+            }
+        });
     }
 
     private void prayerDialog(final int idx) {
@@ -1104,6 +1247,458 @@ public class PhoneActivity extends Activity {
                     build();
                 }
             }).setNegativeButton("إلغاء", null).show();
+    }
+
+    // ---------------------------------------------------------------- side menu
+    private TextView hamburger() {
+        TextView b = tv("☰", 20, gold, true);
+        b.setGravity(Gravity.CENTER);
+        b.setBackground(shape(0, line, 19));
+        b.setContentDescription("القائمة");
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openDrawer();
+            }
+        });
+        return b;
+    }
+
+    private void goTab(int t) {
+        if ("flip".equals(sub)) stopFlipTest();
+        tab = t;
+        sub = null;
+        if (drawerOpen) closeDrawer();
+        build();
+    }
+
+    private void menuItem(String name, final int t) {
+        TextView it = tv(name, 16, t == tab ? gold : cream, true);
+        it.setPadding(dp(12), dp(11), dp(12), dp(11));
+        if (t == tab) it.setBackground(shape(hl, 0, 12));
+        it.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                goTab(t);
+            }
+        });
+        drawerList.addView(it, lp(-1, -2, 2));
+    }
+
+    private void menuGroup(String name) {
+        TextView g = tv(name, 12, gold, true);
+        g.setPadding(dp(8), 0, 0, 0);
+        drawerList.addView(g, lp(-1, -2, 14));
+    }
+
+    private void openDrawer() {
+        drawerList.removeAllViews();
+        LinearLayout head = vbox();
+        head.setGravity(Gravity.CENTER_HORIZONTAL);
+        head.addView(tv("Magiic", 24, gold, true));
+        head.addView(tv("أوقات الصلاة والأذكار", 12, dim, false));
+        drawerList.addView(head, lp(-1, -2, 0));
+        menuGroup("الصلاة");
+        menuItem("مواقيت الصلاة", 0);
+        menuItem("الأذان والإقامة", 4);
+        menuGroup("الأذكار والتذكيرات");
+        menuItem("الأذكار والأدعية", 5);
+        menuItem("السبحة والاستغفار", 6);
+        menuItem("أعمالي الخاصة", 7);
+        menuItem("الأذكار فوق التطبيقات", 8);
+        menuItem("التذكيرات", 2);
+        menuGroup("القبلة والمزيد");
+        menuItem("القبلة", 9);
+        menuItem("الراديو", 1);
+        menuGroup("");
+        menuItem("الإعدادات", 3);
+        drawerOpen = true;
+        drawerLayer.setVisibility(View.VISIBLE);
+        drawerPanel.setTranslationX(dp(290));
+        drawerPanel.animate().translationX(0).setDuration(180);
+        scrim.setAlpha(0f);
+        scrim.animate().alpha(1f).setDuration(180);
+    }
+
+    private void closeDrawer() {
+        if (!drawerOpen) return;
+        drawerOpen = false;
+        scrim.animate().alpha(0f).setDuration(150);
+        drawerPanel.animate().translationX(dp(290)).setDuration(150).withEndAction(new Runnable() {
+            @Override
+            public void run() {
+                if (!drawerOpen) drawerLayer.setVisibility(View.GONE);
+            }
+        });
+    }
+
+    // ---------------------------------------------------------------- adhkar
+    private TextView smallBtn(String t, View.OnClickListener l) {
+        TextView b = tv(t, 14, gold, true);
+        b.setGravity(Gravity.CENTER);
+        b.setBackground(shape(0x33000000, line, 8));
+        b.setOnClickListener(l);
+        return b;
+    }
+
+    private void adhkarPage() {
+        if (sub != null && sub.equals("hadith")) {
+            title("أحاديث بشرحها", true);
+            add(tv("الشروح مختصرة وتحتاج مراجعة قبل الاعتماد.", 12, dim, false), 4);
+            for (String[] hd : Adhkar.HADITHS) {
+                LinearLayout c = vbox();
+                c.setBackground(shape(card, line, 16));
+                c.setPadding(dp(14), dp(12), dp(14), dp(12));
+                TextView t = tv("«" + hd[0] + "»", 19, cream, false);
+                t.setLineSpacing(0, 1.3f);
+                c.addView(t);
+                c.addView(tv(hd[1], 12, gold, true));
+                TextView e = tv(hd[2], 14, dim, false);
+                e.setLineSpacing(0, 1.2f);
+                c.addView(e, lp(-1, -2, 6));
+                add(c, 8);
+            }
+            return;
+        }
+        if (sub != null) {
+            for (final Adhkar.Section sec : Adhkar.SECTIONS) {
+                if (!sec.key.equals(sub)) continue;
+                title(sec.name, true);
+                for (int i = 0; i < sec.items.length; i++) {
+                    final String key = sec.key + "|" + i;
+                    final int total = Integer.parseInt(sec.items[i][1]);
+                    final TextView ct = tv("", 15, gold, true);
+                    final LinearLayout r = hbox();
+                    r.setBackground(shape(card, line, 16));
+                    r.setPadding(dp(14), dp(12), dp(14), dp(12));
+                    TextView t = tv(sec.items[i][0], 18, cream, false);
+                    t.setLineSpacing(0, 1.3f);
+                    r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+                    r.addView(ct);
+                    final int[] left = {done.containsKey(key) ? done.get(key) : total};
+                    ct.setText(left[0] == 0 ? "تم" : left[0] + " / " + total);
+                    r.setAlpha(left[0] == 0 ? 0.55f : 1f);
+                    r.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (left[0] > 0) left[0]--;
+                            done.put(key, left[0]);
+                            ct.setText(left[0] == 0 ? "تم" : left[0] + " / " + total);
+                            r.setAlpha(left[0] == 0 ? 0.55f : 1f);
+                        }
+                    });
+                    add(r, 8);
+                }
+                add(tv("اضغط على الذكر لتعدّه.", 12, dim, false), 10);
+                return;
+            }
+        }
+        title("الأذكار والأدعية", false);
+        for (final Adhkar.Section sec : Adhkar.SECTIONS) {
+            row(sec.name, sec.items.length + " أذكار", "›", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    sub = sec.key;
+                    build();
+                }
+            });
+        }
+        row("أحاديث بشرحها", null, "›", go("hadith"));
+        row("أعمالي الخاصة", "أذكار وأدعية بنصك", "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                goTab(7);
+            }
+        });
+    }
+
+    private void tasbihPage() {
+        title("السبحة والاستغفار", false);
+        LinearLayout chips = hbox();
+        chips.setGravity(Gravity.CENTER);
+        android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this);
+        hs.setHorizontalScrollBarEnabled(false);
+        LinearLayout in = hbox();
+        for (int i = 0; i < Adhkar.TASBIH.length; i++) {
+            final int idx = i;
+            TextView c = tv(Adhkar.TASBIH[i], 14, i == tk ? 0xFF1B1500 : cream, true);
+            c.setBackground(shape(i == tk ? gold : card, line, 18));
+            c.setPadding(dp(14), dp(7), dp(14), dp(7));
+            c.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    tk = idx;
+                    build();
+                }
+            });
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
+            p.setMarginEnd(dp(6));
+            in.addView(c, p);
+        }
+        hs.addView(in);
+        add(hs, 8);
+        tcBig = tv("", 64, gold, true);
+        tcBig.setGravity(Gravity.CENTER);
+        tcBig.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        GradientDrawable ring = new GradientDrawable();
+        ring.setShape(GradientDrawable.OVAL);
+        ring.setColor(0x14FFFFFF);
+        ring.setStroke(dp(3), gold);
+        tcBig.setBackground(ring);
+        tcBig.setText(String.valueOf(Adhkar.count(this, tk)));
+        tcBig.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Adhkar.add(PhoneActivity.this, tk);
+                refreshTasbih();
+            }
+        });
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(200), dp(200));
+        rp.gravity = Gravity.CENTER_HORIZONTAL;
+        rp.topMargin = dp(18);
+        body.addView(tcBig, rp);
+        TextView hint = tv("اضغط الدائرة للعدّ", 12, dim, false);
+        hint.setGravity(Gravity.CENTER);
+        add(hint, 6);
+        LinearLayout box = vbox();
+        box.setBackground(shape(card, line, 18));
+        box.setPadding(dp(14), dp(10), dp(14), dp(10));
+        box.addView(tv("عدّاد اليوم", 13, gold, true));
+        tcRows = new TextView[Adhkar.TASBIH.length];
+        for (int i = 0; i < Adhkar.TASBIH.length; i++) {
+            LinearLayout r = hbox();
+            r.addView(tv(Adhkar.TASBIH[i], 14, cream, false), new LinearLayout.LayoutParams(0, -2, 1f));
+            tcRows[i] = tv(String.valueOf(Adhkar.count(this, i)), 14, gold, true);
+            r.addView(tcRows[i]);
+            box.addView(r, lp(-1, -2, 4));
+        }
+        add(box, 14);
+        row("تصفير عدّاد " + Adhkar.TASBIH[tk], null, "↺", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Adhkar.reset(PhoneActivity.this, tk);
+                refreshTasbih();
+            }
+        });
+    }
+
+    private void refreshTasbih() {
+        if (tcBig != null) tcBig.setText(String.valueOf(Adhkar.count(this, tk)));
+        if (tcRows != null) {
+            for (int i = 0; i < tcRows.length; i++) tcRows[i].setText(String.valueOf(Adhkar.count(this, i)));
+        }
+    }
+
+    private void minePage() {
+        title("أعمالي الخاصة", false);
+        add(tv("أضف أذكارك وأدعيتك بنصك وعدّلها ورتّبها. تظهر أيضًا مع الأذكار فوق التطبيقات.", 13, dim, false), 4);
+        final List<String> list = Adhkar.mine(this);
+        for (int i = 0; i < list.size(); i++) {
+            final int idx = i;
+            LinearLayout r = hbox();
+            r.setBackground(shape(card, line, 14));
+            r.setPadding(dp(12), dp(10), dp(12), dp(10));
+            TextView t = tv(list.get(i), 16, cream, false);
+            r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+            LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(dp(34), dp(34));
+            bp.setMarginStart(dp(4));
+            r.addView(smallBtn("▲", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (idx > 0) {
+                        String x = list.remove(idx);
+                        list.add(idx - 1, x);
+                        Adhkar.saveMine(PhoneActivity.this, list);
+                        build();
+                    }
+                }
+            }), bp);
+            r.addView(smallBtn("▼", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (idx < list.size() - 1) {
+                        String x = list.remove(idx);
+                        list.add(idx + 1, x);
+                        Adhkar.saveMine(PhoneActivity.this, list);
+                        build();
+                    }
+                }
+            }), bp);
+            r.addView(smallBtn("✎", typeText("تعديل الذكر", list.get(i), new Setter() {
+                @Override
+                public void set(String v) {
+                    if (!v.isEmpty()) list.set(idx, v);
+                    Adhkar.saveMine(PhoneActivity.this, list);
+                }
+            })), bp);
+            r.addView(smallBtn("✕", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    list.remove(idx);
+                    Adhkar.saveMine(PhoneActivity.this, list);
+                    build();
+                }
+            }), bp);
+            add(r, 8);
+        }
+        row("إضافة ذكر جديد", null, "+", typeText("ذكر أو دعاء جديد", "", new Setter() {
+            @Override
+            public void set(String v) {
+                if (!v.isEmpty()) {
+                    list.add(v);
+                    Adhkar.saveMine(PhoneActivity.this, list);
+                }
+            }
+        }));
+    }
+
+    private void overlayPage() {
+        title("الأذكار فوق التطبيقات", false);
+        add(tv("يظهر ذكر قصير فوق أي تطبيق تستخدمه، بدون فتح Magiic، مع عدّاد التسبيح والاستغفار. لا علاقة له بالأذان، فالأذان يعمل بإشعار صغير فقط.", 13, dim, false), 4);
+        final boolean can = Settings.canDrawOverlays(this);
+        switchRow("عرض الأذكار فوق التطبيقات", can ? null : "يحتاج إذن العرض فوق التطبيقات", sp.getBoolean("ov_on", false),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("ov_on", on).apply();
+                    if (on && !Settings.canDrawOverlays(PhoneActivity.this)) openOverlayPermission();
+                    OverlayService.sync(PhoneActivity.this);
+                }
+            });
+        final int f = sp.getInt("ov_freq", 30);
+        row("معدل الظهور", "يظهر ذكر كل " + f + " دقيقة", "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                numberDialog("كل كم دقيقة يظهر ذكر", 5, 240, f, new IntSetter() {
+                    @Override
+                    public void set(int val) {
+                        sp.edit().putInt("ov_freq", val).apply();
+                        OverlayService.sync(PhoneActivity.this);
+                        build();
+                    }
+                });
+            }
+        });
+        switchRow("إظهار عدّاد التسبيح والاستغفار", "العدّاد الحي داخل بطاقة الذكر", sp.getBoolean("ov_cnt", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("ov_cnt", on).apply();
+                }
+            });
+        row("إذن العرض فوق التطبيقات", null, can ? "✓" : "فتح", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!Settings.canDrawOverlays(PhoneActivity.this)) openOverlayPermission();
+            }
+        });
+        add(button("جرّب الآن", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!Settings.canDrawOverlays(PhoneActivity.this)) {
+                    openOverlayPermission();
+                    return;
+                }
+                try {
+                    startForegroundService(new Intent(PhoneActivity.this, OverlayService.class).putExtra("now", true));
+                    toast("اخرج من التطبيق لتراها فوق تطبيق آخر");
+                } catch (RuntimeException e) {
+                    toast("تعذّر التشغيل");
+                }
+            }
+        }), 12);
+    }
+
+    private void openOverlayPermission() {
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
+        } catch (RuntimeException e) {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+        }
+    }
+
+    // ---------------------------------------------------------------- qibla
+    private void qiblaPage() {
+        title("القبلة", false);
+        Cities.City city = Cities.selected(this);
+        if (city == null) {
+            row("اختر مدينتك أولًا", "لحساب اتجاه القبلة", "›", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    tab = 3;
+                    sub = "country";
+                    build();
+                }
+            });
+            return;
+        }
+        double bearing = Qibla.bearing(city.lat, city.lon);
+        dial = new Qibla.Dial(this, gold, cream, dim);
+        dial.set(0f, (float) bearing, false);
+        LinearLayout.LayoutParams dp1 = new LinearLayout.LayoutParams(dp(290), dp(290));
+        dp1.gravity = Gravity.CENTER_HORIZONTAL;
+        dp1.topMargin = dp(10);
+        body.addView(dial, dp1);
+        LinearLayout c = vbox();
+        c.setGravity(Gravity.CENTER_HORIZONTAL);
+        c.setBackground(shape(card, line, 18));
+        c.setPadding(dp(14), dp(10), dp(14), dp(10));
+        c.addView(tv(String.format(Locale.US, "%.0f°", bearing), 28, gold, true));
+        c.addView(tv(String.format(Locale.US, "القبلة من الشمال · المسافة نحو %.0f كم", Qibla.distanceKm(city.lat, city.lon)), 14, cream, true));
+        qiblaText = tv("", 14, dim, false);
+        qiblaText.setGravity(Gravity.CENTER);
+        c.addView(qiblaText, lp(-2, -2, 4));
+        add(c, 12);
+        add(tv("أدر الهاتف حتى يشير السهم الذهبي لأعلى إلى الكعبة. أمسك الهاتف مسطّحًا، وابعده عن المعادن والمغناطيس. إن كانت القراءة غير دقيقة فحرّك الهاتف على شكل رقم 8 لمعايرة البوصلة.", 12, dim, false), 10);
+        qiblaStart();
+    }
+
+    private void qiblaStart() {
+        qiblaStop();
+        final Cities.City city = Cities.selected(this);
+        if (tab != 9 || city == null || dial == null) return;
+        final double bearing = Qibla.bearing(city.lat, city.lon);
+        sm = (SensorManager) getSystemService(SENSOR_SERVICE);
+        Sensor rv = sm == null ? null : sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        if (rv == null) {
+            if (qiblaText != null) qiblaText.setText("لا توجد بوصلة في هذا الهاتف. استخدم الزاوية المكتوبة من الشمال.");
+            return;
+        }
+        final float decl = new GeomagneticField((float) city.lat, (float) city.lon, 0f, System.currentTimeMillis()).getDeclination();
+        qListener = new SensorEventListener() {
+            private final float[] rot = new float[9];
+            private final float[] ori = new float[3];
+            private boolean first = true;
+
+            @Override
+            public void onSensorChanged(SensorEvent e) {
+                SensorManager.getRotationMatrixFromVector(rot, e.values);
+                SensorManager.getOrientation(rot, ori);
+                float az = (float) ((Math.toDegrees(ori[0]) + decl + 360.0) % 360.0);
+                if (first) {
+                    heading = az;
+                    first = false;
+                } else {
+                    float d = ((az - heading + 540f) % 360f) - 180f;
+                    heading = (heading + d * 0.2f + 360f) % 360f;
+                }
+                if (dial != null) dial.set(heading, (float) bearing, true);
+                if (qiblaText != null) {
+                    float diff = (float) (((bearing - heading + 540.0) % 360.0) - 180.0);
+                    qiblaText.setText(Math.abs(diff) < 4f ? "أنت متجه نحو القبلة" : diff > 0 ? "در نحو اليمين" : "در نحو اليسار");
+                }
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor s, int a) {
+            }
+        };
+        sm.registerListener(qListener, rv, SensorManager.SENSOR_DELAY_UI);
+    }
+
+    private void qiblaStop() {
+        if (sm != null && qListener != null) sm.unregisterListener(qListener);
+        qListener = null;
     }
 
     // ---------------------------------------------------------------- permissions
