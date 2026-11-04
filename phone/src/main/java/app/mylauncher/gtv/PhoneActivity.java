@@ -193,6 +193,7 @@ public class PhoneActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+        if (tab == 6) endTasbihRound();
         RadioService.unlisten(radioListener);
         h.removeCallbacks(ticker);
         stopFlipTest();
@@ -434,6 +435,10 @@ public class PhoneActivity extends Activity {
     }
 
     // ---------------------------------------------------------------- tabs
+    private void endTasbihRound() {
+        for (int i = 0; i < Adhkar.TASBIH.length; i++) Adhkar.reset(this, i);
+    }
+
     private final HashMap<String, Integer> savedScroll = new HashMap<>();
     private String lastKey;
     private boolean backNav;
@@ -444,6 +449,8 @@ public class PhoneActivity extends Activity {
         String key = tab + ":" + sub;
         if (lastKey != null) savedScroll.put(lastKey, scroll.getScrollY());
         final boolean samePage = key.equals(lastKey);
+        // a new visit to the tasbih starts the round from 0 (the last count and today's totals stay)
+        if (tab == 6 && (lastKey == null || !lastKey.startsWith("6:"))) endTasbihRound();
         lastKey = key;
         clockTv = apTv = nameTv = cdTv = altTv = iqLabel = iqValue = weatherTv = null;
         body.removeAllViews();
