@@ -14,6 +14,8 @@ final class Cities {
         final String ar;
         final double lat;
         final double lon;
+        /** Time zone id of a place picked by hand outside Egypt and Saudi Arabia; null = by country. */
+        String tz;
 
         City(String country, String en, String ar, double lat, double lon) {
             this.country = country;
@@ -121,9 +123,11 @@ final class Cities {
         String custom = p.getString("city_custom", null);
         if (base != null && custom != null) {
             String[] a = custom.split("\\|");
-            if (a.length == 3) {
+            if (a.length >= 3) {
                 try {
-                    return new City(base.country, base.en, a[0], Double.parseDouble(a[1]), Double.parseDouble(a[2]));
+                    City r = new City(base.country, base.en, a[0], Double.parseDouble(a[1]), Double.parseDouble(a[2]));
+                    if (a.length > 3 && !a[3].isEmpty()) r.tz = a[3];
+                    return r;
                 } catch (NumberFormatException ignored) {
                     // an unreadable pin is ignored and the listed city is used
                 }
@@ -133,9 +137,11 @@ final class Cities {
         if (base == null && key != null && custom != null && key.contains("|")) {
             String[] a = custom.split("\\|");
             String[] k = key.split("\\|", 2);
-            if (a.length == 3) {
+            if (a.length >= 3) {
                 try {
-                    return new City(k[0], k[1], a[0], Double.parseDouble(a[1]), Double.parseDouble(a[2]));
+                    City r = new City(k[0], k[1], a[0], Double.parseDouble(a[1]), Double.parseDouble(a[2]));
+                    if (a.length > 3 && !a[3].isEmpty()) r.tz = a[3];
+                    return r;
                 } catch (NumberFormatException ignored) {
                     // an unreadable pin means no city
                 }

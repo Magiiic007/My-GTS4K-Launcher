@@ -52,8 +52,10 @@ final class World {
         for (int i = 0; i < a.length(); i++) {
             JSONArray x = a.optJSONArray(i);
             if (x != null && code.equals(x.optString(0))) {
-                l.add(new Cities.City(code, x.optString(2).replace("|", " "), x.optString(1).replace("|", " "),
-                    x.optDouble(3), x.optDouble(4)));
+                Cities.City c2 = new Cities.City(code, x.optString(2).replace("|", " "), x.optString(1).replace("|", " "),
+                    x.optDouble(3), x.optDouble(4));
+                if (!x.optString(5).isEmpty()) c2.tz = x.optString(5);
+                l.add(c2);
             }
         }
         return l;

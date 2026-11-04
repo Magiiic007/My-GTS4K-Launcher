@@ -50,6 +50,7 @@ final class Place {
         String country = "";
         double lat;
         double lon;
+        String tz = "";
     }
 
     /** On a worker thread: places matching a name anywhere in the world (Open-Meteo geocoding), in Arabic. */
@@ -79,6 +80,7 @@ final class Place {
                 h.country = o.optString("country_code", "XX");
                 h.lat = o.optDouble("latitude");
                 h.lon = o.optDouble("longitude");
+                h.tz = o.optString("timezone", "");
                 if (!h.name.isEmpty()) out.add(h);
             }
         } catch (Exception ignored) {

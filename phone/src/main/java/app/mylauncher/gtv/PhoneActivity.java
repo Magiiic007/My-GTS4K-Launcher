@@ -1232,7 +1232,7 @@ public class PhoneActivity extends Activity {
             applyCity(c);
         } else {
             sp.edit().putString("city", c.country + "|" + c.en).putString("city_custom",
-                c.ar + "|" + c.lat + "|" + c.lon).apply();
+                c.ar + "|" + c.lat + "|" + c.lon + "|" + (c.tz == null ? "" : c.tz)).apply();
             afterCity();
         }
         leavePicker();
@@ -1281,7 +1281,7 @@ public class PhoneActivity extends Activity {
                                         @Override
                                         public void onClick(View v2) {
                                             sp.edit().putString("city", hit.country + "|" + hit.name).putString("city_custom",
-                                                hit.name + "|" + hit.lat + "|" + hit.lon).apply();
+                                                hit.name + "|" + hit.lat + "|" + hit.lon + "|" + hit.tz).apply();
                                             afterCity();
                                             leavePicker();
                                         }
@@ -2184,7 +2184,7 @@ public class PhoneActivity extends Activity {
 
     /** The exact place found from the phone's location, kept next to the nearest listed city. */
     private void applyPlace(Cities.City base, double lat, double lon, String name) {
-        sp.edit().putString("city", base.key()).putString("city_custom", name + "|" + lat + "|" + lon).apply();
+        sp.edit().putString("city", base.key()).putString("city_custom", name + "|" + lat + "|" + lon + "|" + (base.country.equals("EG") || base.country.equals("SA") ? "" : java.util.TimeZone.getDefault().getID())).apply();
         afterCity();
     }
 

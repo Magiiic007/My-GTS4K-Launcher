@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Magiic TV</string>
+    <string name="app_name">الصلاة خير</string>
     <string name="open_failed">Could not open this app</string>
     <string name="no_apps">No apps found</string>
 
@@ -37,7 +37,7 @@
     <string name="test_scheduled">The test alert will play in one minute. Leave this app and start any video.</string>
     <string name="perm_btn">Enable the adhan popup over apps</string>
     <string name="overlay_title">Allow the adhan popup</string>
-    <string name="overlay_help">The app must be allowed to appear over other apps.\n\nIn Settings: Apps → Special access → Display over other apps → Magiic TV → Allow.\n\nIf your device does not have this option, the adhan still plays, but the window may not appear over other apps.</string>
+    <string name="overlay_help">The app must be allowed to appear over other apps.\n\nIn Settings: Apps → Special access → Display over other apps → Salat Khair → Allow.\n\nIf your device does not have this option, the adhan still plays, but the window may not appear over other apps.</string>
 
     <string name="settings_btn">Adhan &amp; iqama settings</string>
     <string name="settings_title">Adhan &amp; iqama settings</string>
@@ -71,7 +71,7 @@
     <string name="hidden_title">Tick the apps to hide</string>
     <string name="hide_ask">Hide \"%1$s\" from the home screen? You can bring it back from Settings.</string>
     <string name="hide_yes">Hide</string>
-    <string name="about_text">Magiic TV, a personal launcher.\n\nWeather: Open-Meteo.com (CC BY 4.0).\nPrayer times: adhan-java (MIT).\nThe two radio stations belong to their owners and are not affiliated with this app.\nAdhan and iqama recordings: see THIRD_PARTY.md in the project page.</string>
+    <string name="about_text">Salat Khair, a personal launcher.\n\nWeather: Open-Meteo.com (CC BY 4.0).\nPrayer times: adhan-java (MIT).\nThe two radio stations belong to their owners and are not affiliated with this app.\nAdhan and iqama recordings: see THIRD_PARTY.md in the project page.</string>
     <string name="menu_device">Device settings</string>
     <string name="menu_theme">Look of the home screen</string>
     <string name="settings_fallback">This screen is not on this device; opened the main settings instead</string>
@@ -155,21 +155,21 @@
     <string name="rem_hijri_day">The %1$d of the Hijri month</string>
     <string name="menu_stock">Home screen</string>
     <string name="stock_open">Open the original Google TV home once</string>
-    <string name="stock_defaults">Stop Magiic TV being the home screen</string>
+    <string name="stock_defaults">Stop Salat Khair being the home screen</string>
     <string name="stock_defaults_tip">Choose "Clear defaults", "Disable" or "Uninstall", then press the Home button</string>
     <string name="stock_help_btn">How do I go back?</string>
     <string name="stock_none">There is no other home screen enabled to open.</string>
-    <string name="stock_help">Easiest: in this menu choose "Stop it being the home screen".\n\nIf the app will not open: Settings → Accessibility → Magiic TV → switch off.\n\nTo remove it completely: Settings → Apps → Magiic TV → Uninstall. In every case the original Google TV home screen comes back by itself.</string>
-    <string name="override_service_label">Magiic TV - home screen</string>
-    <string name="override_service_desc">When the original Google TV home screen appears, this opens Magiic TV instead. It does not read anything on screen.</string>
+    <string name="stock_help">Easiest: in this menu choose "Stop it being the home screen".\n\nIf the app will not open: Settings → Accessibility → Salat Khair → switch off.\n\nTo remove it completely: Settings → Apps → Salat Khair → Uninstall. In every case the original Google TV home screen comes back by itself.</string>
+    <string name="override_service_label">Salat Khair - home screen</string>
+    <string name="override_service_desc">When the original Google TV home screen appears, this opens Salat Khair instead. It does not read anything on screen.</string>
     <string name="home_state_not_allowed">State: not allowed yet in Accessibility settings</string>
-    <string name="home_state_on">State: on (the Home button opens Magiic TV)</string>
+    <string name="home_state_on">State: on (the Home button opens Salat Khair)</string>
     <string name="home_state_off">State: off (the Home button opens the original)</string>
     <string name="home_open_access">1) Turn it on: open Accessibility settings</string>
     <string name="home_turn_off">2) Stop it being the home screen (back to the original at once)</string>
     <string name="home_turn_on">2) Make it the home screen again</string>
-    <string name="home_access_tip">Choose Magiic TV in the list, switch it on and accept the notice</string>
-    <string name="home_now_on">Magiic TV is the home screen now</string>
+    <string name="home_access_tip">Choose Salat Khair in the list, switch it on and accept the notice</string>
+    <string name="home_now_on">Salat Khair is the home screen now</string>
     <string name="home_now_off">The original home screen is back</string>
     <string name="menu_clean">Deep clean</string>
     <string name="menu_saver">Screensaver (Google Photos)</string>
@@ -182,11 +182,11 @@
     <string name="clean_working">Working out the sizes...</string>
     <string name="clean_apps_none">No size figures are available for apps on this device</string>
     <string name="clean_app_tip">Choose "Clear cache" only. Do not clear data unless you want to sign in again.</string>
-    <string name="clean_usage_help">To show how much space each app uses, Magiic TV needs the "Usage access" permission. It only reads app sizes and changes nothing.</string>
+    <string name="clean_usage_help">To show how much space each app uses, Salat Khair needs the "Usage access" permission. It only reads app sizes and changes nothing.</string>
     <string name="clean_allow">Allow</string>
-    <string name="clean_usage_tip">Choose Magiic TV, then switch the permission on</string>
+    <string name="clean_usage_tip">Choose Salat Khair, then switch the permission on</string>
     <string name="clean_files_none">There are no files in the Downloads folder.</string>
-    <string name="clean_files_hidden">Magiic TV cannot see any file in the Downloads folder. It may be empty, or the device hides other apps\' files unless you allow \"All files access\".</string>
+    <string name="clean_files_hidden">Salat Khair cannot see any file in the Downloads folder. It may be empty, or the device hides other apps\' files unless you allow \"All files access\".</string>
     <string name="clean_files_nosetting">This device does not show the \"All files access\" setting</string>
     <string name="clean_delete_ask">This file (%1$s) will be deleted for good and cannot be brought back. Continue?</string>
     <string name="clean_delete">Delete</string>
@@ -203,7 +203,7 @@
     <string name="upd_btn_install">Download and install</string>
     <string name="upd_downloading">Downloading... %1$d%%</string>
     <string name="upd_installing">Getting ready to install...</string>
-    <string name="upd_unknown_help">To update the launcher from inside itself, allow it to install apps: open the setting, switch it on for Magiic TV, then come back and try again.</string>
+    <string name="upd_unknown_help">To update the launcher from inside itself, allow it to install apps: open the setting, switch it on for Salat Khair, then come back and try again.</string>
     <string name="upd_allow">Open the setting</string>
     <string name="upd_install_failed">The update could not be installed</string>
     <string name="notice_chip">Notice %1$d</string>
@@ -236,7 +236,7 @@
     <string name="menu_city">City and country</string>
     <string name="menu_notices">Notices</string>
     <string name="stock_make_btn">How do I make it the home screen?</string>
-    <string name="stock_make_help">Magiic TV now works as a normal app: open it from the apps list. The Home button on the remote opens your device’s own home screen as before.\n\nGoogle Play Protect blocks any app that takes over the home screen without a computer. If you want it to be the home screen, that is done once from your phone over Wi-Fi, and you can go back to the original at any time.</string>
+    <string name="stock_make_help">Salat Khair now works as a normal app: open it from the apps list. The Home button on the remote opens your device’s own home screen as before.\n\nGoogle Play Protect blocks any app that takes over the home screen without a computer. If you want it to be the home screen, that is done once from your phone over Wi-Fi, and you can go back to the original at any time.</string>
     <string name="all_apps">All apps</string>
     <string name="all_apps_hint">Press OK to open an app. Hold OK to show or hide it on the home screen ★</string>
     <string name="all_apps_shown">Now on the home screen</string>

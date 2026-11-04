@@ -67,7 +67,19 @@ final class PrayerCalc {
 
     /** The city's own clock, so a Cairo prayer is shown in Cairo time whatever zone the TV is set to. */
     static TimeZone zone(Cities.City city) {
+        if (city.tz != null) return TimeZone.getTimeZone(city.tz);
         return TimeZone.getTimeZone("EG".equals(city.country) ? "Africa/Cairo" : "Asia/Riyadh");
+    }
+
+    /** The usual method of a country (Egypt and the Gulf as before; elsewhere the Muslim World League). */
+    private static CalculationMethod byCountry(String c) {
+        if ("EG".equals(c)) return CalculationMethod.EGYPTIAN;
+        if ("SA".equals(c) || "AE".equals(c) || "BH".equals(c) || "OM".equals(c) || "YE".equals(c)) return CalculationMethod.UMM_AL_QURA;
+        if ("KW".equals(c)) return CalculationMethod.KUWAIT;
+        if ("QA".equals(c)) return CalculationMethod.QATAR;
+        if ("PK".equals(c) || "IN".equals(c) || "BD".equals(c) || "AF".equals(c)) return CalculationMethod.KARACHI;
+        if ("US".equals(c) || "CA".equals(c)) return CalculationMethod.NORTH_AMERICA;
+        return CalculationMethod.MUSLIM_WORLD_LEAGUE;
     }
 
     static boolean isFriday(Cities.City city, long when) {
@@ -98,9 +110,8 @@ final class PrayerCalc {
         DateComponents date = new DateComponents(
             cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH));
 
-        boolean egypt = "EG".equals(city.country);
         CalculationMethod method = methodIndex >= 0 ? METHODS[methodIndex]
-            : (egypt ? CalculationMethod.EGYPTIAN : CalculationMethod.UMM_AL_QURA);
+            : byCountry(city.country);
         CalculationParameters params = method.getParameters();
         if (hanafi) params.madhab = Madhab.HANAFI;
         // Umm al-Qura: Isha is 2 hours after Maghrib in Ramadan (1.5 hours otherwise). The evening belongs to the

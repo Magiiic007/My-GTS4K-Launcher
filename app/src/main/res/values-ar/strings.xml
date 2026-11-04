@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Magiic TV</string>
+    <string name="app_name">الصلاة خير</string>
     <string name="open_failed">تعذّر فتح هذا التطبيق</string>
     <string name="no_apps">لا توجد تطبيقات</string>
 
@@ -37,7 +37,7 @@
     <string name="test_scheduled">سيعمل التنبيه التجريبي بعد دقيقة. اخرج من التطبيق وشغّل أي فيديو.</string>
     <string name="perm_btn">تفعيل نافذة الأذان فوق التطبيقات</string>
     <string name="overlay_title">السماح بنافذة الأذان</string>
-    <string name="overlay_help">لازم تسمح للتطبيق بالظهور فوق التطبيقات الأخرى.\n\nمن الإعدادات: التطبيقات ← صلاحيات خاصة ← العرض فوق التطبيقات الأخرى ← Magiic TV ← السماح.\n\nإن لم تجد هذا الخيار في جهازك فالأذان يعمل بصوته، لكن النافذة قد لا تظهر فوق التطبيقات.</string>
+    <string name="overlay_help">لازم تسمح للتطبيق بالظهور فوق التطبيقات الأخرى.\n\nمن الإعدادات: التطبيقات ← صلاحيات خاصة ← العرض فوق التطبيقات الأخرى ← الصلاة خير ← السماح.\n\nإن لم تجد هذا الخيار في جهازك فالأذان يعمل بصوته، لكن النافذة قد لا تظهر فوق التطبيقات.</string>
 
     <string name="settings_btn">ضبط الأذان والإقامة</string>
     <string name="settings_title">ضبط الأذان والإقامة</string>
@@ -71,7 +71,7 @@
     <string name="hidden_title">علّم التطبيقات اللي عايز تخفيها</string>
     <string name="hide_ask">إخفاء \"%1$s\" من الشاشة الرئيسية؟ تقدر ترجعه من الإعدادات.</string>
     <string name="hide_yes">إخفاء</string>
-    <string name="about_text">Magiic TV، لانشر شخصي.\n\nالطقس: Open-Meteo.com (رخصة CC BY 4.0).\nمواقيت الصلاة: مكتبة adhan-java (رخصة MIT).\nالإذاعتان ملك لأصحابهما وغير تابعتين لهذا التطبيق.\nتسجيلات الأذان والإقامة: راجع ملف THIRD_PARTY.md في صفحة المشروع.</string>
+    <string name="about_text">الصلاة خير، لانشر شخصي.\n\nالطقس: Open-Meteo.com (رخصة CC BY 4.0).\nمواقيت الصلاة: مكتبة adhan-java (رخصة MIT).\nالإذاعتان ملك لأصحابهما وغير تابعتين لهذا التطبيق.\nتسجيلات الأذان والإقامة: راجع ملف THIRD_PARTY.md في صفحة المشروع.</string>
     <string name="menu_device">إعدادات الجهاز</string>
     <string name="menu_theme">شكل الشاشة الرئيسية</string>
     <string name="settings_fallback">هذه الشاشة غير موجودة في الجهاز، فتحت الإعدادات الرئيسية بدلًا منها</string>
@@ -155,21 +155,21 @@
     <string name="rem_hijri_day">%1$d من الشهر الهجري</string>
     <string name="menu_stock">الشاشة الرئيسية</string>
     <string name="stock_open">فتح واجهة Google TV الأصلية مرة واحدة</string>
-    <string name="stock_defaults">إلغاء جعل Magiic TV الشاشة الرئيسية</string>
+    <string name="stock_defaults">إلغاء جعل الصلاة خير الشاشة الرئيسية</string>
     <string name="stock_defaults_tip">اختر «مسح الإعدادات الافتراضية» أو «تعطيل» أو «إلغاء التثبيت»، ثم اضغط زر Home</string>
     <string name="stock_help_btn">كيف أرجع للأصلية؟</string>
     <string name="stock_none">لا توجد واجهة أخرى مفعّلة لفتحها.</string>
-    <string name="stock_help">أسهل طريقة: من هذه القائمة اختر «إيقاف جعله الرئيسية».\n\nولو التطبيق لا يفتح: الإعدادات ← إمكانية الوصول ← Magiic TV ← إيقاف.\n\nوإن أردت إزالته نهائياً: الإعدادات ← التطبيقات ← Magiic TV ← إلغاء التثبيت. وفي كل الحالات تعود واجهة Google TV الأصلية وحدها.</string>
-    <string name="override_service_label">Magiic TV - الشاشة الرئيسية</string>
-    <string name="override_service_desc">عندما تظهر واجهة Google TV الأصلية يفتح Magiic TV بدلاً منها. لا يقرأ أي شيء من الشاشة.</string>
+    <string name="stock_help">أسهل طريقة: من هذه القائمة اختر «إيقاف جعله الرئيسية».\n\nولو التطبيق لا يفتح: الإعدادات ← إمكانية الوصول ← الصلاة خير ← إيقاف.\n\nوإن أردت إزالته نهائياً: الإعدادات ← التطبيقات ← الصلاة خير ← إلغاء التثبيت. وفي كل الحالات تعود واجهة Google TV الأصلية وحدها.</string>
+    <string name="override_service_label">الصلاة خير - الشاشة الرئيسية</string>
+    <string name="override_service_desc">عندما تظهر واجهة Google TV الأصلية يفتح الصلاة خير بدلاً منها. لا يقرأ أي شيء من الشاشة.</string>
     <string name="home_state_not_allowed">الحالة: لم يُفعَّل بعد في إعدادات إمكانية الوصول</string>
-    <string name="home_state_on">الحالة: يعمل (زر Home يفتح Magiic TV)</string>
+    <string name="home_state_on">الحالة: يعمل (زر Home يفتح الصلاة خير)</string>
     <string name="home_state_off">الحالة: موقوف (زر Home يفتح الواجهة الأصلية)</string>
     <string name="home_open_access">١) تفعيله: فتح إعدادات إمكانية الوصول</string>
     <string name="home_turn_off">٢) إيقاف جعله الرئيسية (الرجوع للأصلية فوراً)</string>
     <string name="home_turn_on">٢) تشغيل جعله الرئيسية</string>
-    <string name="home_access_tip">اختر Magiic TV من القائمة ثم شغّله، ووافق على التنبيه</string>
-    <string name="home_now_on">Magiic TV هو الرئيسية الآن</string>
+    <string name="home_access_tip">اختر الصلاة خير من القائمة ثم شغّله، ووافق على التنبيه</string>
+    <string name="home_now_on">الصلاة خير هو الرئيسية الآن</string>
     <string name="home_now_off">رجعت الواجهة الأصلية</string>
     <string name="menu_clean">التنظيف العميق</string>
     <string name="menu_saver">شاشة التوقف (صور Google)</string>
@@ -182,11 +182,11 @@
     <string name="clean_working">جارٍ حساب المساحات...</string>
     <string name="clean_apps_none">لا توجد أرقام متاحة للتطبيقات على هذا الجهاز</string>
     <string name="clean_app_tip">اختر «مسح الذاكرة المؤقتة» فقط. لا تمسح البيانات إلا لو أردت تسجيل الدخول من جديد.</string>
-    <string name="clean_usage_help">لعرض مساحة كل تطبيق، يحتاج Magiic TV إذن «الوصول إلى بيانات الاستخدام». هو يقرأ أحجام التطبيقات فقط ولا يغيّر شيئاً.</string>
+    <string name="clean_usage_help">لعرض مساحة كل تطبيق، يحتاج الصلاة خير إذن «الوصول إلى بيانات الاستخدام». هو يقرأ أحجام التطبيقات فقط ولا يغيّر شيئاً.</string>
     <string name="clean_allow">السماح</string>
-    <string name="clean_usage_tip">اختر Magiic TV ثم فعّل الإذن</string>
+    <string name="clean_usage_tip">اختر الصلاة خير ثم فعّل الإذن</string>
     <string name="clean_files_none">لا توجد ملفات في مجلد التنزيلات.</string>
-    <string name="clean_files_hidden">لا يظهر لـ Magiic TV أي ملف في مجلد التنزيلات. قد يكون المجلد فارغاً، أو أن الجهاز يخفي ملفات التطبيقات الأخرى ما لم تسمح بـ «الوصول لكل الملفات».</string>
+    <string name="clean_files_hidden">لا يظهر لـ الصلاة خير أي ملف في مجلد التنزيلات. قد يكون المجلد فارغاً، أو أن الجهاز يخفي ملفات التطبيقات الأخرى ما لم تسمح بـ «الوصول لكل الملفات».</string>
     <string name="clean_files_nosetting">هذا الجهاز لا يعرض إعداد «الوصول لكل الملفات»</string>
     <string name="clean_delete_ask">سيُحذف هذا الملف (%1$s) نهائياً ولا يمكن التراجع. هل تريد المتابعة؟</string>
     <string name="clean_delete">حذف</string>
@@ -203,7 +203,7 @@
     <string name="upd_btn_install">تحميل وتثبيت</string>
     <string name="upd_downloading">جارٍ التحميل... %1$d%%</string>
     <string name="upd_installing">جارٍ التجهيز للتثبيت...</string>
-    <string name="upd_unknown_help">لتحديث اللانشر من داخله، اسمح له بتثبيت التطبيقات: افتح الإعداد، فعّل الخيار لـ Magiic TV، ثم ارجع وجرّب مرة أخرى.</string>
+    <string name="upd_unknown_help">لتحديث اللانشر من داخله، اسمح له بتثبيت التطبيقات: افتح الإعداد، فعّل الخيار لـ الصلاة خير، ثم ارجع وجرّب مرة أخرى.</string>
     <string name="upd_allow">فتح الإعداد</string>
     <string name="upd_install_failed">تعذّر تثبيت التحديث</string>
     <string name="notice_chip">تنبيه %1$d</string>
@@ -236,7 +236,7 @@
     <string name="menu_city">المدينة والدولة</string>
     <string name="menu_notices">التنبيهات</string>
     <string name="stock_make_btn">كيف أجعله الشاشة الرئيسية؟</string>
-    <string name="stock_make_help">دلوقتي Magiic TV بيشتغل كتطبيق عادي: افتحه من قائمة التطبيقات. زر Home في الريموت بيفتح الواجهة الأصلية لجهازك زي ما هي.\n\nجوجل بلاي بروتكت بيمنع تثبيت أي تطبيق يخليه الشاشة الرئيسية من غير كمبيوتر. ولو حبيت يبقى هو الرئيسية، ده بيتعمل مرة واحدة من الموبايل على الواي فاي، وتقدر ترجع للأصلية في أي وقت.</string>
+    <string name="stock_make_help">دلوقتي الصلاة خير بيشتغل كتطبيق عادي: افتحه من قائمة التطبيقات. زر Home في الريموت بيفتح الواجهة الأصلية لجهازك زي ما هي.\n\nجوجل بلاي بروتكت بيمنع تثبيت أي تطبيق يخليه الشاشة الرئيسية من غير كمبيوتر. ولو حبيت يبقى هو الرئيسية، ده بيتعمل مرة واحدة من الموبايل على الواي فاي، وتقدر ترجع للأصلية في أي وقت.</string>
     <string name="all_apps">كل التطبيقات</string>
     <string name="all_apps_hint">اضغط OK لفتح التطبيق، واضغط مطوّلًا لإظهاره أو إخفائه من الشاشة الرئيسية ★</string>
     <string name="all_apps_shown">ظهر في الشاشة الرئيسية</string>
