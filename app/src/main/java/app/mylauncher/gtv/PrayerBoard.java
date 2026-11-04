@@ -425,7 +425,7 @@ final class PrayerBoard {
                 long at = p >= 0 ? shown[p] : sunriseAt;
                 rowTime[i].setText(PrayerCalc.time(ctx, city, at));
                 if (p >= 0 && iqama[p] > 0) {
-                    rowIqama[i].setText(ctx.getString(R.string.iqama_in, iqama[p]));
+                    rowIqama[i].setText(ctx.getString(R.string.iqama_minutes, iqama[p]));
                     rowIqama[i].setVisibility(View.VISIBLE);
                 } else {
                     rowIqama[i].setVisibility(View.GONE);

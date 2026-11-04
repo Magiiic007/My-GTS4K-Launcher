@@ -270,6 +270,6 @@
     <string name="saver_manual">لو صفحة شاشة التوقف ما فتحتش: الإعدادات ← النظام ← وضع Ambient ← Google Photos. أو من تطبيق Google Home على الموبايل: جهازك ← الإعدادات ← وضع Ambient</string>
     <string name="radio_group_stations">الإذاعات</string>
     <string name="radio_group_reciters">القرّاء</string>
-    <string name="iqama_in">الإقامة بعد %1$d د</string>
+    <string name="iqama_minutes">الإقامة بعد %1$d د</string>
     <string name="dhikr_label">اذكر الله</string>
 </resources>
