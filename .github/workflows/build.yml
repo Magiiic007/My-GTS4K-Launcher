@@ -26,7 +26,20 @@ jobs:
       - name: Build
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      # The phone app builds on its own, so a problem there never blocks the TV release.
+      - name: Build phone
+        id: phone
+        continue-on-error: true
+        run: ./gradlew :phone:assembleDebug --no-daemon --stacktrace
+
+      - name: Keep the phone APK as a build artifact
+        if: steps.phone.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-phone-apk
+          path: phone/build/outputs/apk/debug/phone-debug.apk
 
       - name: Keep the APK as a build artifact
         uses: actions/upload-artifact@v4
@@ -45,4 +58,18 @@ jobs:
           VN=$(grep -oP "versionName '\K[^']+" app/build.gradle)
           gh release create latest my-launcher.apk \
             --title "Latest build" \
+            --notes "versionCode=${VC} versionName=${VN} commit=${GITHUB_SHA::7}"
+
+      - name: Publish the phone APK as release "phone-latest"
+        if: steps.phone.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp phone/build/outputs/apk/debug/phone-debug.apk my-phone.apk
+          gh release delete phone-latest --yes --cleanup-tag || true
+          # The phone app reads versionCode from these notes to know whether a newer build exists.
+          VC=$(grep -oP "versionCode \K[0-9]+" phone/build.gradle)
+          VN=$(grep -oP "versionName '\K[^']+" phone/build.gradle)
+          gh release create phone-latest my-phone.apk \
+            --title "Latest phone build" \
             --notes "versionCode=${VC} versionName=${VN} commit=${GITHUB_SHA::7}"

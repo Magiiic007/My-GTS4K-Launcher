@@ -1,0 +1,79 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    // The same package as the TV app on purpose: the files shared with it (prayer times, Hijri dates, reminders,
+    // radio) are copied in at build time and refer to the generated R of this package.
+    namespace 'app.mylauncher.gtv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'app.magiic.phone'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '0.1'
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file('../app/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            java.srcDir "$buildDir/shared/java"
+            res.srcDir "$buildDir/shared/res"
+        }
+    }
+}
+
+// The engine is shared with the TV app: these files are copied from ../app at every build, so a fix made once
+// reaches both apps. Everything the phone does differently (screens, the adhan service, notifications) lives in
+// this module.
+tasks.register('syncShared', Sync) {
+    into "$buildDir/shared"
+    from('../app/src/main/java/app/mylauncher/gtv') {
+        include 'PrayerCalc.java', 'Hijri.java', 'Cities.java', 'PrayerPrefs.java', 'Scheduler.java',
+            'AdhanReceiver.java', 'Reminders.java', 'ReminderReceiver.java', 'AutoCity.java', 'Weather.java',
+            'RadioService.java', 'BootReceiver.java', 'InstallReceiver.java'
+        into 'java/app/mylauncher/gtv'
+    }
+    from('../app/src/main/res/values') {
+        include 'strings.xml', 'arrays.xml'
+        into 'res/values'
+    }
+    from('../app/src/main/res/values-ar') {
+        include 'strings.xml'
+        into 'res/values-ar'
+    }
+    from('../app/src/main/res/raw') {
+        into 'res/raw'
+    }
+    from('../app/src/main/res/xml') {
+        include 'network_security.xml'
+        into 'res/xml'
+    }
+    from('../app/src/main/res/drawable') {
+        include 'ic_crescent.xml'
+        into 'res/drawable'
+    }
+}
+
+tasks.named('preBuild') {
+    dependsOn 'syncShared'
+}
+
+dependencies {
+    implementation 'com.batoulapps.adhan:adhan:1.2.1'
+}

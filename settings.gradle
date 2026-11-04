@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "MyGTS4KLauncher"
-include ':app'
+include ':app', ':phone'
