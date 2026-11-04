@@ -915,11 +915,20 @@ public class PhoneActivity extends Activity {
             }).setNegativeButton("إلغاء", null).show();
     }
 
+    private static String[] labels(int min, int max) {
+        String[] l = new String[max - min + 1];
+        for (int v = min; v <= max; v++) l[v - min] = (v > 0 && min < 0 ? "+" : "") + v;
+        return l;
+    }
+
     private void numberDialog(String title, int min, int max, int cur, final IntSetter s) {
         final NumberPicker np = new NumberPicker(this);
-        np.setMinValue(min);
-        np.setMaxValue(max);
-        np.setValue(Math.max(min, Math.min(max, cur)));
+        // NumberPicker does not accept negative limits: it counts from 0 and shows the real numbers as labels.
+        final int off = min;
+        np.setMinValue(0);
+        np.setMaxValue(max - min);
+        np.setDisplayedValues(labels(min, max));
+        np.setValue(Math.max(min, Math.min(max, cur)) - off);
         np.setWrapSelectorWheel(false);
         FrameLayout f = new FrameLayout(this);
         f.addView(np, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
@@ -927,7 +936,7 @@ public class PhoneActivity extends Activity {
             .setPositiveButton("حفظ", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int w) {
-                    s.set(np.getValue());
+                    s.set(np.getValue() + off);
                 }
             }).setNegativeButton("إلغاء", null).show();
     }
@@ -1071,9 +1080,10 @@ public class PhoneActivity extends Activity {
         a.setMaxValue(60);
         a.setValue(PrayerPrefs.iqama(this)[idx]);
         final NumberPicker b = new NumberPicker(this);
-        b.setMinValue(-10);
-        b.setMaxValue(10);
-        b.setValue(PrayerPrefs.adjust(this)[idx]);
+        b.setMinValue(0);
+        b.setMaxValue(20);
+        b.setDisplayedValues(labels(-10, 10));
+        b.setValue(PrayerPrefs.adjust(this)[idx] + 10);
         LinearLayout c1 = vbox();
         c1.setGravity(Gravity.CENTER);
         c1.addView(new TextView(this) {{ setText("الإقامة (دقائق)"); }});
@@ -1089,7 +1099,7 @@ public class PhoneActivity extends Activity {
                 @Override
                 public void onClick(DialogInterface d, int w) {
                     PrayerPrefs.setIqama(PhoneActivity.this, idx, a.getValue());
-                    PrayerPrefs.setAdjust(PhoneActivity.this, idx, b.getValue());
+                    PrayerPrefs.setAdjust(PhoneActivity.this, idx, b.getValue() - 10);
                     Scheduler.scheduleNext(PhoneActivity.this);
                     build();
                 }
