@@ -198,9 +198,10 @@ final class PrayerNote {
 
             java.util.Calendar cal = Hijri.today(c);
             rv.setTextViewText(R.id.w_day, String.valueOf(cal.get(java.util.Calendar.DAY_OF_MONTH)));
-            rv.setTextViewText(R.id.w_date, Hijri.weekdayAr(cal) + " " + new java.text.SimpleDateFormat("yyyy-MM-dd",
-                java.util.Locale.US).format(cal.getTime()));
-            rv.setTextViewText(R.id.w_hijri, Hijri.hijriAr(Hijri.of(cal, Hijri.adjust(c))).replace(" هـ", ""));
+            // the big number is the day of the month, so beside it: the weekday, the month and the year
+            String greg = Hijri.gregorianAr(cal);
+            rv.setTextViewText(R.id.w_date, Hijri.weekdayAr(cal) + "، " + greg.substring(greg.indexOf(' ') + 1));
+            rv.setTextViewText(R.id.w_hijri, Hijri.hijriAr(Hijri.of(cal, Hijri.adjust(c))));
 
             rv.setChronometerCountDown(R.id.w_clock, true);
             rv.setChronometer(R.id.w_clock, SystemClock.elapsedRealtime() + (target - now), null, true);
@@ -228,7 +229,7 @@ final class PrayerNote {
             boolean radio = RadioService.on();
             int st = radio ? RadioService.station() : RadioService.lastStation(c);
             rv.setTextViewText(R.id.w_station, RadioService.STATIONS[st].shortName(true));
-            rv.setTextViewText(R.id.w_play, radio ? "■" : "▶");
+            rv.setImageViewResource(R.id.w_play, radio ? R.drawable.ic_w_stop : R.drawable.ic_w_play);
             rv.setOnClickPendingIntent(R.id.w_play, radio ? radioIntent(c, 51, "app.mylauncher.gtv.RADIO_STOP", false)
                 : radioIntent(c, 51, "app.mylauncher.gtv.RADIO_PLAY", true));
             rv.setOnClickPendingIntent(R.id.w_next, radioIntent(c, 52, "app.mylauncher.gtv.RADIO_NEXT", true));
