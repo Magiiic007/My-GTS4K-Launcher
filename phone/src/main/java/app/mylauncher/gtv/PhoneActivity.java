@@ -177,10 +177,11 @@ public class PhoneActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        verseIdx = -1;
         RadioService.listen(radioListener);
         RadioService.resumeIfCutOff(this);
         OverlayService.sync(this);
-        if (tab == 8 || tab == 6) build();
+        if (tab == 8 || tab == 6 || (tab == 0 && sub == null)) build();
         if (tab == 9) qiblaStart();
         h.post(ticker);
         if (!autoTried && sp.getBoolean("ph_first", false)
@@ -435,6 +436,9 @@ public class PhoneActivity extends Activity {
     }
 
     // ---------------------------------------------------------------- tabs
+    /** The verse at the bottom of the home page: a new one each time the app is opened. */
+    private int verseIdx = -1;
+
     private void endTasbihRound() {
         for (int i = 0; i < Adhkar.TASBIH.length; i++) Adhkar.reset(this, i);
     }
@@ -651,14 +655,15 @@ public class PhoneActivity extends Activity {
         // verse of the day
         String[] vt = getResources().getStringArray(R.array.verse_text);
         String[] vr = getResources().getStringArray(R.array.verse_ref);
-        int vi = (cal.get(Calendar.YEAR) * 366 + cal.get(Calendar.DAY_OF_YEAR)) % vt.length;
+        if (verseIdx < 0 || verseIdx >= vt.length) verseIdx = new java.util.Random().nextInt(vt.length);
+        int vi = verseIdx;
         LinearLayout vc = vbox();
         vc.setBackground(shape(card, line, 18));
         vc.setPadding(dp(14), dp(Math.round(10 * f)), dp(14), dp(Math.round(10 * f)));
         TextView v1 = tv(vt[vi], Math.round(19 * f), cream, false);
         v1.setGravity(Gravity.CENTER);
         v1.setLineSpacing(0, 1.25f);
-        TextView v2 = tv("آية اليوم · " + vr[vi], 12, gold, true);
+        TextView v2 = tv("آية · " + vr[vi], 12, gold, true);
         v2.setGravity(Gravity.CENTER);
         vc.addView(v1);
         vc.addView(v2);
