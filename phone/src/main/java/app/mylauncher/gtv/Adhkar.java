@@ -94,6 +94,32 @@ final class Adhkar {
     // ---------------------------------------------------------------- tasbih
     static final String[] TASBIH = {"سبحان الله", "الحمد لله", "الله أكبر", "أستغفر الله", "اللهم صل على محمد"};
 
+    // ---------------------------------------------------------------- text size and colour (per place)
+    /** The places with their own size and colour: 0 the adhkar chapters, 1 the tasbih page, 2 the card over other apps. */
+    static final String[] TEXT_PLACES = {"الأذكار والأدعية", "السبحة والاستغفار", "الأذكار فوق التطبيقات"};
+    static final String[] SIZE_NAMES = {"صغير", "عادي", "كبير", "كبير جدًا"};
+    static final float[] SIZES = {0.9f, 1f, 1.2f, 1.4f};
+    static final String[] COLOR_NAMES = {"الافتراضي", "أبيض", "ذهبي", "أصفر فاتح", "أخضر فاتح", "سماوي فاتح"};
+    private static final int[] COLORS = {0, 0xFFFFFFFF, 0, 0xFFFFF0A0, 0xFFB8F0C0, 0xFFA8E8FF};
+
+    static int sizeIdx(Context c, int place) {
+        return Math.max(0, Math.min(SIZES.length - 1, p(c).getInt("txt_size_" + place, 1)));
+    }
+
+    static int colorIdx(Context c, int place) {
+        return Math.max(0, Math.min(COLORS.length - 1, p(c).getInt("txt_col_" + place, 0)));
+    }
+
+    static float scale(Context c, int place) {
+        return SIZES[sizeIdx(c, place)];
+    }
+
+    /** The colour chosen for a place; {@code def} when it is left on "default" and {@code gold} for "gold". */
+    static int color(Context c, int place, int def, int gold) {
+        int i = colorIdx(c, place);
+        return i == 0 ? def : i == 2 ? gold : COLORS[i];
+    }
+
     private static SharedPreferences p(Context c) {
         return c.getSharedPreferences("magiic", Context.MODE_PRIVATE);
     }

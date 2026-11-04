@@ -1229,6 +1229,10 @@ public class PhoneActivity extends Activity {
             aboutPage();
             return;
         }
+        if (sub != null && sub.startsWith("txt:")) {
+            textPage(Integer.parseInt(sub.substring(4)));
+            return;
+        }
         if ("backup".equals(sub)) {
             backupPage();
             return;
@@ -1252,6 +1256,11 @@ public class PhoneActivity extends Activity {
                 }).show();
             }
         });
+        section("حجم الخط ولونه");
+        for (int i = 0; i < Adhkar.TEXT_PLACES.length; i++) {
+            row(Adhkar.TEXT_PLACES[i], Adhkar.SIZE_NAMES[Adhkar.sizeIdx(this, i)] + " · " + Adhkar.COLOR_NAMES[Adhkar.colorIdx(this, i)],
+                "›", go("txt:" + i));
+        }
         section("التشغيل في الخلفية");
         row("تأكد أن الأذان يعمل", "الإشعارات والمنبّه والبطارية", "›", go("fix"));
         row("العرض فوق التطبيقات", "لتظهر الأذكار فوق التطبيقات الأخرى", Settings.canDrawOverlays(this) ? "✓" : "فتح",
@@ -1270,6 +1279,54 @@ public class PhoneActivity extends Activity {
         });
         row("نسخة احتياطية", "احفظ إعداداتك وأذكارك في ملف، واستعدها بعد أي حذف", "›", go("backup"));
         row("عن التطبيق", "المصادر والتشخيص", "›", go("about"));
+    }
+
+    private float tsc(int place) {
+        return Adhkar.scale(this, place);
+    }
+
+    private int tsz(int place, int base) {
+        return Math.round(base * tsc(place));
+    }
+
+    private int tcl(int place, int def) {
+        return Adhkar.color(this, place, def, gold);
+    }
+
+    /** Size and colour of the text of one place (the adhkar, the tasbih page, the card over other apps). */
+    private void textPage(final int place) {
+        title(Adhkar.TEXT_PLACES[place], true);
+        LinearLayout pv = vbox();
+        pv.setBackground(shape(card, line, 16));
+        pv.setPadding(dp(14), dp(16), dp(14), dp(16));
+        TextView t = tv("سبحان الله وبحمده، سبحان الله العظيم", tsz(place, 18), tcl(place, cream), true);
+        t.setGravity(Gravity.CENTER);
+        t.setLineSpacing(0, 1.3f);
+        pv.addView(t);
+        add(pv, 6);
+        section("الحجم");
+        for (int i = 0; i < Adhkar.SIZE_NAMES.length; i++) {
+            final int k = i;
+            row(Adhkar.SIZE_NAMES[i], null, Adhkar.sizeIdx(this, place) == i ? "✓" : null, new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    sp.edit().putInt("txt_size_" + place, k).apply();
+                    build();
+                }
+            });
+        }
+        section("اللون");
+        for (int i = 0; i < Adhkar.COLOR_NAMES.length; i++) {
+            final int k = i;
+            row(Adhkar.COLOR_NAMES[i], null, Adhkar.colorIdx(this, place) == i ? "✓" : null, new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    sp.edit().putInt("txt_col_" + place, k).apply();
+                    build();
+                }
+            });
+        }
+        add(tv("يتغير حجم الخط ولونه في هذا المكان فقط. الألوان الفاتحة مناسبة للشكل الليلي، وللشكل النهاري جرّب الأبيض أو الأصفر.", 12, dim, false), 10);
     }
 
     private void backupPage() {
@@ -1891,7 +1948,7 @@ public class PhoneActivity extends Activity {
                 LinearLayout c = vbox();
                 c.setBackground(shape(card, line, 16));
                 c.setPadding(dp(14), dp(12), dp(14), dp(12));
-                TextView t = tv("«" + hd[0] + "»", 19, cream, false);
+                TextView t = tv("«" + hd[0] + "»", tsz(0, 19), tcl(0, cream), false);
                 t.setLineSpacing(0, 1.3f);
                 c.addView(t);
                 c.addView(tv(hd[1], 12, gold, true));
@@ -1920,15 +1977,15 @@ public class PhoneActivity extends Activity {
                         c.setBackground(shape(card, line, 16));
                         c.setPadding(dp(14), dp(12), dp(14), dp(12));
                         if (!x.pre.isEmpty()) {
-                            TextView pn = tv(x.pre, 12, gold, true);
+                            TextView pn = tv(x.pre, tsz(0, 12), gold, true);
                             pn.setLineSpacing(0, 1.3f);
                             c.addView(pn, lp(-1, -2, 0));
                         }
-                        TextView t = tv(x.text, 18, cream, false);
+                        TextView t = tv(x.text, tsz(0, 18), tcl(0, cream), false);
                         t.setLineSpacing(0, 1.35f);
                         c.addView(t, lp(-1, -2, x.pre.isEmpty() ? 0 : 6));
                         if (!x.post.isEmpty()) {
-                            TextView pn = tv(x.post, 13, dim, false);
+                            TextView pn = tv(x.post, tsz(0, 13), dim, false);
                             pn.setLineSpacing(0, 1.3f);
                             c.addView(pn, lp(-1, -2, 6));
                         }
@@ -1954,7 +2011,7 @@ public class PhoneActivity extends Activity {
                     final int total = e.count;
                     if (e.info) {
                         // a hadith or an explanation: small, and nothing to count
-                        TextView n = tv(e.text, 13, dim, false);
+                        TextView n = tv(e.text, tsz(0, 13), dim, false);
                         n.setLineSpacing(0, 1.3f);
                         n.setPadding(dp(6), dp(4), dp(6), dp(4));
                         add(n, 8);
@@ -1968,15 +2025,15 @@ public class PhoneActivity extends Activity {
                     r.setBackground(shape(card, line, 16));
                     r.setPadding(dp(14), dp(12), dp(14), dp(12));
                     if (!e.pre.isEmpty()) {
-                        TextView pn = tv(e.pre, 12, dim, false);
+                        TextView pn = tv(e.pre, tsz(0, 12), dim, false);
                         pn.setLineSpacing(0, 1.3f);
                         r.addView(pn, lp(-1, -2, 0));
                     }
-                    TextView t = tv(e.text, 18, cream, false);
+                    TextView t = tv(e.text, tsz(0, 18), tcl(0, cream), false);
                     t.setLineSpacing(0, 1.35f);
                     r.addView(t, lp(-1, -2, e.pre.isEmpty() ? 0 : 6));
                     if (!e.post.isEmpty()) {
-                        TextView pn = tv(e.post, 12, dim, false);
+                        TextView pn = tv(e.post, tsz(0, 12), dim, false);
                         pn.setLineSpacing(0, 1.3f);
                         r.addView(pn, lp(-1, -2, 6));
                     }
@@ -2160,7 +2217,7 @@ public class PhoneActivity extends Activity {
     private void tasbihPage() {
         title("السبحة والاستغفار", false);
         totalLine();
-        TextView sel = tv(Adhkar.TASBIH[tk], 20, cream, true);
+        TextView sel = tv(Adhkar.TASBIH[tk], tsz(1, 20), tcl(1, cream), true);
         sel.setGravity(Gravity.CENTER);
         add(sel, 10);
         tcBig = tv("", 64, gold, true);
@@ -2187,13 +2244,6 @@ public class PhoneActivity extends Activity {
         TextView hint = tv("اضغط الدائرة للعدّ", 12, dim, false);
         hint.setGravity(Gravity.CENTER);
         add(hint, 6);
-        row("إنهاء الجولة وبدء جولة جديدة", "يُحفظ عدد هذه الجولة كـ«آخر عدد»", "↺", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Adhkar.reset(PhoneActivity.this, tk);
-                refreshTasbih();
-            }
-        });
         section("الأذكار");
         tcRows = new TextView[Adhkar.TASBIH.length];
         for (int i = 0; i < Adhkar.TASBIH.length; i++) {
@@ -2201,7 +2251,7 @@ public class PhoneActivity extends Activity {
             LinearLayout c = vbox();
             c.setBackground(shape(i == tk ? hl : card, i == tk ? gold : line, 14));
             c.setPadding(dp(14), dp(9), dp(14), dp(9));
-            c.addView(tv(Adhkar.TASBIH[i], 16, cream, true));
+            c.addView(tv(Adhkar.TASBIH[i], tsz(1, 16), tcl(1, cream), true));
             tcRows[i] = tv("", 13, dim, false);
             c.addView(tcRows[i]);
             c.setOnClickListener(new View.OnClickListener() {

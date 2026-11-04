@@ -165,7 +165,7 @@ public class OverlayService extends Service {
         bg.setCornerRadius(dp(16));
         bg.setStroke(dp(1), gold);
         c.setBackground(bg);
-        TextView t = text(items.get(idx), 17, cream, true);
+        TextView t = text(items.get(idx), Math.round(17 * Adhkar.scale(this, 2)), Adhkar.color(this, 2, cream, gold), true);
         t.setLineSpacing(0, 1.2f);
         c.addView(t);
         c.setOnClickListener(new View.OnClickListener() {
