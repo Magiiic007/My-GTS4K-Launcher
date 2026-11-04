@@ -296,7 +296,7 @@ public class PhoneActivity extends Activity {
             }
             if (artBmp != null) {
                 homeTop = ArtBg.panelTop(artBmp, w);
-                homeBottom = Math.round(ArtBg.cornerHeight(artBmp, w) * 0.45f);
+                homeBottom = Math.round(ArtBg.cornerHeight(artBmp, w) * 0.7f);
                 rootFrame.setBackground(new ArtBg(artBmp));
                 header.setPadding(dp(26), homeTop, dp(26), dp(2));
                 body.setPadding(dp(26), dp(8), dp(26), homeBottom);
