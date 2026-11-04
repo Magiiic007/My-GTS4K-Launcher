@@ -441,7 +441,7 @@ public class MainActivity extends Activity {
             names.add(getString(R.string.perm_btn));
             acts.add(new Runnable() { public void run() { askOverlayPermission(); } });
         }
-        new AlertDialog.Builder(this, Theme.dialogStyle(this))
+        new Menu.Builder(this)
             .setTitle(R.string.mih_settings)
             .setItems(names.toArray(new String[0]), new DialogInterface.OnClickListener() {
                 @Override
@@ -457,7 +457,7 @@ public class MainActivity extends Activity {
     void favMenu(final AppItem item) {
         final String pkg = item.component.getPackageName();
         String[] items = {getString(R.string.fav_remove), getString(R.string.app_info), getString(R.string.app_uninstall)};
-        new AlertDialog.Builder(this, Theme.dialogStyle(this))
+        new Menu.Builder(this)
             .setTitle(item.label)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
@@ -480,7 +480,7 @@ public class MainActivity extends Activity {
     /** The two looks, in a list; picking the other one restarts the screen in it. */
     private void chooseLook() {
         String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids), getString(R.string.theme_mihrab)};
-        new AlertDialog.Builder(this, Theme.dialogStyle(this))
+        new Menu.Builder(this)
             .setTitle(R.string.menu_theme)
             .setSingleChoiceItems(names, Theme.id(this), new DialogInterface.OnClickListener() {
                 @Override
@@ -738,24 +738,40 @@ public class MainActivity extends Activity {
     void chooseRadio() {
         final boolean arabic = isArabic();
         final boolean on = RadioService.on();
-        int n = RadioService.STATIONS.length;
-        String[] items = new String[on ? n + 1 : n];
-        for (int i = 0; i < n; i++) {
-            items[i] = (on && i == RadioService.station() ? "● " : "") + RadioService.STATIONS[i].name(arabic);
+        // Radio stations first, then the reciters, each under its own title.
+        final List<String> items = new ArrayList<>();
+        final List<Integer> station = new ArrayList<>();
+        for (int pass = 0; pass < 2; pass++) {
+            boolean reciters = pass == 1;
+            boolean titled = false;
+            for (int i = 0; i < RadioService.STATIONS.length; i++) {
+                if (RadioService.STATIONS[i].url.contains("qurango") != reciters) continue;
+                if (!titled) {
+                    items.add(Menu.HEADER + getString(reciters ? R.string.radio_group_reciters : R.string.radio_group_stations));
+                    station.add(-1);
+                    titled = true;
+                }
+                items.add((on && i == RadioService.station() ? "\u25CF " : "") + RadioService.STATIONS[i].name(arabic));
+                station.add(i);
+            }
         }
-        if (on) items[n] = getString(R.string.radio_stop);
-        new AlertDialog.Builder(this, Theme.dialogStyle(this))
+        if (on) {
+            items.add(Menu.HEADER);
+            station.add(-1);
+            items.add(getString(R.string.radio_stop));
+            station.add(-2);
+        }
+        new Menu.Builder(this)
             .setTitle(R.string.radio_title)
-            .setItems(items, new DialogInterface.OnClickListener() {
+            .setItems(items.toArray(new String[0]), new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int which) {
-                    if (which < RadioService.STATIONS.length) {
-                        RadioService.play(MainActivity.this, which);
-                    } else {
-                        RadioService.stop(MainActivity.this);
-                    }
+                    int st = station.get(which);
+                    if (st >= 0) RadioService.play(MainActivity.this, st);
+                    else if (st == -2) RadioService.stop(MainActivity.this);
                 }
             })
+            .setNegativeButton(R.string.close, null)
             .show();
     }
 
@@ -767,7 +783,7 @@ public class MainActivity extends Activity {
             startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 android.net.Uri.parse("package:" + getPackageName())));
         } catch (ActivityNotFoundException | SecurityException e) {
-            new AlertDialog.Builder(this, Theme.dialogStyle(this))
+            new Menu.Builder(this)
                 .setTitle(R.string.overlay_title)
                 .setMessage(R.string.overlay_help)
                 .setPositiveButton(android.R.string.ok, null)
@@ -808,7 +824,7 @@ public class MainActivity extends Activity {
     /** Step 1 of choosing a city: the country. */
     void chooseCountry() {
         String[] countries = {getString(R.string.egypt), getString(R.string.saudi)};
-        new AlertDialog.Builder(this, Theme.dialogStyle(this))
+        new Menu.Builder(this)
             .setTitle(R.string.choose_country)
             .setItems(countries, new DialogInterface.OnClickListener() {
                 @Override
@@ -833,7 +849,7 @@ public class MainActivity extends Activity {
         });
         String[] names = new String[sorted.size()];
         for (int i = 0; i < names.length; i++) names[i] = sorted.get(i).name(arabic);
-        new AlertDialog.Builder(this, Theme.dialogStyle(this))
+        new Menu.Builder(this)
             .setTitle(R.string.choose_city)
             .setItems(names, new DialogInterface.OnClickListener() {
                 @Override
@@ -1167,7 +1183,7 @@ public class MainActivity extends Activity {
             getString(R.string.app_earlier), getString(R.string.app_later), getString(R.string.app_first),
             getString(R.string.app_hide), getString(R.string.app_uninstall), getString(R.string.app_info),
         };
-        new AlertDialog.Builder(this, Theme.dialogStyle(this))
+        new Menu.Builder(this)
             .setTitle(item.label)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override

@@ -20,7 +20,7 @@ final class TimingDialogs {
                 PrayerPrefs.adjustText(c, adj[i]), PrayerPrefs.iqamaText(c, iq[i]));
         }
 
-        new AlertDialog.Builder(c, Theme.dialogStyle(c))
+        new Menu.Builder(c)
             .setTitle(R.string.settings_title)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
@@ -52,7 +52,7 @@ final class TimingDialogs {
             c.getString(R.string.adjust_item, PrayerPrefs.adjustText(c, adj)),
             c.getString(R.string.iqama_item, PrayerPrefs.iqamaText(c, iq)),
         };
-        new AlertDialog.Builder(c, Theme.dialogStyle(c))
+        new Menu.Builder(c)
             .setTitle(prayer)
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override

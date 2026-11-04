@@ -1,6 +1,7 @@
 package app.mylauncher.gtv;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Color;
@@ -78,7 +79,7 @@ final class NumberDialog {
         rowLp.topMargin = dp(c, 16);
         box.addView(row, rowLp);
 
-        final AlertDialog[] dialog = new AlertDialog[1];
+        final Dialog[] dialog = new Dialog[1];
         final TextView minus = button(c, "−");
         final TextView plus = button(c, "+");
         final TextView ok = button(c, c.getString(R.string.save));
@@ -116,7 +117,7 @@ final class NumberDialog {
             }
         });
 
-        dialog[0] = new AlertDialog.Builder(c, Theme.dialogStyle(c)).setTitle(title).setView(box).create();
+        dialog[0] = new Menu.Builder(c).setTitle(title).setView(box).create();
         dialog[0].setOnKeyListener(new DialogInterface.OnKeyListener() {
             @Override
             public boolean onKey(DialogInterface d, int keyCode, KeyEvent e) {

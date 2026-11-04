@@ -129,7 +129,7 @@ final class Updater {
             offer(a);
             return;
         }
-        new AlertDialog.Builder(a, Theme.dialogStyle(a))
+        new Menu.Builder(a)
             .setTitle(R.string.menu_update)
             .setMessage(a.getString(R.string.upd_current, installedName(a)))
             .setPositiveButton(R.string.upd_check, new DialogInterface.OnClickListener() {
@@ -167,7 +167,7 @@ final class Updater {
 
     /** "A new version is ready": ask, then download and install. */
     static void offer(final Activity a) {
-        new AlertDialog.Builder(a, Theme.dialogStyle(a))
+        new Menu.Builder(a)
             .setTitle(R.string.menu_update)
             .setMessage(a.getString(R.string.upd_found, (int) latest(a), (int) installed(a)))
             .setPositiveButton(R.string.upd_btn_install, new DialogInterface.OnClickListener() {
@@ -184,7 +184,7 @@ final class Updater {
 
     private static void start(final Activity a) {
         if (Build.VERSION.SDK_INT >= 26 && !a.getPackageManager().canRequestPackageInstalls()) {
-            new AlertDialog.Builder(a, Theme.dialogStyle(a))
+            new Menu.Builder(a)
                 .setTitle(R.string.menu_update)
                 .setMessage(R.string.upd_unknown_help)
                 .setPositiveButton(R.string.upd_allow, new DialogInterface.OnClickListener() {
@@ -202,7 +202,7 @@ final class Updater {
                 .show();
             return;
         }
-        final AlertDialog box = new AlertDialog.Builder(a, Theme.dialogStyle(a))
+        final Menu.Box box = new Menu.Builder(a)
             .setTitle(R.string.menu_update)
             .setMessage(a.getString(R.string.upd_downloading, 0))
             .setCancelable(false)
@@ -225,7 +225,7 @@ final class Updater {
     }
 
     /** Streams the APK straight into an install session (no temporary file), then commits it. */
-    private static boolean download(final Activity a, final AlertDialog box) {
+    private static boolean download(final Activity a, final Menu.Box box) {
         HttpURLConnection h = null;
         PackageInstaller.Session session = null;
         PackageInstaller pi = a.getPackageManager().getPackageInstaller();

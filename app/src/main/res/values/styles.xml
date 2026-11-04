@@ -40,4 +40,11 @@
         <item name="android:listDivider">@android:color/transparent</item>
         <item name="android:divider">@android:color/transparent</item>
     </style>
+
+    <style name="MagiicMenu" parent="android:Theme.Material.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

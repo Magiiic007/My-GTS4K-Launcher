@@ -268,4 +268,6 @@
     <string name="mih_verse">إِنَّ الصَّلَاةَ كَانَتْ عَلَى الْمُؤْمِنِينَ كِتَابًا مَّوْقُوتًا</string>
     <string name="mih_adhan_at">الأذان %1$s</string>
     <string name="saver_manual">لو صفحة شاشة التوقف ما فتحتش: الإعدادات ← النظام ← وضع Ambient ← Google Photos. أو من تطبيق Google Home على الموبايل: جهازك ← الإعدادات ← وضع Ambient</string>
+    <string name="radio_group_stations">الإذاعات</string>
+    <string name="radio_group_reciters">القرّاء</string>
 </resources>
