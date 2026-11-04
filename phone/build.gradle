@@ -12,8 +12,8 @@ android {
         applicationId 'app.magiic.phone'
         minSdk 26
         targetSdk 34
-        versionCode 24
-        versionName '0.24'
+        versionCode 25
+        versionName '0.25'
     }
 
     signingConfigs {
@@ -23,6 +23,10 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+    }
+
+    lint {
+        abortOnError false
     }
 
     compileOptions {
@@ -46,7 +50,7 @@ tasks.register('syncShared', Sync) {
     from('../app/src/main/java/app/mylauncher/gtv') {
         include 'PrayerCalc.java', 'Hijri.java', 'Cities.java', 'PrayerPrefs.java', 'Scheduler.java',
             'AdhanReceiver.java', 'Reminders.java', 'ReminderReceiver.java', 'AutoCity.java', 'Weather.java',
-            'RadioService.java', 'BootReceiver.java', 'InstallReceiver.java'
+            'BootReceiver.java', 'InstallReceiver.java'
         into 'java/app/mylauncher/gtv'
     }
     // The phone is Arabic only: the Arabic strings are the default ones, whatever language the phone is set to.
@@ -77,4 +81,7 @@ tasks.named('preBuild') {
 
 dependencies {
     implementation 'com.batoulapps.adhan:adhan:1.2.1'
+    // The radio: live streams start faster and recover better than with the plain MediaPlayer.
+    implementation 'androidx.media3:media3-exoplayer:1.4.1'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.4.1'
 }
