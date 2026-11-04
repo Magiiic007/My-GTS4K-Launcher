@@ -136,6 +136,8 @@ public class RadioService extends Service {
     private static void set(int s) {
         state = s;
         for (Listener l : new ArrayList<>(listeners)) l.onRadio(s);
+        // The home-screen widget shows the play/stop button and the station.
+        if (cur != null) PrayerNote.refresh(cur);
     }
 
     /** Starts a station (or switches to it). Call from the screen the user is looking at. */
@@ -255,8 +257,9 @@ public class RadioService extends Service {
         }
         yielded = false;
         int want = intent.getIntExtra("station", 0);
-        if (ACTION_NEXT.equals(intent.getAction())) want = (stationIndex + 1) % STATIONS.length;
-        if (ACTION_PREV.equals(intent.getAction())) want = (stationIndex + STATIONS.length - 1) % STATIONS.length;
+        int base = state != OFF ? stationIndex : lastStation(this);
+        if (ACTION_NEXT.equals(intent.getAction())) want = (base + 1) % STATIONS.length;
+        if (ACTION_PREV.equals(intent.getAction())) want = (base + STATIONS.length - 1) % STATIONS.length;
         log(this, "start station " + want);
         stationIndex = Math.max(0, Math.min(STATIONS.length - 1, want));
         getSharedPreferences("magiic", MODE_PRIVATE).edit().putInt("radio_station", stationIndex)

@@ -169,7 +169,23 @@ final class PrayerNote {
         }
     }
 
-    /** Redraws the home-screen widgets (if any). */
+    private static final int[] W_L = {R.id.w_l0, R.id.w_l1, R.id.w_l2, R.id.w_l3, R.id.w_l4};
+    private static final int[] W_D = {R.id.w_d0, R.id.w_d1, R.id.w_d2, R.id.w_d3, R.id.w_d4};
+    private static final int[] W_N = {R.id.w_n0, R.id.w_n1, R.id.w_n2, R.id.w_n3, R.id.w_n4};
+    private static final int[] W_T = {R.id.w_t0, R.id.w_t1, R.id.w_t2, R.id.w_t3, R.id.w_t4};
+
+    private static String ap(String s) {
+        return s.replace("AM", "ص").replace("PM", "م");
+    }
+
+    private static PendingIntent radioIntent(Context c, int req, String action, boolean foreground) {
+        Intent i = new Intent(c, RadioService.class).setAction(action)
+            .putExtra("station", RadioService.lastStation(c));
+        int fl = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
+        return foreground ? PendingIntent.getForegroundService(c, req, i, fl) : PendingIntent.getService(c, req, i, fl);
+    }
+
+    /** Redraws the home-screen widgets (if any): the date, the countdown, the five times and the radio buttons. */
     private static void widgets(Context c, Cities.City city, Slot s, long now) {
         try {
             AppWidgetManager awm = AppWidgetManager.getInstance(c);
@@ -177,13 +193,47 @@ final class PrayerNote {
             if (ids == null || ids.length == 0) return;
             boolean iqama = s.hasIqama && now >= s.a;
             long target = iqama ? s.q : s.a;
+            int[] adj = PrayerPrefs.adjust(c);
             RemoteViews rv = new RemoteViews(c.getPackageName(), R.layout.widget_prayer);
-            rv.setTextViewText(R.id.w_label, iqama ? "باقي على الإقامة" : "الصلاة القادمة");
-            rv.setTextViewText(R.id.w_name, PrayerCalc.name(c, s.index, s.friday));
+
+            java.util.Calendar cal = Hijri.today(c);
+            rv.setTextViewText(R.id.w_day, String.valueOf(cal.get(java.util.Calendar.DAY_OF_MONTH)));
+            rv.setTextViewText(R.id.w_date, Hijri.weekdayAr(cal) + " " + new java.text.SimpleDateFormat("yyyy-MM-dd",
+                java.util.Locale.US).format(cal.getTime()));
+            rv.setTextViewText(R.id.w_hijri, Hijri.hijriAr(Hijri.of(cal, Hijri.adjust(c))).replace(" هـ", ""));
+
             rv.setChronometerCountDown(R.id.w_clock, true);
             rv.setChronometer(R.id.w_clock, SystemClock.elapsedRealtime() + (target - now), null, true);
-            rv.setTextViewText(R.id.w_time, (iqama ? "الإقامة " : "الأذان ")
-                + PrayerCalc.time(c, city, target).replace("AM", "ص").replace("PM", "م"));
+            String name = PrayerCalc.name(c, s.index, s.friday);
+            rv.setTextViewText(R.id.w_until, (iqama ? "حتى إقامة " : "حتى أذان ") + name);
+
+            long[] t = PrayerCalc.day(city, now, 0, adj);
+            int curIdx = 4;
+            for (int i = 0; i < 5; i++) if (t[i] <= now) curIdx = i;
+            if (t[0] > now) curIdx = 4;
+            for (int i = 0; i < 5; i++) {
+                boolean on = i == curIdx;
+                rv.setTextViewText(W_N[i], PrayerCalc.name(c, i, PrayerCalc.isFriday(city, now)));
+                rv.setTextViewText(W_T[i], ap(PrayerCalc.time(c, city, t[i])));
+                rv.setTextColor(W_N[i], on ? 0xFFFFFFFF : 0xFFB8C2DC);
+                rv.setTextColor(W_T[i], on ? 0xFFFFFFFF : 0xFFB8C2DC);
+                rv.setTextColor(W_D[i], on ? 0xFFE8B84A : 0xFFC9CCE0);
+                rv.setTextViewTextSize(W_D[i], android.util.TypedValue.COMPLEX_UNIT_SP, on ? 26 : 18);
+                rv.setInt(W_L[i], "setBackgroundColor", i <= curIdx ? 0xFFE8B84A : 0xFF8A8FB0);
+            }
+            long rise = PrayerCalc.sunrise(city, now, 0, adj);
+            rv.setTextViewText(R.id.w_sun, "☀ الشروق " + ap(PrayerCalc.time(c, city, rise)));
+            rv.setTextViewText(R.id.w_city, "📍 " + city.name(true));
+
+            boolean radio = RadioService.on();
+            int st = radio ? RadioService.station() : RadioService.lastStation(c);
+            rv.setTextViewText(R.id.w_station, RadioService.STATIONS[st].shortName(true));
+            rv.setTextViewText(R.id.w_play, radio ? "■" : "▶");
+            rv.setOnClickPendingIntent(R.id.w_play, radio ? radioIntent(c, 51, "app.mylauncher.gtv.RADIO_STOP", false)
+                : radioIntent(c, 51, "app.mylauncher.gtv.RADIO_PLAY", true));
+            rv.setOnClickPendingIntent(R.id.w_next, radioIntent(c, 52, "app.mylauncher.gtv.RADIO_NEXT", true));
+            rv.setOnClickPendingIntent(R.id.w_prev, radioIntent(c, 53, "app.mylauncher.gtv.RADIO_PREV", true));
+
             rv.setOnClickPendingIntent(R.id.w_root, PendingIntent.getActivity(c, 2, new Intent(c, PhoneActivity.class)
                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
