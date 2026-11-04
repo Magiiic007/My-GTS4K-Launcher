@@ -180,7 +180,7 @@ public class PhoneActivity extends Activity {
         RadioService.listen(radioListener);
         RadioService.resumeIfCutOff(this);
         OverlayService.sync(this);
-        if (tab == 8) build();
+        if (tab == 8 || tab == 6) build();
         if (tab == 9) qiblaStart();
         h.post(ticker);
         if (!autoTried && sp.getBoolean("ph_first", false)
