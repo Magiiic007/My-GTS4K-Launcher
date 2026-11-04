@@ -143,6 +143,17 @@ public class RadioService extends Service {
         return c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("radio_resume", false);
     }
 
+    /** The last few radio events (kept in the settings, shown in "About"), to see why it did or did not start. */
+    static void log(Context c, String what) {
+        android.content.SharedPreferences sp = c.getSharedPreferences("magiic", MODE_PRIVATE);
+        String[] old = sp.getString("radio_log", "").split("\n");
+        StringBuilder b = new StringBuilder();
+        int from = Math.max(0, old.length - 13);
+        for (int i = from; i < old.length; i++) if (!old[i].isEmpty()) b.append(old[i]).append('\n');
+        b.append(new java.text.SimpleDateFormat("dd/MM HH:mm:ss", Locale.US).format(new java.util.Date())).append(' ').append(what);
+        sp.edit().putString("radio_log", b.toString()).apply();
+    }
+
     /** True from the moment another app took the sound until the radio is started again (this process only). */
     private static boolean yielded;
     private static boolean coldChecked;
@@ -155,6 +166,7 @@ public class RadioService extends Service {
     static void resumeIfCutOff(Context c) {
         boolean cold = !coldChecked;
         coldChecked = true;
+        if (cold || state == OFF && shouldResume(c)) log(c, "home: cold=" + cold + " state=" + state + " resume=" + shouldResume(c) + " yielded=" + yielded);
         if (state == OFF && shouldResume(c) && (cold || !yielded)) {
             try {
                 play(c, lastStation(c));
@@ -197,10 +209,12 @@ public class RadioService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null || ACTION_STOP.equals(intent.getAction())) {
+            log(this, "stop button" + (intent == null ? " (no intent)" : ""));
             shutdown();
             return START_NOT_STICKY;
         }
         yielded = false;
+        log(this, "start station " + intent.getIntExtra("station", 0));
         stationIndex = Math.max(0, Math.min(STATIONS.length - 1, intent.getIntExtra("station", 0)));
         getSharedPreferences("magiic", MODE_PRIVATE).edit().putInt("radio_station", stationIndex)
             .putBoolean("radio_resume", true).apply();
@@ -229,11 +243,15 @@ public class RadioService extends Service {
             session.setCallback(new android.media.session.MediaSession.Callback() {
                 @Override
                 public void onPause() {
-                    shutdown();
+                    // The system or a remote key paused it: step aside, but stay "on" for a fresh start.
+                    yielded = true;
+                    log(RadioService.this, "media pause");
+                    shutdown(false);
                 }
 
                 @Override
                 public void onStop() {
+                    log(RadioService.this, "media stop");
                     shutdown();
                 }
             });
@@ -294,6 +312,7 @@ public class RadioService extends Service {
                 // Another app is playing sound now (a video, music): the radio steps aside. It is still "on" for a
                 // fresh start of the app (see resumeIfCutOff), only not for the rest of this run.
                 yielded = true;
+                log(this, "focus lost");
                 shutdown(false);
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
@@ -429,6 +448,7 @@ public class RadioService extends Service {
     public void onDestroy() {
         // Killed by the system: leave nothing playing and tell the screen.
         if (state != OFF) {
+            log(this, "service destroyed while playing");
             wanted = false;
             handler.removeCallbacksAndMessages(null);
             release();

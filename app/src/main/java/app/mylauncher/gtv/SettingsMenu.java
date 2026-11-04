@@ -221,7 +221,8 @@ final class SettingsMenu {
     private static void about(Context c) {
         new Menu.Builder(c)
             .setTitle(R.string.menu_about)
-            .setMessage(R.string.about_text)
+            .setMessage(c.getString(R.string.about_text) + "\n\nالراديو (تشخيص):\n"
+                + c.getSharedPreferences("magiic", Context.MODE_PRIVATE).getString("radio_log", "لا أحداث بعد"))
             .setPositiveButton(android.R.string.ok, null)
             .show();
     }
