@@ -181,7 +181,9 @@ final class Reminders {
     static long next(Context c, Item it, long after) {
         if (!it.enabled) return -1;
         int adj = Hijri.adjust(c);
-        for (int d = 0; d <= LOOK_AHEAD_DAYS; d++) {
+        // The occasions are spread over the year, so they look further ahead than the weekly and monthly ones.
+        int limit = it.kind == OCCASION ? 400 : LOOK_AHEAD_DAYS;
+        for (int d = 0; d <= limit; d++) {
             Calendar show = Calendar.getInstance();
             show.setTimeInMillis(after);
             show.add(Calendar.DAY_OF_MONTH, d);
