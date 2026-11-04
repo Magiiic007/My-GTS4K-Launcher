@@ -223,9 +223,9 @@ final class Reminders {
     private static final int[] OCC_NAME = {R.string.occ_n_ramadan, R.string.occ_n_fitr, R.string.occ_n_arafa,
         R.string.occ_n_adha, R.string.occ_n_newyear, R.string.occ_n_hijja10, R.string.occ_n_tasua,
         R.string.occ_n_ashura, R.string.occ_n_last10};
-    /** How many days ahead each occasion starts to show on the board: Ramadan three months, the others 40 days. */
+    /** How many days ahead each occasion starts to show on the board: Ramadan 30 days, the others 10 days. */
     private static int window(int occ) {
-        return occ == 0 ? 92 : 40;
+        return occ == 0 ? 30 : 10;
     }
 
     static String occName(Context c, int occ) {
