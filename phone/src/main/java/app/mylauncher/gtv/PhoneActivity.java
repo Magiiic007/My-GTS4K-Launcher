@@ -128,6 +128,8 @@ public class PhoneActivity extends Activity {
 
     /** Royal is the day look and Mihrab the night look: they follow the phone's own light/dark setting. */
     private int lookNow() {
+        int forced = sp == null ? -1 : sp.getInt("look_force", -1);
+        if (forced == 0 || forced == 1) return forced;
         int night = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         return night == Configuration.UI_MODE_NIGHT_YES ? 1 : 0;
     }
@@ -2371,6 +2373,20 @@ public class PhoneActivity extends Activity {
         title("أزرار التجربة", true);
         TextView n = tv("هذه الأزرار مؤقتة وستُحذف بعد انتهاء التجربة.", 12, dim, false);
         add(n, 4);
+        section("الشكل");
+        final int forced = sp.getInt("look_force", -1);
+        row("تبديل الشكل للتجربة", forced == 0 ? "نهاري (مفروض)" : forced == 1 ? "ليلي (مفروض)" : "تلقائي بحسب وضع الهاتف", "تبديل",
+            new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int next = forced == -1 ? 0 : forced == 0 ? 1 : -1;
+                    sp.edit().putInt("look_force", next).apply();
+                    look = lookNow();
+                    palette();
+                    root();
+                    build();
+                }
+            });
         section("الأذان والإقامة");
         row("تشغيل الأذان الآن", "اقلب الهاتف على وجهه لإيقافه", "تشغيل", testAdhan(PrayerCalc.ASR, false));
         row("أذان الفجر الآن", null, "تشغيل", testAdhan(PrayerCalc.FAJR, false));
