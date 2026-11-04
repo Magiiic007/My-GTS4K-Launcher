@@ -323,7 +323,7 @@ public class RadioService extends Service {
                 | android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT | android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
             .setState(android.media.session.PlaybackState.STATE_PLAYING, 0, 1f).build());
         session.setActive(true);
-        boolean arabic = "ar".equals(Locale.getDefault().getLanguage());
+        boolean arabic = true; // the phone is Arabic only
         android.app.PendingIntent stop = android.app.PendingIntent.getService(this, 41,
             new Intent(this, RadioService.class).setAction(ACTION_STOP),
             android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
