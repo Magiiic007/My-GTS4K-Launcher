@@ -138,6 +138,22 @@ public class RadioService extends Service {
         return Math.max(0, Math.min(STATIONS.length - 1, i));
     }
 
+    /** True when the radio was on and nobody stopped it (so a force stop or an update cut it off). */
+    static boolean shouldResume(Context c) {
+        return c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("radio_resume", false);
+    }
+
+    /** The home screen calls this: bring the radio back if it was cut off rather than stopped. */
+    static void resumeIfCutOff(Context c) {
+        if (state == OFF && shouldResume(c)) {
+            try {
+                play(c, lastStation(c));
+            } catch (RuntimeException ignored) {
+                // Not allowed to start right now; the radio button still works.
+            }
+        }
+    }
+
     static void stop(Context c) {
         if (state == OFF) return;
         c.startService(new Intent(c, RadioService.class).setAction(ACTION_STOP));
@@ -173,7 +189,8 @@ public class RadioService extends Service {
             return START_NOT_STICKY;
         }
         stationIndex = Math.max(0, Math.min(STATIONS.length - 1, intent.getIntExtra("station", 0)));
-        getSharedPreferences("magiic", MODE_PRIVATE).edit().putInt("radio_station", stationIndex).apply();
+        getSharedPreferences("magiic", MODE_PRIVATE).edit().putInt("radio_station", stationIndex)
+            .putBoolean("radio_resume", true).apply();
         goForeground();
         wanted = true;
         failures = 0;
@@ -336,6 +353,8 @@ public class RadioService extends Service {
 
     /** Stop for good: the listener asked, or another app took the audio. */
     private void shutdown() {
+        // Stopped on purpose (or another app took the sound): do not bring it back on its own.
+        getSharedPreferences("magiic", MODE_PRIVATE).edit().putBoolean("radio_resume", false).apply();
         wanted = false;
         handler.removeCallbacksAndMessages(null);
         release();

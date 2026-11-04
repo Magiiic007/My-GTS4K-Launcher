@@ -4,19 +4,25 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-/** After a restart or an app update the system forgets our alarm; set it again. */
+/**
+ * The system forgets our alarms after a restart, an app update, or when the clock or time zone is changed: set them
+ * again. A restart brings the radio back; an update brings it back too if it was playing before.
+ */
 public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context c, Intent i) {
         Scheduler.scheduleNext(c);
         Reminders.scheduleNext(c);
-        // Only a real start of the device brings the radio back, not an app update. It plays the last station
-        // (the Cairo one the first time); if the network isn't ready yet it keeps retrying by itself.
-        if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) {
+        String action = i.getAction();
+        // A real start of the device plays the last station (the Cairo one the first time); if the network isn't ready
+        // yet it keeps retrying by itself. An update brings it back only if it was playing when the update came.
+        boolean boot = Intent.ACTION_BOOT_COMPLETED.equals(action);
+        boolean update = Intent.ACTION_MY_PACKAGE_REPLACED.equals(action);
+        if (boot || (update && RadioService.shouldResume(c))) {
             try {
                 RadioService.play(c, RadioService.lastStation(c));
             } catch (RuntimeException e) {
-                // Android refused to start it from the background; the radio starts from its button instead.
+                // Android refused to start it from the background; the home screen starts it when it opens.
             }
         }
     }

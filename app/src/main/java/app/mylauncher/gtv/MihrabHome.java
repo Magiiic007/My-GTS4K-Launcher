@@ -51,7 +51,7 @@ final class MihrabHome {
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     final TextView weather, radio, notice;
-    private final TextView clock, ampm, dateLine, hijriLine, verse, nextName, countdown, nextInfo;
+    private final TextView clock, ampm, dateLine, hijriLine, verse, verseRef, nextName, countdown, nextInfo;
     private final TextView[] cardTag = new TextView[6], cardName = new TextView[6], cardTime = new TextView[6];
     private final View[] card = new View[6];
     private final FrameLayout favBox, moreBox;
@@ -261,11 +261,13 @@ final class MihrabHome {
         // ------------------------------------------------------------ the arch
         final int ax = 869, ay = 84, aw = 430, ah = 641;
         Stage.add(stage, new ArchView(a), ax, ay, ax + aw, ay + ah);
-        verse = tv(a.getString(R.string.mih_verse), 25, GOLD, false, true, Gravity.CENTER);
+        verse = tv("", 25, GOLD, false, true, Gravity.CENTER);
         verse.setLineSpacing(0f, 1.25f);
+        verse.setMaxLines(4);
+        verse.setAutoSizeTextTypeUniformWithConfiguration(14, 25, 1, TypedValue.COMPLEX_UNIT_PX);
         Stage.add(stage, verse, ax + 60, ay + 110, ax + aw - 60, ay + 216);
-        Stage.add(stage, tv(a.getString(R.string.mih_verse_ref), 15, DIM, false, false, Gravity.CENTER),
-            ax + 140, ay + 218, ax + aw - 140, ay + 242);
+        verseRef = tv("", 15, DIM, false, false, Gravity.CENTER);
+        Stage.add(stage, verseRef, ax + 120, ay + 218, ax + aw - 120, ay + 242);
         View rule = new View(a);
         rule.setBackgroundColor(Color.parseColor("#59E0B960"));
         Stage.add(stage, rule, ax + 150, ay + 252, ax + aw - 150, ay + 253);
@@ -450,6 +452,12 @@ final class MihrabHome {
         lastDay = key;
         cacheMinute = -1;
         ramadan = ramadanState(today);
+        // One complete verse a day (Tanzil Uthmani text, see res/values/arrays.xml).
+        String[] vt = a.getResources().getStringArray(R.array.verse_text);
+        String[] vr = a.getResources().getStringArray(R.array.verse_ref);
+        int vi = (today.get(Calendar.YEAR) * 366 + today.get(Calendar.DAY_OF_YEAR)) % vt.length;
+        verse.setText(vt[vi]);
+        verseRef.setText(vr[vi]);
         String where = city == null ? "" : " · " + city.name(isArabic());
         if (isArabic()) {
             dateLine.setText(Hijri.weekdayAr(today) + "، " + Hijri.gregorianAr(today));

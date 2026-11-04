@@ -272,4 +272,16 @@
     <string name="radio_group_reciters">Reciters</string>
     <string name="iqama_minutes">Iqama in %1$d min</string>
     <string name="dhikr_label">Remember Allah</string>
+    <string name="occ_hijja10">First ten days of Dhul Hijja</string>
+    <string name="occ_hijja10_msg">The ten days have begun: good deeds in them are most beloved to Allah. Remember Allah often and fast if you can</string>
+    <string name="occ_tasua">Tasu\'a</string>
+    <string name="occ_tasua_msg">The 9th of Muharram: fasting it with Ashura is recommended</string>
+    <string name="occ_ashura">Day of Ashura</string>
+    <string name="occ_ashura_msg">Fasting Ashura expiates the previous year, God willing</string>
+    <string name="occ_last10">Last ten nights of Ramadan</string>
+    <string name="occ_last10_msg">Tonight the last ten nights begin, with Laylat al-Qadr: strive in worship</string>
+    <string name="city_auto">Detect automatically (from the internet)</string>
+    <string name="city_auto_wait">Looking for your city...</string>
+    <string name="city_auto_none">No Egyptian or Saudi city found near this connection. Choose it from the list</string>
+    <string name="city_auto_done">Your city was set to %1$s</string>
 </resources>

@@ -85,6 +85,7 @@ public class MainActivity extends Activity {
     };
     private LinearLayout settingsList;
     private MihrabHome mih;
+    private boolean cityTried;
     private ImageView art;
     private long weatherAt;
     private PrayerBoard board;
@@ -532,6 +533,11 @@ public class MainActivity extends Activity {
             return;
         }
         loadApps();
+        RadioService.resumeIfCutOff(this);
+        if (selectedCity() == null && !cityTried) {
+            cityTried = true;
+            autoCity(false);
+        }
         // The weather is not fetched again each time the home screen comes back: only when it is 30 minutes old.
         handler.removeCallbacks(weatherTick);
         long age = System.currentTimeMillis() - weatherAt;
@@ -567,6 +573,11 @@ public class MainActivity extends Activity {
 
     private void resumeMihrab() {
         loadApps();
+        RadioService.resumeIfCutOff(this);
+        if (selectedCity() == null && !cityTried) {
+            cityTried = true;
+            autoCity(false);
+        }
         handler.removeCallbacks(weatherTick);
         long age = System.currentTimeMillis() - weatherAt;
         handler.postDelayed(weatherTick, weatherAt == 0L || age >= WEATHER_EVERY_MS ? 0L : WEATHER_EVERY_MS - age);
@@ -763,16 +774,48 @@ public class MainActivity extends Activity {
 
     /** Step 1 of choosing a city: the country. */
     void chooseCountry() {
-        String[] countries = {getString(R.string.egypt), getString(R.string.saudi)};
+        String[] countries = {getString(R.string.city_auto), getString(R.string.egypt), getString(R.string.saudi)};
         new Menu.Builder(this)
             .setTitle(R.string.choose_country)
             .setItems(countries, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
-                    chooseCity(which == 0 ? Cities.EGYPT : Cities.SAUDI);
+                    if (which == 0) autoCity(true);
+                    else chooseCity(which == 1 ? Cities.EGYPT : Cities.SAUDI);
                 }
             })
+            .setNegativeButton(R.string.close, null)
             .show();
+    }
+
+    /** Picks the nearest city from the TV's internet address; says so, or says why not. */
+    private void autoCity(final boolean tell) {
+        if (tell) Toast.makeText(this, R.string.city_auto_wait, Toast.LENGTH_SHORT).show();
+        AutoCity.find(new AutoCity.Callback() {
+            @Override
+            public void found(final Cities.City city) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (city == null) {
+                            if (tell) Toast.makeText(MainActivity.this, R.string.city_auto_none, Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        applyCity(city);
+                        Toast.makeText(MainActivity.this, getString(R.string.city_auto_done, city.name(isArabic())),
+                            Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        });
+    }
+
+    private void applyCity(Cities.City city) {
+        prefs().edit().putString("city", city.key()).apply();
+        loadWeather();
+        Scheduler.scheduleNext(MainActivity.this);
+        refreshBoard();
+        refreshBoardDates();
     }
 
     /** Step 2: the city, listed alphabetically in the TV's language. */
@@ -794,11 +837,7 @@ public class MainActivity extends Activity {
             .setItems(names, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
-                    prefs().edit().putString("city", sorted.get(which).key()).apply();
-                    loadWeather();
-                    Scheduler.scheduleNext(MainActivity.this);
-                    refreshBoard();
-                    refreshBoardDates();
+                    applyCity(sorted.get(which));
                 }
             })
             .show();

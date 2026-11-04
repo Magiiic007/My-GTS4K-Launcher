@@ -272,4 +272,16 @@
     <string name="radio_group_reciters">القرّاء</string>
     <string name="iqama_minutes">الإقامة بعد %1$d د</string>
     <string name="dhikr_label">اذكر الله</string>
+    <string name="occ_hijja10">العشر من ذي الحجة</string>
+    <string name="occ_hijja10_msg">بدأت أيام العشر، والعمل الصالح فيها أحب إلى الله، فأكثروا من الذكر والتكبير والصيام</string>
+    <string name="occ_tasua">تاسوعاء</string>
+    <string name="occ_tasua_msg">اليوم التاسع من المحرم، يُستحب صيامه مع عاشوراء</string>
+    <string name="occ_ashura">يوم عاشوراء</string>
+    <string name="occ_ashura_msg">صيام عاشوراء يكفّر السنة الماضية بإذن الله</string>
+    <string name="occ_last10">العشر الأواخر من رمضان</string>
+    <string name="occ_last10_msg">تبدأ الليلة العشر الأواخر وفيها ليلة القدر، فاجتهدوا في العبادة</string>
+    <string name="city_auto">تحديد تلقائي (من الإنترنت)</string>
+    <string name="city_auto_wait">جارٍ البحث عن مدينتك...</string>
+    <string name="city_auto_none">لم أجد مدينة مصرية أو سعودية قريبة من هذا الاتصال، اختر من القائمة</string>
+    <string name="city_auto_done">تم اختيار مدينة %1$s</string>
 </resources>

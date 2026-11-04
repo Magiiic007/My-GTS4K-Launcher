@@ -197,9 +197,11 @@ final class Reminders {
     }
 
     private static final int[] OCC_TITLE = {R.string.occ_ramadan, R.string.occ_fitr, R.string.occ_arafa,
-        R.string.occ_adha, R.string.occ_newyear};
+        R.string.occ_adha, R.string.occ_newyear, R.string.occ_hijja10, R.string.occ_tasua, R.string.occ_ashura,
+        R.string.occ_last10};
     private static final int[] OCC_MSG = {R.string.occ_ramadan_msg, R.string.occ_fitr_msg, R.string.occ_arafa_msg,
-        R.string.occ_adha_msg, R.string.occ_newyear_msg};
+        R.string.occ_adha_msg, R.string.occ_newyear_msg, R.string.occ_hijja10_msg, R.string.occ_tasua_msg,
+        R.string.occ_ashura_msg, R.string.occ_last10_msg};
 
     /** Which occasion a Hijri date {year, month, day} is (index into the lists above), or -1. */
     static int occasion(int[] h) {
@@ -208,6 +210,10 @@ final class Reminders {
         if (h[1] == 12 && h[2] == 9) return 2;
         if (h[1] == 12 && h[2] == 10) return 3;
         if (h[1] == 1 && h[2] == 1) return 4;
+        if (h[1] == 12 && h[2] == 1) return 5;
+        if (h[1] == 1 && h[2] == 9) return 6;
+        if (h[1] == 1 && h[2] == 10) return 7;
+        if (h[1] == 9 && h[2] == 20) return 8;
         return -1;
     }
 
