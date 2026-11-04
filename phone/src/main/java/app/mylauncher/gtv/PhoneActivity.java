@@ -63,7 +63,7 @@ import java.util.Locale;
  */
 public class PhoneActivity extends Activity {
     private static final String P = "magiic";
-    private static final int REQ_NOTIF = 10, REQ_LOC = 11;
+    private static final int REQ_NOTIF = 10, REQ_LOC = 11, REQ_SAVE = 21, REQ_LOAD = 22;
 
     // ---------------------------------------------------------------- state
     private final Handler h = new Handler(Looper.getMainLooper());
@@ -1229,6 +1229,10 @@ public class PhoneActivity extends Activity {
             aboutPage();
             return;
         }
+        if ("backup".equals(sub)) {
+            backupPage();
+            return;
+        }
         title("الإعدادات", false);
         section("الشكل");
         final int forced = sp.getInt("look_force", -1);
@@ -1264,7 +1268,76 @@ public class PhoneActivity extends Activity {
                 PhoneUpdater.check(PhoneActivity.this);
             }
         });
+        row("نسخة احتياطية", "احفظ إعداداتك وأذكارك في ملف، واستعدها بعد أي حذف", "›", go("backup"));
         row("عن التطبيق", "المصادر والتشخيص", "›", go("about"));
+    }
+
+    private void backupPage() {
+        title("نسخة احتياطية", true);
+        add(tv("يحفظ كل ما ضبطته في ملف واحد: المدينة، إعدادات الأذان والإقامة والتذكيرات، الأذكار التي أضفتها أو عدّلتها، قائمة الأذكار فوق التطبيقات، العدّادات، والشكل. احفظ الملف في مكان خارج التطبيق (التنزيلات أو Drive أو أرسله لنفسك)، فيبقى حتى لو حذفت التطبيق.", 13, dim, false), 4);
+        add(button("حفظ نسخة احتياطية", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                    .setType("application/json")
+                    .putExtra(Intent.EXTRA_TITLE, "salat-khair-" + new SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(new Date()) + ".json");
+                try {
+                    startActivityForResult(i, REQ_SAVE);
+                } catch (RuntimeException e) {
+                    toast("تعذّر فتح اختيار الملفات");
+                }
+            }
+        }), 12);
+        add(button("استعادة من نسخة", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
+                try {
+                    startActivityForResult(i, REQ_LOAD);
+                } catch (RuntimeException e) {
+                    toast("تعذّر فتح اختيار الملفات");
+                }
+            }
+        }), 8);
+        add(tv("الاستعادة تستبدل إعداداتك الحالية بما في الملف. بعد التثبيت على هاتف جديد أو بعد حذف التطبيق: ثبّته، ثم «استعادة من نسخة».", 12, dim, false), 10);
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (res != RESULT_OK || data == null || data.getData() == null) return;
+        android.net.Uri u = data.getData();
+        try {
+            if (req == REQ_SAVE) {
+                java.io.OutputStream o = getContentResolver().openOutputStream(u, "wt");
+                o.write(Backup.export(this).getBytes("UTF-8"));
+                o.close();
+                toast("تم حفظ النسخة الاحتياطية");
+            } else if (req == REQ_LOAD) {
+                java.io.InputStream in = getContentResolver().openInputStream(u);
+                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+                in.close();
+                int k = Backup.restore(this, bo.toString("UTF-8"));
+                if (k < 0) {
+                    toast("هذا الملف ليس نسخة من هذا التطبيق");
+                    return;
+                }
+                PrayerCalc.configure(this);
+                Scheduler.scheduleNext(this);
+                Reminders.scheduleNext(this);
+                OverlayService.sync(this);
+                PrayerNote.refresh(this);
+                toast("تمت الاستعادة (" + k + " إعداد)");
+                occDay = "";
+                weather = "";
+                recreate();
+            }
+        } catch (Exception e) {
+            toast("تعذّر: " + e.getClass().getSimpleName());
+        }
     }
 
     private void aboutPage() {
