@@ -230,9 +230,11 @@ public class PhoneActivity extends Activity {
         if (sub != null) {
             if (sub.equals("flip")) stopFlipTest();
             sub = backTarget(sub);
+            backNav = true;
             build();
         } else if (tab != 0) {
             tab = 0;
+            backNav = true;
             build();
         } else {
             super.onBackPressed();
@@ -421,8 +423,17 @@ public class PhoneActivity extends Activity {
     }
 
     // ---------------------------------------------------------------- tabs
+    private final HashMap<String, Integer> savedScroll = new HashMap<>();
+    private String lastKey;
+    private boolean backNav;
+    private boolean toTop;
+
     private void build() {
         palette();
+        String key = tab + ":" + sub;
+        if (lastKey != null) savedScroll.put(lastKey, scroll.getScrollY());
+        final boolean samePage = key.equals(lastKey);
+        lastKey = key;
         clockTv = apTv = nameTv = cdTv = altTv = iqLabel = iqValue = weatherTv = null;
         body.removeAllViews();
         if (tab != 9) qiblaStop();
@@ -447,7 +458,23 @@ public class PhoneActivity extends Activity {
             e.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
             add(e, 10);
         }
+        int y = 0;
+        if (!toTop && (samePage || backNav)) {
+            Integer v = savedScroll.get(key);
+            if (v != null) y = v;
+        }
+        toTop = false;
+        backNav = false;
+        final int fy = y;
         scroll.scrollTo(0, 0);
+        if (fy > 0) {
+            scroll.post(new Runnable() {
+                @Override
+                public void run() {
+                    scroll.scrollTo(0, fy);
+                }
+            });
+        }
         try {
             tick();
         } catch (RuntimeException ignored) {
@@ -1617,6 +1644,32 @@ public class PhoneActivity extends Activity {
                 title(cat.name, true);
                 totalLine();
                 final List<Adhkar.Entry> es = Adhkar.entries(this, cat);
+                boolean allInfo = !es.isEmpty();
+                for (Adhkar.Entry x : es) allInfo &= x.info;
+                if (allInfo) {
+                    // a chapter of hadiths: cards to read, like "أحاديث بشرحها"; nothing to count
+                    if (totTv != null) totTv.setVisibility(View.GONE);
+                    for (Adhkar.Entry x : es) {
+                        LinearLayout c = vbox();
+                        c.setBackground(shape(card, line, 16));
+                        c.setPadding(dp(14), dp(12), dp(14), dp(12));
+                        if (!x.pre.isEmpty()) {
+                            TextView pn = tv(x.pre, 12, gold, true);
+                            pn.setLineSpacing(0, 1.3f);
+                            c.addView(pn, lp(-1, -2, 0));
+                        }
+                        TextView t = tv(x.text, 18, cream, false);
+                        t.setLineSpacing(0, 1.35f);
+                        c.addView(t, lp(-1, -2, x.pre.isEmpty() ? 0 : 6));
+                        if (!x.post.isEmpty()) {
+                            TextView pn = tv(x.post, 13, dim, false);
+                            pn.setLineSpacing(0, 1.3f);
+                            c.addView(pn, lp(-1, -2, 6));
+                        }
+                        add(c, 8);
+                    }
+                    return;
+                }
                 if (editCat) {
                     catEdit(cat, es);
                     return;
@@ -1672,7 +1725,10 @@ public class PhoneActivity extends Activity {
                             Adhkar.bump(PhoneActivity.this);
                             refreshTotal();
                             done.put(key, left[0]);
-                            if (left[0] == 0) build(); // the finished one disappears and the next is at the top
+                            if (left[0] == 0) {
+                                toTop = true; // the finished one disappears and the next is at the top
+                                build();
+                            }
                             else ct.setText(left[0] + " / " + total);
                         }
                     });
@@ -1680,14 +1736,6 @@ public class PhoneActivity extends Activity {
                 }
                 if (shown == 0) {
                     add(tv("أتممت هذا الباب، تقبّل الله منك.", 17, gold, true), 16);
-                    final Adhkar.Category cc = cat;
-                    row("إعادة الباب من أوله", null, "↺", new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            clearDone(cc.id);
-                            build();
-                        }
-                    });
                 } else {
                     add(tv("اضغط على الذكر لتعدّه. المصدر: حصن المسلم.", 12, dim, false), 10);
                 }

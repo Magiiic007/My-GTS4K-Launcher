@@ -160,6 +160,14 @@ for c in data:
     items = [x for x in items if x['text']]
     cats.append({'id': c['id'], 'category': ws(c['category']), 'items': items})
 
+# one hadith that the book splits in two ("... وفي زيادة: ...") reads as one
+for c in cats:
+    if c['id'] == 131 and len(c['items']) == 2:
+        a, b = c['items']
+        a['text'] = a['text'].rstrip() + ' ' + b['text'].strip()
+        a['post'] = ''
+        c['items'] = [a]
+
 # hadiths and explanations: shown small and with nothing to count
 INFO_CHAPTERS = {50, 107, 108, 129, 130, 131, 132}
 INFO_ITEMS = {(52, 1), (88, 1), (102, 1), (116, 1), (120, 1), (123, 1), (84, 1), (51, 2), (44, 1), (110, 1), (111, 1), (113, 1), (74, 1)}
