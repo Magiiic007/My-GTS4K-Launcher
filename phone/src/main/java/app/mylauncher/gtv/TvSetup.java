@@ -214,7 +214,11 @@ final class TvSetup {
     private static final java.util.concurrent.ExecutorService IO = java.util.concurrent.Executors.newCachedThreadPool();
 
     /** Runs one command on the TV and returns what it printed; gives up after 25 seconds instead of waiting forever. */
-    static String sh(final Context c, final String cmd) throws Exception {
+    static String sh(Context c, String cmd) throws Exception {
+        return sh(c, cmd, 25);
+    }
+
+    static String sh(final Context c, final String cmd, int secs) throws Exception {
         java.util.concurrent.Future<String> f = IO.submit(new java.util.concurrent.Callable<String>() {
             @Override
             public String call() throws Exception {
@@ -222,7 +226,7 @@ final class TvSetup {
             }
         });
         try {
-            return f.get(25, TimeUnit.SECONDS);
+            return f.get(secs, TimeUnit.SECONDS);
         } catch (java.util.concurrent.TimeoutException e) {
             f.cancel(true);
             throw new java.io.IOException("انتهت مهلة أمر على التلفزيون: " + (cmd.length() > 60 ? cmd.substring(0, 60) + "…" : cmd));
@@ -375,6 +379,20 @@ final class TvSetup {
         } catch (InterruptedException ignored) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /**
+     * Listens on the TV for 18 seconds while the user presses the special remote buttons, and reports what each press
+     * tried to start (from the system log) and the raw key names (from the input devices).
+     */
+    static void keyProbe(Context c, Say say) throws Exception {
+        say.say("اضغط الآن على ريموت التلفزيون: زر المساعد ثم يوتيوب ثم النجمة (كل واحد مرتين بينهم ثانيتين). المدة 18 ثانية…");
+        String ge = "/data/local/tmp/salah_ge.txt";
+        String out = sh(c, "rm -f " + ge + "; logcat -c; (timeout 18 getevent -l > " + ge + " 2>&1 &); "
+            + "timeout 18 logcat -v brief ActivityTaskManager:I *:S | grep -E 'START|cmp=|Force|finish' | cut -c1-230 | head -30; "
+            + "echo '--- الأزرار الخام:'; sleep 1; grep -E 'KEY_|BTN_' " + ge + " | grep DOWN | cut -c1-120 | head -20", 45);
+        out = out.trim();
+        say.say(out.isEmpty() ? "لم يُسجَّل شيء. هل ضغطت الأزرار خلال المدة؟" : out);
     }
 
     /** Stops the guard on the TV (before a deliberate change). */

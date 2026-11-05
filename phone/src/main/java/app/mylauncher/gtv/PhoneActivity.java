@@ -2745,6 +2745,22 @@ public class PhoneActivity extends Activity {
                 });
             }
         });
+        row("تشخيص أزرار الريموت", "اضغط المساعد ويوتيوب والنجمة خلال 18 ثانية ليسجّلها", "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tvRun("بدء التشخيص…", new TvTask() {
+                    @Override
+                    public void run() throws Exception {
+                        TvSetup.keyProbe(PhoneActivity.this, new TvSetup.Say() {
+                            @Override
+                            public void say(String s) {
+                                tvSay(s);
+                            }
+                        });
+                    }
+                });
+            }
+        });
         row("العودة إلى خطوة التثبيت", null, "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
