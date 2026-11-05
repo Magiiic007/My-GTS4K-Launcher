@@ -156,24 +156,72 @@ final class PhoneUpdater {
                 Uri.parse("package:" + a.getPackageName())));
             return;
         }
-        Toast.makeText(a, "جارٍ التحميل...", Toast.LENGTH_LONG).show();
+        // A small window with a progress bar, so the download is seen (the file itself is never kept: it is written
+        // straight into the system's install session, and the system discards it after installing).
+        final android.widget.LinearLayout box = new android.widget.LinearLayout(a);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        box.setLayoutDirection(android.view.View.LAYOUT_DIRECTION_RTL);
+        int pad = Math.round(20 * a.getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad, pad, pad);
+        final android.widget.TextView label = new android.widget.TextView(a);
+        label.setText("جارٍ التحميل…");
+        label.setTextSize(16);
+        box.addView(label);
+        final android.widget.ProgressBar bar = new android.widget.ProgressBar(a, null, android.R.attr.progressBarStyleHorizontal);
+        bar.setMax(100);
+        bar.setIndeterminate(true);
+        box.addView(bar, new android.widget.LinearLayout.LayoutParams(-1, -2));
+        final AlertDialog dlg = new AlertDialog.Builder(a).setTitle("تحديث التطبيق").setView(box).setCancelable(false).create();
+        dlg.show();
+        final long[] last = {0};
         new Thread(new Runnable() {
             @Override
             public void run() {
-                final boolean ok = download(a);
-                if (!ok) {
-                    a.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(a, a.getString(R.string.upd_failed) + why(), Toast.LENGTH_LONG).show();
+                final boolean ok = download(a, new Progress() {
+                    @Override
+                    public void at(final long done, final long total) {
+                        long now = System.currentTimeMillis();
+                        if (now - last[0] < 150 && done < total) return;
+                        last[0] = now;
+                        a.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (total > 0) {
+                                    bar.setIndeterminate(false);
+                                    bar.setProgress((int) (done * 100 / total));
+                                    label.setText(String.format(java.util.Locale.US, "جارٍ التحميل %d%%  (%.1f / %.1f ميجا)",
+                                        done * 100 / total, done / 1048576f, total / 1048576f));
+                                } else {
+                                    label.setText(String.format(java.util.Locale.US, "جارٍ التحميل… %.1f ميجا", done / 1048576f));
+                                }
+                            }
+                        });
+                    }
+                });
+                a.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            dlg.dismiss();
+                        } catch (RuntimeException ignored) {
+                            // the window is already gone
                         }
-                    });
-                }
+                        if (!ok) {
+                            Toast.makeText(a, a.getString(R.string.upd_failed) + why(), Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(a, "تم التحميل، تابع شاشة التثبيت", Toast.LENGTH_LONG).show();
+                        }
+                    }
+                });
             }
         }).start();
     }
 
-    private static boolean download(Activity a) {
+    private interface Progress {
+        void at(long done, long total);
+    }
+
+    private static boolean download(Activity a, Progress pr) {
         err = "";
         HttpURLConnection h = null;
         PackageInstaller.Session session = null;
@@ -201,7 +249,12 @@ final class PhoneUpdater {
             InputStream in = h.getInputStream();
             byte[] buf = new byte[32768];
             int n;
-            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            long done = 0;
+            while ((n = in.read(buf)) > 0) {
+                out.write(buf, 0, n);
+                done += n;
+                pr.at(done, total);
+            }
             session.fsync(out);
             out.close();
             in.close();
