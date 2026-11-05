@@ -70,7 +70,7 @@ final class Widgets {
         } else if (A_ADD.equals(a)) {
             Adhkar.add(c, sel(c));
         } else if (A_NEXT.equals(a)) {
-            sp.edit().putInt("w_tk", (sel(c) + 1) % Adhkar.TASBIH.length).apply();
+            sp.edit().putInt("w_tk", Adhkar.nextTasbih(c, sel(c))).apply();
         } else if (A_RESET.equals(a)) {
             Adhkar.reset(c, sel(c));
         } else if (A_WC.equals(a)) {
@@ -81,8 +81,9 @@ final class Widgets {
     }
 
     private static int sel(Context c) {
-        return Math.max(0, Math.min(Adhkar.TASBIH.length - 1,
+        int i = Math.max(0, Math.min(Adhkar.tasbih(c).length - 1,
             c.getSharedPreferences("magiic", Context.MODE_PRIVATE).getInt("w_tk", 0)));
+        return Adhkar.tasbihAlive(c, i) ? i : 0;
     }
 
     // ---------------------------------------------------------------- prayer tracking
@@ -132,7 +133,7 @@ final class Widgets {
         if (ids.length == 0) return;
         int i = sel(c);
         RemoteViews rv = new RemoteViews(c.getPackageName(), R.layout.widget_tasbih);
-        rv.setTextViewText(R.id.tb_name, Adhkar.TASBIH[i]);
+        rv.setTextViewText(R.id.tb_name, Adhkar.tasbih(c)[i]);
         rv.setTextViewText(R.id.tb_count, String.valueOf(Adhkar.cur(c, i)));
         rv.setTextViewText(R.id.tb_today, "اليوم: " + Adhkar.count(c, i));
         rv.setOnClickPendingIntent(R.id.tb_count, tap(c, 320, A_ADD, 0));

@@ -56,12 +56,17 @@ public class AdhanService extends Service {
     private static final long IQAMA_BEEPS_END_MS = 6500L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    /** The sound is over (it ended, failed or hit its limit): the dua is shown for a while, or everything closes. */
     private final Runnable finisher = new Runnable() {
         @Override
         public void run() {
-            finishAdhan();
+            endOfSound();
         }
     };
+    private boolean duaShown;
+    private boolean firstAdhan;
+    /** How long the dua stays on the screen after the adhan, to be read. */
+    private static final long DUA_MS = 10000L;
 
     private AudioManager audio;
     private AudioFocusRequest focus;
@@ -93,6 +98,7 @@ public class AdhanService extends Service {
         boolean test = intent != null && intent.getBooleanExtra("test", false);
         isIqama = intent != null && intent.getBooleanExtra("iqama", false);
         boolean first = intent != null && intent.getBooleanExtra("first", false);
+        firstAdhan = first;
         hintRes = isIqama ? R.string.iqama_hint : R.string.popup_hint;
 
         Cities.City city = Cities.selected(this);
@@ -235,13 +241,13 @@ public class AdhanService extends Service {
             player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 @Override
                 public void onCompletion(MediaPlayer mp) {
-                    finishAdhan();
+                    endOfSound();
                 }
             });
             player.setOnErrorListener(new MediaPlayer.OnErrorListener() {
                 @Override
                 public boolean onError(MediaPlayer mp, int what, int extra) {
-                    finishAdhan();
+                    endOfSound();
                     return true;
                 }
             });
@@ -308,6 +314,26 @@ public class AdhanService extends Service {
             }
             player = null;
         }
+    }
+
+    /** After the adhan itself (not the iqama): the same popup shows the dua for 10 seconds, then closes. */
+    private void endOfSound() {
+        if (finished || duaShown) return;
+        if (isIqama || firstAdhan || popup == null) {
+            finishAdhan();
+            return;
+        }
+        duaShown = true;
+        handler.removeCallbacksAndMessages(null);
+        releasePlayer();
+        releaseTone();
+        popup.showDua(getString(R.string.dua_title), getString(R.string.dua_text), getString(R.string.dua_hint));
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                finishAdhan();
+            }
+        }, DUA_MS);
     }
 
     /** The adhan is over (or was stopped): popup away, audio back, and the other app carries on. */

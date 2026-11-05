@@ -26,6 +26,8 @@ final class Popup {
     private final Context ctx;
     private final WindowManager windows;
     private View root;
+    private TextView nameView, subView, hintView;
+    private float scale;
 
     private Popup(Context c) {
         ctx = c;
@@ -97,6 +99,7 @@ final class Popup {
         panel.addView(icon, iLp);
 
         TextView name = new TextView(ctx);
+        nameView = name;
         name.setText(title);
         name.setTextColor(Theme.popTitle(ctx));
         name.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
@@ -110,7 +113,8 @@ final class Popup {
         nLp.topMargin = Math.round(232 * sc);
         panel.addView(name, nLp);
 
-        TextView subView = new TextView(ctx);
+        subView = new TextView(ctx);
+        scale = sc;
         subView.setText(sub);
         subView.setTextColor(Theme.popSub(ctx));
         subView.setTextSize(TypedValue.COMPLEX_UNIT_PX, 32 * sc);
@@ -120,7 +124,7 @@ final class Popup {
         sLp.topMargin = Math.round(360 * sc);
         panel.addView(subView, sLp);
 
-        TextView hintView = new TextView(ctx);
+        hintView = new TextView(ctx);
         hintView.setText(hint);
         hintView.setTextColor(Theme.popHint(ctx));
         hintView.setTextSize(TypedValue.COMPLEX_UNIT_PX, 22 * sc);
@@ -143,6 +147,16 @@ final class Popup {
         frame.setFocusable(true);
         frame.setFocusableInTouchMode(true);
         frame.requestFocus();
+    }
+
+    /** Swaps the words in place (used to show the dua after the adhan on the same screen). */
+    void showDua(String title, String text, String hint) {
+        if (root == null || subView == null) return;
+        nameView.setText(title);
+        subView.setText(text);
+        subView.setTextSize(TypedValue.COMPLEX_UNIT_PX, 25 * scale);
+        subView.setLineSpacing(0, 1.2f);
+        hintView.setText(hint);
     }
 
     void hide() {
