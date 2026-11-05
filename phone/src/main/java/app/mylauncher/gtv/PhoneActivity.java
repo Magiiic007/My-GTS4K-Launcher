@@ -88,6 +88,7 @@ public class PhoneActivity extends Activity {
     private FrameLayout drawerLayer;
     private View scrim;
     private ScrollView drawerPanel;
+    private int drawerW;
     private LinearLayout drawerList;
     private boolean drawerOpen;
     private Qibla.Dial dial;
@@ -491,7 +492,9 @@ public class PhoneActivity extends Activity {
         drawerList = vbox();
         drawerList.setPadding(dp(12), dp(30), dp(12), dp(16));
         drawerPanel.addView(drawerList, new ViewGroup.LayoutParams(-1, -2));
-        drawerLayer.addView(drawerPanel, new FrameLayout.LayoutParams(dp(290), -1, Gravity.START));
+        // about half of the screen: 48% of its width, but never narrower than the longest menu name needs
+        drawerW = Math.max(dp(190), Math.round(getResources().getDisplayMetrics().widthPixels * 0.48f));
+        drawerLayer.addView(drawerPanel, new FrameLayout.LayoutParams(drawerW, -1, Gravity.START));
         f.addView(drawerLayer, new FrameLayout.LayoutParams(-1, -1));
         setContentView(f);
     }
@@ -2164,7 +2167,7 @@ public class PhoneActivity extends Activity {
         menuItem("الإعدادات", 3);
         drawerOpen = true;
         drawerLayer.setVisibility(View.VISIBLE);
-        drawerPanel.setTranslationX(dp(290));
+        drawerPanel.setTranslationX(drawerW);
         drawerPanel.animate().translationX(0).setDuration(180);
         scrim.setAlpha(0f);
         scrim.animate().alpha(1f).setDuration(180);
@@ -2174,7 +2177,7 @@ public class PhoneActivity extends Activity {
         if (!drawerOpen) return;
         drawerOpen = false;
         scrim.animate().alpha(0f).setDuration(150);
-        drawerPanel.animate().translationX(dp(290)).setDuration(150).withEndAction(new Runnable() {
+        drawerPanel.animate().translationX(drawerW).setDuration(150).withEndAction(new Runnable() {
             @Override
             public void run() {
                 if (!drawerOpen) drawerLayer.setVisibility(View.GONE);
