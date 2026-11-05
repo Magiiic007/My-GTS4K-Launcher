@@ -173,12 +173,11 @@ final class TvSetup {
     }
 
     // ------------------------------------------------------------ pairing and connecting
+    /** What the screen shows. A flag, because asking the connection itself waits while a pairing or connecting is running. */
+    private static volatile boolean up;
+
     static boolean connected(Context c) {
-        try {
-            return TvAdb.get(c).isConnected();
-        } catch (Exception e) {
-            return false;
-        }
+        return up;
     }
 
     static void pair(Context c, String host, int port, String code) throws Exception {
@@ -189,10 +188,13 @@ final class TvSetup {
         TvAdb m = TvAdb.get(c);
         if (m.isConnected()) m.disconnect();
         m.setTimeout(30, TimeUnit.SECONDS);
+        up = false;
         if (!m.connect(host, port)) throw new java.io.IOException("لم يتم الاتصال");
+        up = true;
     }
 
     static void disconnect(Context c) {
+        up = false;
         try {
             TvAdb.get(c).disconnect();
         } catch (Exception ignored) {
@@ -202,7 +204,13 @@ final class TvSetup {
 
     /** Runs one command on the TV and returns what it printed. */
     static String sh(Context c, String cmd) throws Exception {
-        AdbStream s = TvAdb.get(c).openStream("shell:" + cmd);
+        AdbStream s;
+        try {
+            s = TvAdb.get(c).openStream("shell:" + cmd);
+        } catch (Exception e) {
+            up = false; // the link is gone: the screen goes back to "connect"
+            throw e;
+        }
         try {
             return readAll(s.openInputStream()).replace("\r", "");
         } finally {
@@ -367,27 +375,42 @@ final class TvSetup {
                 + list + "; do pm enable $p; done; cmd package set-home-activity --user 0 " + stockAct
                 + "; input keyevent KEYCODE_HOME' </dev/null >/dev/null 2>&1 &");
         }
-        say.say("تعيين اللانشر كشاشة رئيسية…");
-        sh(c, "cmd role add-role-holder --user 0 android.app.role.HOME " + PKG + " >/dev/null 2>&1");
-        sh(c, "cmd package set-home-activity --user 0 " + PKG + "/.MainActivity");
-        for (String o : off) {
-            say.say("تعطيل " + o);
-            sh(c, "pm disable-user --user 0 " + o);
-        }
-        boolean ok = false;
-        for (int i = 0; i < 3 && !ok; i++) {
-            sh(c, "input keyevent KEYCODE_HOME");
-            sleep(2500);
-            ok = isOurHome(c) && onScreen(c);
-        }
-        if (ok) {
-            sh(c, "touch " + OK);
-            p(c).edit().putBoolean("tv_home", true).apply();
-            say.say("تم: اللانشر هو الشاشة الرئيسية الآن.");
-        } else {
-            say.say("لم يظهر اللانشر كشاشة رئيسية، سأعيد الشاشة الأصلية…");
-            restore(c, say);
-            throw new java.io.IOException("لم يتم التعيين، والشاشة الأصلية رجعت كما كانت");
+        boolean restored = false;
+        try {
+            say.say("تعيين اللانشر كشاشة رئيسية…");
+            sh(c, "cmd role add-role-holder --user 0 android.app.role.HOME " + PKG + " >/dev/null 2>&1");
+            sh(c, "cmd package set-home-activity --user 0 " + PKG + "/.MainActivity");
+            for (String o : off) {
+                say.say("تعطيل " + o);
+                sh(c, "pm disable-user --user 0 " + o);
+            }
+            boolean ok = false;
+            for (int i = 0; i < 3 && !ok; i++) {
+                sh(c, "input keyevent KEYCODE_HOME");
+                sleep(2500);
+                ok = isOurHome(c) && onScreen(c);
+            }
+            if (ok) {
+                sh(c, "touch " + OK);
+                p(c).edit().putBoolean("tv_home", true).apply();
+                say.say("تم: اللانشر هو الشاشة الرئيسية الآن.");
+            } else {
+                say.say("لم يظهر اللانشر كشاشة رئيسية، سأعيد الشاشة الأصلية…");
+                restore(c, say);
+                restored = true;
+                throw new java.io.IOException("لم يتم التعيين، والشاشة الأصلية رجعت كما كانت");
+            }
+        } catch (Exception e) {
+            // Something broke half-way (for example the Wi-Fi dropped): try to put the original back right now; if
+            // that cannot be reached either, the timer on the TV does it.
+            if (!restored) {
+                try {
+                    restore(c, say);
+                } catch (Exception ignored) {
+                    // The timer on the TV is the fallback.
+                }
+            }
+            throw e;
         }
     }
 

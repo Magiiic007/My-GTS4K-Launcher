@@ -69,7 +69,7 @@ public class PhoneActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());
     // setting up the TV from this phone
     private int tvStage = 0;
-    private boolean tvBusy = false;
+    private volatile boolean tvBusy = false;
     private boolean tvSearching = false;
     private String tvAddr = "", tvCode = "";
     private final StringBuilder tvLogText = new StringBuilder();
@@ -187,7 +187,7 @@ public class PhoneActivity extends Activity {
         RadioService.resumeIfCutOff(this);
         OverlayService.sync(this);
         PrayerNote.refresh(this);
-        if (tab == 8 || tab == 6 || (tab == 0 && sub == null)) build();
+        if (tab == 8 || tab == 6 || (tab == 0 && sub == null) || tvVisible()) build();
         if (tab == 9) qiblaStart();
         h.post(ticker);
         if (!autoTried && sp.getBoolean("ph_first", false)
@@ -2676,7 +2676,7 @@ public class PhoneActivity extends Activity {
         }
         section("الشاشة الرئيسية");
         add(tv(TvSetup.homeSet(this) ? "الحالة: اللانشر هو الشاشة الرئيسية ✓" : "الحالة: لم يُعيَّن بعد", 15, gold, true), 4);
-        add(tv("عند التعيين يُعطَّل لانشر Google TV الأصلي ويصير هذا اللانشر هو الشاشة الرئيسية. يتأكد التطبيق من ظهوره، وإن لم يظهر يتراجع كل شيء تلقائياً. وبإمكانك الرجوع للأصلية في أي وقت من هنا.", 13, dim, false), 6);
+        add(tv("عند التعيين يُعطَّل لانشر Google TV الأصلي ويصير هذا اللانشر هو الشاشة الرئيسية. يتأكد التطبيق من ظهوره، وإن لم يظهر يتراجع كل شيء تلقائياً. وبإمكانك الرجوع للأصلية في أي وقت من هنا. (لو حذفت اللانشر من التلفزيون وهو الرئيسي، ارجع للأصلية من هنا أولاً.)", 13, dim, false), 6);
         row("تعيين اللانشر كشاشة رئيسية", null, "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
