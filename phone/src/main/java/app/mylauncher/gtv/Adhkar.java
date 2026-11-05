@@ -46,7 +46,7 @@ final class Adhkar {
     };
     /** A small picture before the name of each group. */
     static final String[] GROUP_ICONS = {
-        "🌅", "🕌", "🚿", "🍽", "💭", "🛡", "⚔", "🤲", "✈", "👨‍👩‍👧", "🤝", "🌧", "📿", "📖"
+        "🌅", "🕌", "🚿", "🍽", "💭", "🛡", "⚔️", "🤲", "✈️", "👨‍👩‍👧", "🤝", "🌧", "📿", "📖"
     };
     private static final int[][] GROUP_IDS = {
         {1, 133, 2, 3, 29, 30, 31},
