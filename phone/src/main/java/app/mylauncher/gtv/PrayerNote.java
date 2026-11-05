@@ -253,7 +253,7 @@ final class PrayerNote {
         boolean iqama = s.hasIqama && now >= s.a;
         long target = iqama ? s.q : s.a;
         String name = PrayerCalc.name(c, s.index, s.friday);
-        String title = iqama ? "باقي على إقامة " + name : "باقي على أذان " + name;
+        String title = (iqama ? "باقي على إقامة " : "باقي على أذان ") + name + " · " + ap(PrayerCalc.time(c, city, target));
 
         RemoteViews rv = new RemoteViews(c.getPackageName(), R.layout.note_prayer);
         rv.setTextViewText(R.id.note_title, title);
