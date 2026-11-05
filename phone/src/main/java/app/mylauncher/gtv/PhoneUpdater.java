@@ -156,23 +156,37 @@ final class PhoneUpdater {
                 Uri.parse("package:" + a.getPackageName())));
             return;
         }
-        // A small window with a progress bar, so the download is seen (the file itself is never kept: it is written
-        // straight into the system's install session, and the system discards it after installing).
+        // A pop-up in the app's own look with a progress bar (the file itself is never kept: it is written straight
+        // into the system's install session, and the system discards it after installing).
+        Pop pop = new Pop(a).title("تحديث التطبيق").cancelable(false);
+        float den = a.getResources().getDisplayMetrics().density;
         final android.widget.LinearLayout box = new android.widget.LinearLayout(a);
         box.setOrientation(android.widget.LinearLayout.VERTICAL);
         box.setLayoutDirection(android.view.View.LAYOUT_DIRECTION_RTL);
-        int pad = Math.round(20 * a.getResources().getDisplayMetrics().density);
-        box.setPadding(pad, pad, pad, pad);
         final android.widget.TextView label = new android.widget.TextView(a);
         label.setText("جارٍ التحميل…");
-        label.setTextSize(16);
+        label.setTextSize(15);
+        label.setTextColor(pop.creamColor());
         box.addView(label);
-        final android.widget.ProgressBar bar = new android.widget.ProgressBar(a, null, android.R.attr.progressBarStyleHorizontal);
-        bar.setMax(100);
-        bar.setIndeterminate(true);
-        box.addView(bar, new android.widget.LinearLayout.LayoutParams(-1, -2));
-        final AlertDialog dlg = new AlertDialog.Builder(a).setTitle("تحديث التطبيق").setView(box).setCancelable(false).create();
-        dlg.show();
+        final android.widget.LinearLayout track = new android.widget.LinearLayout(a);
+        track.setLayoutDirection(android.view.View.LAYOUT_DIRECTION_RTL);
+        android.graphics.drawable.GradientDrawable tb = new android.graphics.drawable.GradientDrawable();
+        tb.setCornerRadius(8 * den);
+        tb.setColor((pop.creamColor() & 0x00FFFFFF) | 0x33000000);
+        track.setBackground(tb);
+        final android.view.View fill = new android.view.View(a);
+        android.graphics.drawable.GradientDrawable fb = new android.graphics.drawable.GradientDrawable();
+        fb.setCornerRadius(8 * den);
+        fb.setColor(pop.goldColor());
+        fill.setBackground(fb);
+        final android.view.View rest = new android.view.View(a);
+        track.addView(fill, new android.widget.LinearLayout.LayoutParams(0, -1, 0f));
+        track.addView(rest, new android.widget.LinearLayout.LayoutParams(0, -1, 100f));
+        android.widget.LinearLayout.LayoutParams tp = new android.widget.LinearLayout.LayoutParams(-1, Math.round(10 * den));
+        tp.topMargin = Math.round(12 * den);
+        tp.bottomMargin = Math.round(6 * den);
+        box.addView(track, tp);
+        final android.app.Dialog dlg = pop.view(box).show();
         final long[] last = {0};
         new Thread(new Runnable() {
             @Override
@@ -187,8 +201,10 @@ final class PhoneUpdater {
                             @Override
                             public void run() {
                                 if (total > 0) {
-                                    bar.setIndeterminate(false);
-                                    bar.setProgress((int) (done * 100 / total));
+                                    float pc = done * 100f / total;
+                                    ((android.widget.LinearLayout.LayoutParams) fill.getLayoutParams()).weight = pc;
+                                    ((android.widget.LinearLayout.LayoutParams) rest.getLayoutParams()).weight = 100f - pc;
+                                    track.requestLayout();
                                     label.setText(String.format(java.util.Locale.US, "جارٍ التحميل %d%%  (%.1f / %.1f ميجا)",
                                         done * 100 / total, done / 1048576f, total / 1048576f));
                                 } else {

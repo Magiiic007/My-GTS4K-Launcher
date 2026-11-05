@@ -88,6 +88,26 @@ final class Pop {
         return this;
     }
 
+    int goldColor() {
+        return gold;
+    }
+
+    int creamColor() {
+        return cream;
+    }
+
+    int dimColor() {
+        return dim;
+    }
+
+    private boolean cancelable = true;
+
+    /** false: the pop-up cannot be closed by tapping outside it or with the back button (for a download in progress). */
+    Pop cancelable(boolean c) {
+        cancelable = c;
+        return this;
+    }
+
     private int dp(int v) {
         return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, a.getResources().getDisplayMetrics()));
     }
@@ -101,7 +121,7 @@ final class Pop {
         return t;
     }
 
-    void show() {
+    Dialog show() {
         final Dialog d = new Dialog(a);
         d.requestWindowFeature(Window.FEATURE_NO_TITLE);
         d.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -196,9 +216,11 @@ final class Pop {
             box.setPadding(dp(18), dp(16), dp(18), dp(14));
         }
         d.setContentView(box);
+        d.setCancelable(cancelable);
         Window w = d.getWindow();
         w.setLayout(a.getResources().getDisplayMetrics().widthPixels - dp(36), ViewGroup.LayoutParams.WRAP_CONTENT);
         w.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         d.show();
+        return d;
     }
 }
