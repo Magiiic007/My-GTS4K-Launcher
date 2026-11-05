@@ -359,6 +359,17 @@ public class PhoneActivity extends Activity {
             closeDrawer();
             return;
         }
+        if (!hist.isEmpty()) {
+            Object[] p = hist.remove(hist.size() - 1);
+            tab = (Integer) p[0];
+            sub = (String) p[1];
+            editCat = (Boolean) p[2];
+            addingOther = (Boolean) p[3];
+            restoring = true;
+            backNav = true;
+            build();
+            return;
+        }
         if (sub != null) {
             sub = backTarget(sub);
             backNav = true;
@@ -614,6 +625,32 @@ public class PhoneActivity extends Activity {
         for (int i = 0; i < Adhkar.TASBIH.length; i++) Adhkar.reset(this, i);
     }
 
+    // ---------------------------------------------------------------- back: one step at a time, on every screen
+    private final ArrayList<Object[]> hist = new ArrayList<>();
+    private Object[] navNow;     // {tab, sub, editing a chapter, adding a city}
+    private boolean restoring;
+
+    private static boolean sameNav(Object[] a, Object[] b) {
+        return a[0].equals(b[0]) && java.util.Objects.equals(a[1], b[1]) && a[2].equals(b[2]) && a[3].equals(b[3]);
+    }
+
+    /** Remembers the screen we came from, so Back returns to exactly it. Called on every build. */
+    private void trackNav() {
+        Object[] cur = {tab, sub, editCat, addingOther};
+        if (navNow != null && !restoring && !sameNav(navNow, cur)) {
+            int at = -1;
+            for (int i = 0; i < hist.size(); i++) if (sameNav(hist.get(i), cur)) at = i;
+            if (at >= 0) {
+                while (hist.size() > at) hist.remove(hist.size() - 1); // came back to a screen we already left
+            } else {
+                hist.add(navNow);
+                if (hist.size() > 40) hist.remove(0);
+            }
+        }
+        restoring = false;
+        navNow = cur;
+    }
+
     private final HashMap<String, Integer> savedScroll = new HashMap<>();
     private String lastKey;
     private boolean backNav;
@@ -628,6 +665,7 @@ public class PhoneActivity extends Activity {
         if (tab == 6 && (lastKey == null || !lastKey.startsWith("6:"))) endTasbihRound();
         lastKey = key;
         if (tab != 3 || sub == null) addingOther = false;
+        trackNav();
         otherTick.clear();
         // The screen stays on while a dhikr (or the tasbih) is open, and goes back to the normal timeout on leaving it.
         boolean reading = (tab == 5 && sub != null && (sub.startsWith("cat:") || sub.equals("hadith"))) || tab == 6;
