@@ -72,7 +72,8 @@ public class PhoneActivity extends Activity {
     private volatile boolean tvBusy = false;
     private boolean tvSearching = false;
     private String tvAddr = "", tvCode = "";
-    private final StringBuilder tvLogText = new StringBuilder();
+    /** The notes of the TV setup, newest first (kept only while the app is open). */
+    private final java.util.ArrayList<String> tvEntries = new java.util.ArrayList<>();
     private LinearLayout tvFound;
     private SharedPreferences sp;
     private int tab;
@@ -2339,9 +2340,8 @@ public class PhoneActivity extends Activity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                tvLogText.append(line).append('\n');
-                if (tvLogText.length() > 4000) tvLogText.delete(0, tvLogText.length() - 3000);
-                sp.edit().putString("tv_log", tvLogText.toString()).apply();
+                tvEntries.add(0, line);
+                while (tvEntries.size() > 25) tvEntries.remove(tvEntries.size() - 1);
                 if (tvVisible()) build();
             }
         });
@@ -2357,11 +2357,17 @@ public class PhoneActivity extends Activity {
     }
 
     private void tvRun(String label, final TvTask t) {
+        tvRun(label, t, false);
+    }
+
+    /** keepLog: the button tests keep their earlier results to compare; every other new task starts a clean list. */
+    private void tvRun(String label, final TvTask t, boolean keepLog) {
         if (tvBusy) {
             toast("انتظر حتى تنتهي الخطوة الحالية");
             return;
         }
         tvBusy = true;
+        if (!keepLog) tvEntries.clear();
         tvSay(label);
         new Thread(new Runnable() {
             @Override
@@ -2439,7 +2445,6 @@ public class PhoneActivity extends Activity {
             st.addView(t, p);
         }
         add(st, 6);
-        if (tvLogText.length() == 0) tvLogText.append(sp.getString("tv_log", ""));
         if (tvBusy) {
             row("خطوة تعمل الآن…", "لو لا تنتهي، اضغط هنا لإلغائها وقطع الاتصال", "إلغاء", new View.OnClickListener() {
                 @Override
@@ -2450,35 +2455,38 @@ public class PhoneActivity extends Activity {
                 }
             });
         }
+        tvLogBlock();
         if (tvStage == 0) tvPrepare();
         else if (tvStage == 1) tvConnect();
         else if (tvStage == 2) tvInstall();
         else tvHome();
-        tvLogBlock();
     }
 
+    /** The notes, newest first, at the top of the page. */
     private void tvLogBlock() {
-        if (tvLogText.length() > 0) {
-            section("ما حدث");
-            TextView lg = tv(tvLogText.toString().trim(), 12, cream, false);
-            lg.setTextIsSelectable(true);
-            lg.setBackground(shape(card, line, 14));
-            lg.setPadding(dp(12), dp(10), dp(12), dp(10));
-            add(lg, 4);
-            row("مسح السجل", null, "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvLogText.setLength(0);
-                    sp.edit().putString("tv_log", "").apply();
-                    build();
-                }
-            });
+        if (tvEntries.isEmpty()) return;
+        section("آخر ما حدث");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < tvEntries.size() && i < 10; i++) {
+            if (i > 0) sb.append("\n— — —\n");
+            sb.append(tvEntries.get(i));
         }
+        TextView lg = tv(sb.toString().trim(), 12, cream, false);
+        lg.setTextIsSelectable(true);
+        lg.setBackground(shape(card, line, 14));
+        lg.setPadding(dp(12), dp(10), dp(12), dp(10));
+        add(lg, 4);
+        row("مسح", null, "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tvEntries.clear();
+                build();
+            }
+        });
     }
 
     private void tvKeysPage() {
         title("اختبار أزرار الريموت", true);
-        if (tvLogText.length() == 0) tvLogText.append(sp.getString("tv_log", ""));
         if (!TvSetup.connected(this)) {
             add(tv("الهاتف غير متصل بالتلفزيون. ارجع واضغط «اتصال» أولاً.", 14, dim, false), 8);
             tvLogBlock();
@@ -2495,15 +2503,7 @@ public class PhoneActivity extends Activity {
                 }
             });
         }
-        int lastRes = tvLogText.lastIndexOf("نتيجة «");
-        if (lastRes >= 0) {
-            section("آخر نتيجة");
-            TextView lr = tv(tvLogText.substring(lastRes).trim(), 12, cream, false);
-            lr.setTextIsSelectable(true);
-            lr.setBackground(shape(card, line, 14));
-            lr.setPadding(dp(12), dp(10), dp(12), dp(10));
-            add(lr, 4);
-        }
+        tvLogBlock();
         section("الأزرار");
         String[] keys = {"المساعد الصوتي", "يوتيوب", "النجمة (المفضلة)", "Netflix", "الرئيسية (Home)", "الرجوع",
             "رفع الصوت", "خفض الصوت", "كتم الصوت", "تشغيل / إيقاف مؤقت", "المدخل (Input)", "القائمة / الإعدادات"};
@@ -2521,7 +2521,7 @@ public class PhoneActivity extends Activity {
                                 }
                             }, k);
                         }
-                    });
+                    }, true);
                 }
             });
         }
@@ -2654,7 +2654,7 @@ public class PhoneActivity extends Activity {
     }
 
     private void tvRefreshFound() {
-        if (tvFound == null || !tvVisible() || tvStage != 1) return;
+        if (tvFound == null || !tvVisible() || tvStage < 1) return;
         tvFound.removeAllViews();
         boolean any = false;
         if (TvSetup.pairHost != null) {
@@ -2708,7 +2708,7 @@ public class PhoneActivity extends Activity {
                 }
                 TvSetup.connect(PhoneActivity.this, TvSetup.connHost, TvSetup.connPort);
                 tvSay("متصل بالتلفزيون ✓ " + TvSetup.info(PhoneActivity.this));
-                tvStage = 2;
+                if (tvStage < 2) tvStage = 2;
             }
         });
     }
@@ -2719,14 +2719,14 @@ public class PhoneActivity extends Activity {
             public void run() throws Exception {
                 TvSetup.connect(PhoneActivity.this, host, port);
                 tvSay("متصل بالتلفزيون ✓ " + TvSetup.info(PhoneActivity.this));
-                tvStage = 2;
+                if (tvStage < 2) tvStage = 2;
             }
         });
     }
 
     private void tvInstall() {
         if (!TvSetup.connected(this)) {
-            tvStage = 1;
+            add(tv("انقطع الاتصال بالتلفزيون. اتصل من جديد (تبقى في نفس الخطوة):", 14, gold, true), 8);
             tvConnect();
             return;
         }
@@ -2760,7 +2760,7 @@ public class PhoneActivity extends Activity {
 
     private void tvHome() {
         if (!TvSetup.connected(this)) {
-            tvStage = 1;
+            add(tv("انقطع الاتصال بالتلفزيون. اتصل من جديد (تبقى في نفس الخطوة):", 14, gold, true), 8);
             tvConnect();
             return;
         }
