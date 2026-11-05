@@ -131,6 +131,7 @@ final class PrayerNote {
 
     /** Redraws the notification, applies or lifts the silence, and sets the alarm for the next change. */
     static void refresh(Context c) {
+        Track.scan(c);
         c = c.getApplicationContext();
         Cities.City city = Cities.selected(c);
         NotificationManager nm = c.getSystemService(NotificationManager.class);

@@ -3535,6 +3535,7 @@ public class PhoneActivity extends Activity {
     /** The missed prayers to make up: a counter for each prayer, + when one is missed and − when it is made up. */
     private void qadaPage() {
         title("قضاء الصلوات", false);
+        Track.scan(this);
         add(tv("عدّاد للصلوات الفائتة. اضغط «+ فاتت» لتسجيل صلاة فاتتك، و«− قضيت» كلما قضيت واحدة. اضغط على الرقم لضبط العدد دفعة واحدة. يُحفظ مع النسخة الاحتياطية.", 12, dim, false), 4);
         final String[] names = {"الفجر", "الظهر", "العصر", "المغرب", "العشاء"};
         int total = 0;
@@ -3542,6 +3543,13 @@ public class PhoneActivity extends Activity {
         TextView tt = tv(total == 0 ? "لا توجد صلوات للقضاء" : "المتبقي للقضاء: " + total + " صلاة", 18, gold, true);
         tt.setGravity(Gravity.CENTER);
         add(tt, 8);
+        int[] nextUp = Track.oldest(this);
+        if (nextUp != null) {
+            TextView nu = tv("التالية للقضاء: " + names[nextUp[1]] + " (" + dayText(nextUp[0]) + ")", 14, cream, true);
+            nu.setGravity(Gravity.CENTER);
+            add(nu, 4);
+        }
+        add(tv("الصلوات التي ينتهي وقتها دون تعليمها تُضاف هنا تلقائيًا، وعند قضائها تُعلَّم في يومها بعلامة ↺.", 12, dim, false), 6);
         for (int i = 0; i < 5; i++) {
             final int idx = i;
             final String key = "qada_" + i;
@@ -3554,7 +3562,19 @@ public class PhoneActivity extends Activity {
                 @Override
                 public void onClick(View v) {
                     int c = sp.getInt(key, 0);
-                    if (c > 0) sp.edit().putInt(key, c - 1).apply();
+                    if (c <= 0) return;
+                    // The make-up prayers that came from the tracking have dates: the oldest is made up first. What was
+                    // added by hand (the count above the dated ones) is older still, and can be made up at any time.
+                    if (c <= Track.pending(PhoneActivity.this, idx)) {
+                        int[] o = Track.oldest(PhoneActivity.this);
+                        if (o != null && o[1] != idx) {
+                            toast("اقضِ أولاً " + names[o[1]] + " الفائتة (" + dayText(o[0]) + ")، فالأقدم يُقضى أولاً");
+                            return;
+                        }
+                        Track.settle(PhoneActivity.this, idx);
+                    }
+                    sp.edit().putInt(key, c - 1).apply();
+                    PrayerNote.refresh(PhoneActivity.this);
                     build();
                 }
             });
@@ -3588,6 +3608,28 @@ public class PhoneActivity extends Activity {
             r.addView(plus);
             add(r, 6);
         }
+        final Calendar fromCal = Track.cal(this, Track.from(this));
+        row("بداية الاحتساب التلقائي", dayText(Track.dayNum(fromCal)) + " (تاريخ أول تشغيل)", "من اليوم", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new Pop(PhoneActivity.this).title("بدء الاحتساب من الآن؟")
+                    .message("لن تُحسب الصلوات التي مضت قبل هذه اللحظة. ما أُضيف إلى العدّاد يبقى كما هو.")
+                    .ok("ابدأ من الآن", new Runnable() {
+                        @Override
+                        public void run() {
+                            Track.setFrom(PhoneActivity.this, System.currentTimeMillis());
+                            build();
+                        }
+                    }).cancel("إلغاء").show();
+            }
+        });
+    }
+
+    /** yyyymmdd as a short readable date. */
+    private String dayText(int num) {
+        Calendar k = Calendar.getInstance(Locale.ENGLISH);
+        k.set(num / 10000, (num / 100) % 100 - 1, num % 100, 12, 0, 0);
+        return Hijri.weekdayAr(k) + " " + Hijri.gregorianAr(k);
     }
 
     private void trackPage() {
@@ -3658,13 +3700,14 @@ public class PhoneActivity extends Activity {
             r.addView(tv(lab, 13, cream, true), new LinearLayout.LayoutParams(0, -2, 1.6f));
             for (int j = 0; j < 5; j++) {
                 boolean on = (b >> j & 1) != 0;
-                TextView t = tv(on ? "✓" : "·", 18, on ? gold : dim, true);
+                boolean late = (Track.madeUp(this, k) >> j & 1) != 0;
+                TextView t = tv(late ? "↺" : on ? "✓" : "·", 18, on ? gold : dim, true);
                 t.setGravity(Gravity.CENTER);
                 r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
             }
             add(r, 3);
         }
-        add(tv("التعديل على الأيام السابقة غير متاح؛ تُعلَّم الصلاة في يومها فقط.", 11, dim, false), 8);
+        add(tv("↺ = صلاة قُضيت لاحقًا من صفحة قضاء الصلوات. التعديل على الأيام السابقة غير متاح؛ تُعلَّم الصلاة في يومها فقط.", 11, dim, false), 8);
     }
 
     private void calendarPage() {
