@@ -97,3 +97,12 @@ jobs:
         with:
           name: play-bundle
           path: phone/build/outputs/bundle/playRelease/*.aab
+
+      - name: Check the Google Play manifest
+        if: steps.play.outcome == 'success'
+        run: |
+          M=$(find phone/build/intermediates -path '*playRelease*' -name AndroidManifest.xml | grep -i merged | head -1)
+          echo "$M"
+          grep -o 'targetSdkVersion="[0-9]*"' "$M"
+          grep -o 'android:name="android.permission[^"]*"' "$M"
+          if grep -q REQUEST_INSTALL_PACKAGES "$M"; then echo "INSTALL PERMISSION STILL THERE"; exit 1; fi
