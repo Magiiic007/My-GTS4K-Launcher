@@ -33,7 +33,7 @@ import java.util.Locale;
  */
 public class AdhanService extends Service {
     private static final String CHANNEL = "adhan";
-    private static final int NOTE_ID = 7;
+    static final int NOTE_ID = 7;
     private static final long MAX_ADHAN_MS = 6L * 60L * 1000L;
     private static final long MAX_FALLBACK_MS = 15L * 1000L;
     private static final long MAX_IQAMA_MS = 60L * 1000L;

@@ -21,6 +21,7 @@ final class DuaPopup {
     private static final Handler H = new Handler(Looper.getMainLooper());
     private static View shown;
     private static WindowManager wm;
+    private static Context appCtx;
 
     private DuaPopup() {
     }
@@ -36,6 +37,7 @@ final class DuaPopup {
     /** Returns false when it cannot be shown (no permission), so the caller can use a notification instead. */
     static boolean show(Context ctx) {
         final Context c = ctx.getApplicationContext();
+        appCtx = c;
         if (!Settings.canDrawOverlays(c)) return false;
         try {
             hide();
@@ -144,5 +146,11 @@ final class DuaPopup {
             }
         }
         shown = null;
+        // its notice goes with it
+        try {
+            if (appCtx != null) appCtx.getSystemService(android.app.NotificationManager.class).cancel(AdhanService.NOTE_ID + 1);
+        } catch (RuntimeException ignored) {
+            // nothing to take down
+        }
     }
 }

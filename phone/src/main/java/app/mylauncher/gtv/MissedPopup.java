@@ -24,6 +24,7 @@ import android.widget.TextView;
 final class MissedPopup {
     private static View shown;
     private static WindowManager wm;
+    private static Context appCtx;
 
     private MissedPopup() {
     }
@@ -49,6 +50,7 @@ final class MissedPopup {
     /** {@code idx} are the missed prayers; {@code day} is a time inside that day (to mark them on the right day). */
     static boolean show(Context ctx, final int[] idx, final String[] names, final String[] times, final long[] at) {
         final Context c = ctx.getApplicationContext();
+        appCtx = c;
         if (!Settings.canDrawOverlays(c)) return false;
         try {
             hide();
@@ -170,5 +172,11 @@ final class MissedPopup {
             }
         }
         shown = null;
+        // its notice goes with it
+        try {
+            if (appCtx != null) appCtx.getSystemService(android.app.NotificationManager.class).cancel(7312);
+        } catch (RuntimeException ignored) {
+            // nothing to take down
+        }
     }
 }
