@@ -179,6 +179,10 @@ final class TvSetup {
     /** What the screen shows. A flag, because asking the connection itself waits while a pairing or connecting is running. */
     private static volatile boolean up;
 
+    static boolean pairingRequired(Throwable e) {
+        return e instanceof io.github.muntashirakon.adb.AdbPairingRequiredException;
+    }
+
     static boolean connected(Context c) {
         return up;
     }

@@ -4,7 +4,7 @@ name: Build APK
 # so it can be downloaded from the phone or the TV with one link.
 on:
   push:
-    branches: [main]
+    branches: [main, play-prep]
   workflow_dispatch:
 
 permissions:
@@ -32,14 +32,14 @@ jobs:
       - name: Build phone
         id: phone
         continue-on-error: true
-        run: ./gradlew :phone:assembleDebug --no-daemon --stacktrace
+        run: ./gradlew :phone:assembleSideloadDebug --no-daemon --stacktrace
 
       - name: Keep the phone APK as a build artifact
         if: steps.phone.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: my-phone-apk
-          path: phone/build/outputs/apk/debug/phone-debug.apk
+          path: phone/build/outputs/apk/sideload/debug/phone-sideload-debug.apk
 
       - name: Keep the APK as a build artifact
         uses: actions/upload-artifact@v4
@@ -48,6 +48,7 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
 
       - name: Publish the APK as release "latest"
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -61,11 +62,11 @@ jobs:
             --notes "versionCode=${VC} versionName=${VN} commit=${GITHUB_SHA::7}"
 
       - name: Publish the phone APK as release "phone-latest"
-        if: steps.phone.outcome == 'success'
+        if: steps.phone.outcome == 'success' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp phone/build/outputs/apk/debug/phone-debug.apk my-phone.apk
+          cp phone/build/outputs/apk/sideload/debug/phone-sideload-debug.apk my-phone.apk
           gh release delete phone-latest --yes --cleanup-tag || true
           # The phone app reads versionCode from these notes to know whether a newer build exists.
           VC=$(grep -oP "versionCode \K[0-9]+" phone/build.gradle)
@@ -73,3 +74,26 @@ jobs:
           gh release create phone-latest my-phone.apk \
             --title "Latest phone build" \
             --notes "versionCode=${VC} versionName=${VN} commit=${GITHUB_SHA::7}"
+
+      # The Google Play bundle (signed with the upload key when its secrets exist).
+      - name: Build the Google Play bundle
+        id: play
+        continue-on-error: true
+        env:
+          UPLOAD_STORE_B64: ${{ secrets.UPLOAD_KEYSTORE_B64 }}
+          UPLOAD_STORE_PASSWORD: ${{ secrets.UPLOAD_STORE_PASSWORD }}
+          UPLOAD_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
+          UPLOAD_KEY_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+        run: |
+          if [ -n "$UPLOAD_STORE_B64" ]; then
+            echo "$UPLOAD_STORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            export UPLOAD_KEYSTORE="$RUNNER_TEMP/upload.jks"
+          fi
+          ./gradlew :phone:bundlePlayRelease --no-daemon --stacktrace
+
+      - name: Keep the Google Play bundle
+        if: steps.play.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: play-bundle
+          path: phone/build/outputs/bundle/playRelease/*.aab

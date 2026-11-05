@@ -161,6 +161,15 @@ public class PhoneActivity extends Activity {
         look = lookNow();
         palette();
         root();
+        if (Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                new android.window.OnBackInvokedCallback() {
+                    @Override
+                    public void onBackInvoked() {
+                        goBack();
+                    }
+                });
+        }
         // Everything is asked for at once on the first run: two separate requests cancel each other.
         if (!sp.getBoolean("ph_first", false)) {
             ArrayList<String> need = new ArrayList<>();
@@ -354,6 +363,11 @@ public class PhoneActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        goBack();
+    }
+
+    /** One step back. Also reached through the back callback, which is what Android 16 calls instead of onBackPressed. */
+    private void goBack() {
         if (splashView != null) return; // the opening screen is not closed by Back
         if (drawerOpen) {
             closeDrawer();
@@ -382,7 +396,7 @@ public class PhoneActivity extends Activity {
             // on the main screen: a second Back within two seconds leaves the app
             long now = android.os.SystemClock.uptimeMillis();
             if (now - lastBackAt < 2000L) {
-                super.onBackPressed();
+                moveTaskToBack(true);
             } else {
                 lastBackAt = now;
                 Toast.makeText(this, "اضغط رجوع مرة أخرى للخروج من التطبيق", Toast.LENGTH_SHORT).show();
@@ -493,6 +507,30 @@ public class PhoneActivity extends Activity {
         scroll.addView(body, new ViewGroup.LayoutParams(-1, -2));
         col.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
         f.addView(col, new FrameLayout.LayoutParams(-1, -1));
+        // From Android 15 the app is drawn under the status and navigation bars: keep the content clear of them.
+        final LinearLayout colRef = col;
+        f.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets w) {
+                int l, t, r, b;
+                if (Build.VERSION.SDK_INT >= 30) {
+                    android.graphics.Insets in = w.getInsets(android.view.WindowInsets.Type.systemBars()
+                        | android.view.WindowInsets.Type.displayCutout());
+                    l = in.left;
+                    t = in.top;
+                    r = in.right;
+                    b = in.bottom;
+                } else {
+                    l = w.getSystemWindowInsetLeft();
+                    t = w.getSystemWindowInsetTop();
+                    r = w.getSystemWindowInsetRight();
+                    b = w.getSystemWindowInsetBottom();
+                }
+                colRef.setPadding(l, t, r, b);
+                if (drawerList != null) drawerList.setPadding(dp(12), dp(30) + t, dp(12), dp(16) + b);
+                return w;
+            }
+        });
         drawerOpen = false;
         drawerLayer = new FrameLayout(this);
         drawerLayer.setVisibility(View.GONE);
@@ -1517,13 +1555,15 @@ public class PhoneActivity extends Activity {
                 }
             });
         section("أخرى");
-        row("تحديث التطبيق", "النسخة " + PhoneUpdater.installedName(this), "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                PhoneUpdater.check(PhoneActivity.this);
-            }
-        });
-        row("اللانشر على التلفزيون", "تثبيته وتعيينه شاشة رئيسية من هذا الهاتف", "›", go("tv"));
+        if (!BuildConfig.PLAY) {
+            row("تحديث التطبيق", "النسخة " + PhoneUpdater.installedName(this), "›", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    PhoneUpdater.check(PhoneActivity.this);
+                }
+            });
+            row("اللانشر على التلفزيون", "تثبيته وتعيينه شاشة رئيسية من هذا الهاتف", "›", go("tv"));
+        }
         row("نسخة احتياطية", "احفظ إعداداتك وأذكارك في ملف، واستعدها بعد أي حذف", "›", go("backup"));
         row("عن التطبيق", "المصادر والتشخيص", "›", go("about"));
     }
@@ -2631,7 +2671,7 @@ public class PhoneActivity extends Activity {
     }
 
     private String tvWhy(Throwable e) {
-        if (e instanceof io.github.muntashirakon.adb.AdbPairingRequiredException) {
+        if (TvSetup.pairingRequired(e)) {
             return "التلفزيون يطلب الاقتران أولاً (اقتران برمز من شاشة التلفزيون)";
         }
         String m = e.getMessage();

@@ -6,7 +6,7 @@ android {
     // The same package as the TV app on purpose: the files shared with it (prayer times, Hijri dates, reminders,
     // radio) are copied in at build time and refer to the generated R of this package.
     namespace 'app.mylauncher.gtv'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId 'app.magiic.phone'
@@ -16,12 +16,46 @@ android {
         versionName '1.02'
     }
 
+    buildFeatures {
+        buildConfig true
+    }
+
+    // Two builds of the same app: "sideload" is the one updated from GitHub (it also sets up the TV and updates itself);
+    // "play" is for Google Play (no installer, no TV setup, targets the newest Android as the store requires).
+    flavorDimensions 'dist'
+    productFlavors {
+        sideload {
+            dimension 'dist'
+            buildConfigField 'boolean', 'PLAY', 'false'
+        }
+        play {
+            dimension 'dist'
+            targetSdk 36
+            buildConfigField 'boolean', 'PLAY', 'true'
+        }
+    }
+
     signingConfigs {
+        // The upload key for Google Play: its file and passwords come from the build environment, never from the repository.
+        if (System.getenv('UPLOAD_KEYSTORE') != null) {
+            upload {
+                storeFile file(System.getenv('UPLOAD_KEYSTORE'))
+                storePassword System.getenv('UPLOAD_STORE_PASSWORD')
+                keyAlias System.getenv('UPLOAD_KEY_ALIAS') ?: 'upload'
+                keyPassword System.getenv('UPLOAD_KEY_PASSWORD')
+            }
+        }
         debug {
             storeFile file('../app/debug.keystore')
             storePassword 'android'
             keyAlias 'androiddebugkey'
             keyPassword 'android'
+        }
+    }
+
+    buildTypes {
+        release {
+            if (System.getenv('UPLOAD_KEYSTORE') != null) signingConfig signingConfigs.upload
         }
     }
 
@@ -85,7 +119,7 @@ dependencies {
     implementation 'androidx.media3:media3-exoplayer:1.4.1'
     implementation 'androidx.media3:media3-exoplayer-hls:1.4.1'
     // Setting up the TV from the phone over wireless debugging (pairing, connecting and running the setup commands).
-    implementation 'com.github.MuntashirAkon:libadb-android:3.1.1'
-    implementation 'com.github.MuntashirAkon:sun-security-android:1.1'
-    implementation 'org.conscrypt:conscrypt-android:2.5.3'
+    sideloadImplementation 'com.github.MuntashirAkon:libadb-android:3.1.1'
+    sideloadImplementation 'com.github.MuntashirAkon:sun-security-android:1.1'
+    sideloadImplementation 'org.conscrypt:conscrypt-android:2.5.3'
 }
