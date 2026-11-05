@@ -50,7 +50,9 @@ final class Raised extends Drawable {
         }
         c.restore();
 
-        // the face: lighter at the top, a little darker at the bottom
+        // the face: lighter at the top, a little darker at the bottom (the paint must be opaque again: its alpha
+        // would otherwise dim the gradient, as it was left almost transparent by the shadow)
+        p.setColor(0xFF000000);
         p.setShader(new LinearGradient(0f, rf.top, 0f, rf.bottom, lighter(fill), fill, Shader.TileMode.CLAMP));
         c.drawPath(path, p);
         p.setShader(null);

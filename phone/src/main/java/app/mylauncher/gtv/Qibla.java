@@ -77,6 +77,7 @@ final class Qibla {
             paint.setColor(0x33000000);
             cv.drawOval(new RectF(cx - u * 1.1f, top + h - u * 0.12f, cx + u * 1.5f, top + h + u * 0.38f), paint);
             if (t > 0.01f) {
+                paint.setColor(0xFF000000); // the paint's alpha would dim the gradient
                 paint.setShader(new android.graphics.RadialGradient(cx, top + u, u * 3.6f,
                     new int[] {((int) (0xAA * t) << 24) | 0x00FFD54A, 0x00FFD54A}, null, android.graphics.Shader.TileMode.CLAMP));
                 cv.drawCircle(cx, top + u, u * 3.6f, paint);
@@ -104,6 +105,7 @@ final class Qibla {
             cv.drawPath(side, paint);
             // front face with a soft vertical shade
             RectF front = new RectF(l, top, m, top + h);
+            paint.setColor(0xFF000000);
             paint.setShader(new android.graphics.LinearGradient(0f, top, 0f, top + h,
                 mix(0xFFA8A8A2, 0xFF2A2A2A, t), mix(0xFF8C8C86, 0xFF0A0A0A, t), android.graphics.Shader.TileMode.CLAMP));
             cv.drawRect(front, paint);
@@ -135,11 +137,12 @@ final class Qibla {
         /** A soft drop shadow under a circle, drawn as a few fading rings. */
         private void dropShadow(Canvas cv, float cx, float cy, float r, float dy) {
             paint.setStyle(Paint.Style.FILL);
-            for (int i = 0; i < 9; i++) {
-                float grow = i * r * 0.012f;
-                paint.setColor(((0x1E - i * 2) << 24));
+            for (int i = 0; i < 6; i++) {
+                float grow = i * r * 0.014f;
+                paint.setColor(((0x0E - i) << 24));
                 cv.drawCircle(cx, cy + dy, r + grow, paint);
             }
+            paint.setColor(0xFF000000);
         }
 
         @Override
@@ -257,6 +260,7 @@ final class Qibla {
             // the centre: a sunken disc (dark at the top edge, light at the bottom) with a cap
             float ci = r * 0.40f;
             paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0xFF000000);
             paint.setShader(new android.graphics.LinearGradient(0f, cy - ci, 0f, cy + ci, 0xFFD6D0BE, 0xFFFFFFFF,
                 android.graphics.Shader.TileMode.CLAMP));
             cv.drawCircle(cx, cy, ci, paint);
@@ -272,6 +276,7 @@ final class Qibla {
             paint.setShader(null);
 
             // a glass-like shine across the upper left of the dial
+            paint.setColor(0xFF000000);
             paint.setShader(new android.graphics.RadialGradient(cx - face * 0.35f, cy - face * 0.55f, face * 0.9f,
                 0x33FFFFFF, 0x00FFFFFF, android.graphics.Shader.TileMode.CLAMP));
             cv.drawCircle(cx, cy, face, paint);
