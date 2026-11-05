@@ -36,7 +36,8 @@ final class MissedPopup {
     private static void pauseMedia(Context c) {
         try {
             AudioManager am = c.getSystemService(AudioManager.class);
-            if (am == null || !am.isMusicActive()) return;
+            // Only other apps' sound: the radio and the reciters in this app are left alone, as the adhan does.
+            if (am == null || RadioService.on() || AdhanService.playing || !am.isMusicActive()) return;
             long t = SystemClock.uptimeMillis();
             am.dispatchMediaKeyEvent(new KeyEvent(t, t, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PAUSE, 0));
             am.dispatchMediaKeyEvent(new KeyEvent(t, t, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PAUSE, 0));

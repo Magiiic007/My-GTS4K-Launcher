@@ -49,7 +49,9 @@ final class Wc {
         if (!on) p(c).edit().remove("qm_next").apply(); // the "establish the prayer" timer starts over, so it does not pop up the moment you come out
         try {
             if (on) {
-                if (RadioService.on()) RadioService.stop(c);
+                boolean radio = RadioService.on();
+                p(c).edit().putBoolean("wc_radio", radio).apply();
+                if (radio) RadioService.stop(c);
                 c.stopService(new android.content.Intent(c, AdhanService.class));
                 DuaPopup.hide();
                 MissedPopup.hide();
@@ -65,6 +67,16 @@ final class Wc {
             Widgets.refresh(c);
         } catch (RuntimeException ignored) {
             // a part that fails to stop does not stop the rest
+        }
+        if (!on && p(c).getBoolean("wc_radio", false)) {
+            // The radio was playing when the mode began: it plays again, from the same station.
+            p(c).edit().putBoolean("wc_radio", false).apply();
+            try {
+                c.startForegroundService(new android.content.Intent(c, RadioService.class)
+                    .setAction("app.mylauncher.gtv.RADIO_PLAY").putExtra("station", RadioService.lastStation(c)));
+            } catch (RuntimeException ignored) {
+                // Android refused to start it from the background (the mode ended by itself): press play
+            }
         }
         if (feedback) {
             try {
