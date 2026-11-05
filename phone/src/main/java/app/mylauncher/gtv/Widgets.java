@@ -18,7 +18,7 @@ final class Widgets {
     static final String A_RESET = "app.mylauncher.gtv.W_RESET";
 
     private static final int GOLD = 0xFFE8B84A;
-    private static final int[] SHOW = {0, -1, 1, 2, 3, 4}; // tile order: Fajr, sunrise, Dhuhr, Asr, Maghrib, Isha
+    private static final int[] SHOW = {0, 1, 2, 3, 4};
 
     private Widgets() {
     }
@@ -82,10 +82,10 @@ final class Widgets {
     }
 
     // ---------------------------------------------------------------- prayer tracking
-    private static final int[] TK_B = {R.id.tk_b0, R.id.tk_b1, R.id.tk_b2, R.id.tk_b3, R.id.tk_b4, R.id.tk_b5};
-    private static final int[] TK_D = {R.id.tk_d0, R.id.tk_d1, R.id.tk_d2, R.id.tk_d3, R.id.tk_d4, R.id.tk_d5};
-    private static final int[] TK_N = {R.id.tk_n0, R.id.tk_n1, R.id.tk_n2, R.id.tk_n3, R.id.tk_n4, R.id.tk_n5};
-    private static final int[] TK_T = {R.id.tk_t0, R.id.tk_t1, R.id.tk_t2, R.id.tk_t3, R.id.tk_t4, R.id.tk_t5};
+    private static final int[] TK_B = {R.id.tk_b0, R.id.tk_b1, R.id.tk_b2, R.id.tk_b3, R.id.tk_b4};
+    private static final int[] TK_D = {R.id.tk_d0, R.id.tk_d1, R.id.tk_d2, R.id.tk_d3, R.id.tk_d4};
+    private static final int[] TK_N = {R.id.tk_n0, R.id.tk_n1, R.id.tk_n2, R.id.tk_n3, R.id.tk_n4};
+    private static final int[] TK_T = {R.id.tk_t0, R.id.tk_t1, R.id.tk_t2, R.id.tk_t3, R.id.tk_t4};
 
     private static void track(Context c, AppWidgetManager m) {
         int[] ids = ids(c, m, TrackWidget.class);
@@ -104,20 +104,9 @@ final class Widgets {
         rv.setTextViewText(R.id.tk_day, String.valueOf(Hijri.of(cal, Hijri.adjust(c))[2]));
         rv.setTextViewText(R.id.tk_hijri, Hijri.hijriAr(Hijri.of(cal, Hijri.adjust(c))));
         rv.setTextViewText(R.id.tk_greg, Hijri.weekdayAr(cal) + "، " + Hijri.gregorianAr(cal));
-        rv.setTextViewText(R.id.tk_count, Track.count(bits) + " / 5");
-        rv.setTextViewText(R.id.tk_city, "📍 " + city.name(true));
-        long rise = PrayerCalc.sunrise(city, now, 0, adj);
-        for (int k = 0; k < 6; k++) {
+        rv.setTextViewText(R.id.tk_count, Track.count(bits) + " من 5");
+        for (int k = 0; k < 5; k++) {
             int p = SHOW[k];
-            if (p < 0) {
-                rv.setTextViewText(TK_D[k], "☀");
-                rv.setTextViewText(TK_N[k], "الشروق");
-                rv.setTextViewText(TK_T[k], ap(PrayerCalc.time(c, city, rise)));
-                rv.setTextColor(TK_D[k], 0xFFE9DDBB);
-                rv.setInt(TK_B[k], "setBackgroundResource", R.drawable.w_tile);
-                rv.setOnClickPendingIntent(TK_B[k], open(c, 300, new Intent(c, PhoneActivity.class)));
-                continue;
-            }
             boolean done = (bits >> p & 1) != 0;
             boolean reached = t[p] <= now;
             rv.setTextViewText(TK_D[k], done ? "✓" : reached ? "○" : "·");
@@ -161,10 +150,10 @@ final class Widgets {
         String sub;
         if (period == BubbleService.MORNING) {
             cat = period;
-            sub = "وقتها الآن · حتى " + ap(PrayerCalc.time(c, city, t[1]));
+            sub = "حتى " + ap(PrayerCalc.time(c, city, t[1]));
         } else if (period == BubbleService.EVENING) {
             cat = period;
-            sub = "وقتها الآن · حتى " + ap(PrayerCalc.time(c, city, t[4]));
+            sub = "حتى " + ap(PrayerCalc.time(c, city, t[4]));
         } else if (now >= t[1] && now < t[2]) {
             cat = BubbleService.EVENING;
             sub = "تبدأ مع العصر " + ap(PrayerCalc.time(c, city, t[2]));
