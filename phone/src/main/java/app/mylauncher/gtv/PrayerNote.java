@@ -333,6 +333,7 @@ final class PrayerNote {
                 .setContentTitle("اقترب خروج وقت " + name)
                 .setContentText("باقي " + mins + " دقيقة، يخرج الوقت عند " + until)
                 .setAutoCancel(true)
+                .setTimeoutAfter(Math.max(60_000L, s.end - now)) // gone when the time actually ends
                 .setCategory(Notification.CATEGORY_REMINDER)
                 .setContentIntent(open)
                 .build();
@@ -393,7 +394,7 @@ final class PrayerNote {
         try {
             nm.notify(7312, new Notification.Builder(c, "qm").setSmallIcon(R.drawable.ic_crescent)
                 .setContentTitle("أقم الصلاة").setContentText("لم تعلّم بعد: " + b)
-                .setContentIntent(open).setAutoCancel(true).build());
+                .setContentIntent(open).setAutoCancel(true).setTimeoutAfter(30 * 60_000L).build());
         } catch (RuntimeException ignored) {
             // No notification permission yet.
         }
