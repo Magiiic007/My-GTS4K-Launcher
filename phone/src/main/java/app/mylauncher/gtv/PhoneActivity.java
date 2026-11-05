@@ -179,6 +179,96 @@ public class PhoneActivity extends Activity {
         Reminders.scheduleNext(this);
         openFromBubble(getIntent());
         build();
+        Intent li = getIntent();
+        if (b == null && li != null && Intent.ACTION_MAIN.equals(li.getAction())
+            && li.hasCategory(Intent.CATEGORY_LAUNCHER) && sp.getBoolean("splash_on", true)) {
+            splash();
+        }
+    }
+
+    private static final String[] SPLASH_WORDS = {"النوم", "اللهو", "التجارة", "العمل", "الدنيا"};
+    private View splashView;
+    private int splashStep;
+
+    /** The opening screen: the app's background, its icon in the middle, and "الصلاة خير من" with a word that changes every second. */
+    private void splash() {
+        final FrameLayout v = new FrameLayout(this);
+        v.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
+        Deco.Stars stars = new Deco.Stars((cream & 0x00FFFFFF) | 0x1A000000, dp(56));
+        ArtBg.Border border = new ArtBg.Border((gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
+        v.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars, border}));
+        v.setClickable(true);
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER);
+        android.widget.ImageView icon = new android.widget.ImageView(this);
+        icon.setImageResource(R.drawable.ic_launcher_phone);
+        col.addView(icon, new LinearLayout.LayoutParams(dp(150), dp(150)));
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        TextView fixed = new TextView(this);
+        fixed.setText("الصلاة خير من");
+        fixed.setTextColor(0xFFFFFFFF);
+        fixed.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+        fixed.setTypeface(Typeface.DEFAULT_BOLD);
+        fixed.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
+        row.addView(fixed);
+        final TextView word = new TextView(this);
+        word.setText("");
+        word.setTextColor(0xFFFFD54A);
+        word.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+        word.setTypeface(Typeface.DEFAULT_BOLD);
+        word.setMinWidth(dp(96));
+        word.setPadding(dp(8), 0, 0, 0);
+        row.addView(word);
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
+        rp.topMargin = dp(26);
+        col.addView(row, rp);
+        v.addView(col, new FrameLayout.LayoutParams(-1, -1));
+        rootFrame.addView(v, new FrameLayout.LayoutParams(-1, -1));
+        splashView = v;
+        splashStep = 0;
+        v.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View x) {
+                endSplash();
+            }
+        });
+        final Runnable next = new Runnable() {
+            @Override
+            public void run() {
+                if (splashView == null || isFinishing()) return;
+                if (splashStep < SPLASH_WORDS.length) {
+                    word.setAlpha(0f);
+                    word.setText(SPLASH_WORDS[splashStep++]);
+                    word.animate().alpha(1f).setDuration(250).start();
+                    h.postDelayed(this, 1000L);
+                } else {
+                    endSplash();
+                }
+            }
+        };
+        // about 0.5 s of the icon alone, then five words one second each, then it fades out: 6 seconds in all
+        h.postDelayed(next, 500L);
+    }
+
+    private void endSplash() {
+        final View v = splashView;
+        if (v == null) return;
+        splashView = null;
+        v.animate().alpha(0f).setDuration(350).withEndAction(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    rootFrame.removeView(v);
+                } catch (RuntimeException ignored) {
+                    // already gone
+                }
+            }
+        }).start();
     }
 
     /** The round adhkar icon over other apps opens the morning or evening chapter directly. */
@@ -260,6 +350,10 @@ public class PhoneActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (splashView != null) {
+            endSplash();
+            return;
+        }
         if (drawerOpen) {
             closeDrawer();
             return;
@@ -1313,6 +1407,13 @@ public class PhoneActivity extends Activity {
         }
         title("الإعدادات", false);
         section("الشكل");
+        switchRow("الشاشة الافتتاحية", "تظهر نحو 6 ثوانٍ عند فتح التطبيق، وتُغلق بلمسة", sp.getBoolean("splash_on", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("splash_on", on).apply();
+                }
+            });
         final int forced = sp.getInt("look_force", -1);
         final String[] looks = {"تلقائي (بحسب وضع الهاتف)", "نهاري (أخضر)", "ليلي (كحلي)"};
         row("شكل التطبيق", looks[forced + 1], "›", new View.OnClickListener() {
