@@ -254,6 +254,7 @@ public class PhoneActivity extends Activity {
 
     private String backTarget(String s) {
         if (s.equals("up")) return "occ";
+        if (s.equals("tvkeys")) return "tv";
         if (s.startsWith("item:")) return itemBack;
         if (s.equals("country") || s.equals("cities")) return null;
         return null;
@@ -1274,6 +1275,10 @@ public class PhoneActivity extends Activity {
         }
         if ("tv".equals(sub)) {
             tvPage();
+            return;
+        }
+        if ("tvkeys".equals(sub)) {
+            tvKeysPage();
             return;
         }
         title("الإعدادات", false);
@@ -2327,7 +2332,7 @@ public class PhoneActivity extends Activity {
     }
 
     private boolean tvVisible() {
-        return tab == 3 && "tv".equals(sub);
+        return tab == 3 && ("tv".equals(sub) || "tvkeys".equals(sub));
     }
 
     private void tvSay(final String line) {
@@ -2449,6 +2454,10 @@ public class PhoneActivity extends Activity {
         else if (tvStage == 1) tvConnect();
         else if (tvStage == 2) tvInstall();
         else tvHome();
+        tvLogBlock();
+    }
+
+    private void tvLogBlock() {
         if (tvLogText.length() > 0) {
             section("ما حدث");
             TextView lg = tv(tvLogText.toString().trim(), 12, cream, false);
@@ -2465,6 +2474,58 @@ public class PhoneActivity extends Activity {
                 }
             });
         }
+    }
+
+    private void tvKeysPage() {
+        title("اختبار أزرار الريموت", true);
+        if (tvLogText.length() == 0) tvLogText.append(sp.getString("tv_log", ""));
+        if (!TvSetup.connected(this)) {
+            add(tv("الهاتف غير متصل بالتلفزيون. ارجع واضغط «اتصال» أولاً.", 14, dim, false), 8);
+            tvLogBlock();
+            return;
+        }
+        add(tv("اختر الزر الذي تريد اختباره، وبعدها اضغطه على ريموت التلفزيون خلال 12 ثانية. سنقرأ ما فعله النظام ونعرضه تحت.", 13, dim, false), 6);
+        if (tvBusy) {
+            row("اختبار جارٍ…", "لو لا ينتهي، اضغط هنا لإلغائه", "إلغاء", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    tvBusy = false;
+                    TvSetup.disconnect(PhoneActivity.this);
+                    tvSay("أُلغي الاختبار وانقطع الاتصال.");
+                }
+            });
+        }
+        int lastRes = tvLogText.lastIndexOf("نتيجة «");
+        if (lastRes >= 0) {
+            section("آخر نتيجة");
+            TextView lr = tv(tvLogText.substring(lastRes).trim(), 12, cream, false);
+            lr.setTextIsSelectable(true);
+            lr.setBackground(shape(card, line, 14));
+            lr.setPadding(dp(12), dp(10), dp(12), dp(10));
+            add(lr, 4);
+        }
+        section("الأزرار");
+        String[] keys = {"المساعد الصوتي", "يوتيوب", "النجمة (المفضلة)", "Netflix", "الرئيسية (Home)", "الرجوع",
+            "رفع الصوت", "خفض الصوت", "كتم الصوت", "تشغيل / إيقاف مؤقت", "المدخل (Input)", "القائمة / الإعدادات"};
+        for (final String k : keys) {
+            row(k, null, "اختبر", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    tvRun("اختبار: " + k, new TvTask() {
+                        @Override
+                        public void run() throws Exception {
+                            TvSetup.keyProbe(PhoneActivity.this, new TvSetup.Say() {
+                                @Override
+                                public void say(String s) {
+                                    tvSay(s);
+                                }
+                            }, k);
+                        }
+                    });
+                }
+            });
+        }
+        tvLogBlock();
     }
 
     private void tvPrepare() {
@@ -2745,22 +2806,7 @@ public class PhoneActivity extends Activity {
                 });
             }
         });
-        row("تشخيص أزرار الريموت", "اضغط المساعد ويوتيوب والنجمة خلال 18 ثانية ليسجّلها", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvRun("بدء التشخيص…", new TvTask() {
-                    @Override
-                    public void run() throws Exception {
-                        TvSetup.keyProbe(PhoneActivity.this, new TvSetup.Say() {
-                            @Override
-                            public void say(String s) {
-                                tvSay(s);
-                            }
-                        });
-                    }
-                });
-            }
-        });
+        row("اختبار أزرار الريموت", "اختر زرّاً من الهاتف واضغطه على الريموت لنعرف ماذا يحدث", "›", go("tvkeys"));
         row("العودة إلى خطوة التثبيت", null, "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {

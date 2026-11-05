@@ -382,17 +382,22 @@ final class TvSetup {
     }
 
     /**
-     * Listens on the TV for 18 seconds while the user presses the special remote buttons, and reports what each press
-     * tried to start (from the system log) and the raw key names (from the input devices).
+     * Listens on the TV for 12 seconds while the user presses one remote button, and reports what the press tried to
+     * start (from the system log) and the raw key names (from the input devices).
      */
-    static void keyProbe(Context c, Say say) throws Exception {
-        say.say("اضغط الآن على ريموت التلفزيون: زر المساعد ثم يوتيوب ثم النجمة (كل واحد مرتين بينهم ثانيتين). المدة 18 ثانية…");
+    static void keyProbe(Context c, Say say, String label) throws Exception {
+        say.say("الآن اضغط زر «" + label + "» على ريموت التلفزيون (مرة أو مرتين). الاختبار 12 ثانية…");
         String ge = "/data/local/tmp/salah_ge.txt";
-        String out = sh(c, "rm -f " + ge + "; logcat -c; (timeout 18 getevent -l > " + ge + " 2>&1 &); "
-            + "timeout 18 logcat -v brief ActivityTaskManager:I *:S | grep -E 'START|cmp=|Force|finish' | cut -c1-230 | head -30; "
-            + "echo '--- الأزرار الخام:'; sleep 1; grep -E 'KEY_|BTN_' " + ge + " | grep DOWN | cut -c1-120 | head -20", 45);
+        String out = sh(c, "rm -f " + ge + "; logcat -c; (timeout 12 getevent -l > " + ge + " 2>&1 &); "
+            + "timeout 12 logcat -v brief ActivityTaskManager:I *:S | grep -E 'START|cmp=|Force|finish' | cut -c1-230 | head -20; "
+            + "echo '- الزر الخام:'; sleep 1; grep -E 'KEY_|BTN_' " + ge + " | grep DOWN | cut -c1-110 | head -8", 35);
         out = out.trim();
-        say.say(out.isEmpty() ? "لم يُسجَّل شيء. هل ضغطت الأزرار خلال المدة؟" : out);
+        boolean started = out.contains("START") || out.contains("cmp=");
+        boolean raw = out.contains("KEY_") || out.contains("BTN_");
+        String verdict = started ? "النظام حاول يفتح شاشة (التفاصيل تحت)."
+            : raw ? "وصل الزر للتلفزيون لكن لا شيء بدأ."
+            : "لم يصل أي شيء للتلفزيون (أو لم تضغط الزر).";
+        say.say("نتيجة «" + label + "»: " + verdict + "\n" + out);
     }
 
     /** Stops the guard on the TV (before a deliberate change). */
