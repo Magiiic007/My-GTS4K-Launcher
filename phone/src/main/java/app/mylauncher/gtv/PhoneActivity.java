@@ -485,9 +485,9 @@ public class PhoneActivity extends Activity {
         });
         drawerLayer.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
         drawerPanel = new ScrollView(this);
-        GradientDrawable pg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-        pg.setStroke(dp(1), gold);
-        drawerPanel.setBackground(pg);
+        // opaque at the screen edge, fading to 80% see-through at the inner edge
+        boolean rtl = getResources().getConfiguration().getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+        drawerPanel.setBackground(new FadePanel(bg1, bg2, gold, 0.2f, rtl, dp(1)));
         drawerList = vbox();
         drawerList.setPadding(dp(12), dp(30), dp(12), dp(16));
         drawerPanel.addView(drawerList, new ViewGroup.LayoutParams(-1, -2));
