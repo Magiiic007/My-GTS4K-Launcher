@@ -3921,7 +3921,7 @@ public class PhoneActivity extends Activity {
                 public void changed(boolean on) {
                     sp.edit().putBoolean("ov_on", on).apply();
                     if (on && !Settings.canDrawOverlays(PhoneActivity.this)) openOverlayPermission();
-                    OverlayService.sync(PhoneActivity.this);
+                    OverlayService.syncNow(PhoneActivity.this);
                 }
             });
         switchRow("أيقونة أذكار الصباح والمساء", "أيقونة دائرية فوق التطبيقات وقت الأذكار (من الفجر للظهر، ومن العصر للعشاء). اضغطها لتفتح الذكر مباشرة", sp.getBoolean("az_bubble", true),
@@ -3966,7 +3966,7 @@ public class PhoneActivity extends Activity {
                     @Override
                     public void set(int val) {
                         sp.edit().putInt("ov_freq", val).apply();
-                        OverlayService.sync(PhoneActivity.this);
+                        OverlayService.syncNow(PhoneActivity.this);
                         build();
                     }
                 });
