@@ -258,8 +258,8 @@ final class PrayerNote {
         RemoteViews rv = new RemoteViews(c.getPackageName(), R.layout.note_prayer);
         rv.setTextViewText(R.id.note_title, title);
         rv.setChronometerCountDown(R.id.note_clock, true);
-        rv.setChronometer(R.id.note_clock, SystemClock.elapsedRealtime() + (target - now),
-            iqama ? "باقي على الإقامة %s" : "باقي على الأذان %s", true);
+        rv.setChronometer(R.id.note_clock, SystemClock.elapsedRealtime() + (target - now), null, true);
+        rv.setTextViewText(R.id.note_label, iqama ? "باقي على الإقامة" : "باقي على الأذان");
 
         PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, PhoneActivity.class)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
