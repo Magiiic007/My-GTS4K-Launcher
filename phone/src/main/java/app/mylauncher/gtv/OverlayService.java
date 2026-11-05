@@ -39,21 +39,12 @@ public class OverlayService extends Service {
     private View card;
     private SharedPreferences sp;
 
-    private final Runnable show = new Runnable() {
-        @Override
-        public void run() {
-            try {
-                showCard();
-            } catch (RuntimeException ignored) {
-                // a failed card is skipped; the next one is tried at the usual time
-            }
-            h.postDelayed(this, freqMs());
-        }
-    };
-    private final Runnable hide = new Runnable() {
+    private final Runnable stop = new Runnable() {
         @Override
         public void run() {
             hideCard();
+            stopForeground(true);
+            stopSelf();
         }
     };
 
@@ -61,21 +52,44 @@ public class OverlayService extends Service {
         return c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("ov_on", false);
     }
 
-    /** Starts or stops the service to match the setting and the permission. */
-    static void sync(Context c) {
-        try {
-            if (wanted(c) && Settings.canDrawOverlays(c) && !Wc.on(c)) {
-                c.startForegroundService(new Intent(c, OverlayService.class));
-            } else {
-                c.stopService(new Intent(c, OverlayService.class));
-            }
-        } catch (RuntimeException ignored) {
-            // starting from the background can be refused; the next time the app opens it is tried again
-        }
+    private static android.app.PendingIntent tick(Context c, int flags) {
+        return android.app.PendingIntent.getBroadcast(c, 77, new Intent(c, OverlayReceiver.class),
+            flags | android.app.PendingIntent.FLAG_IMMUTABLE);
     }
 
-    private long freqMs() {
-        return Math.max(1, sp.getInt("ov_freq", 30)) * 60000L;
+    /** Keeps the next card's alarm if there is one; sets it when it is missing; clears it when the setting is off. */
+    static void sync(Context c) {
+        schedule(c, false);
+    }
+
+    /** Same, but counts the time again from now (after the setting or the frequency changed). */
+    static void syncNow(Context c) {
+        schedule(c, true);
+    }
+
+    private static void schedule(Context c, boolean reset) {
+        try {
+            android.app.AlarmManager am = c.getSystemService(android.app.AlarmManager.class);
+            if (!(wanted(c) && Settings.canDrawOverlays(c) && !Wc.on(c))) {
+                android.app.PendingIntent old = tick(c, android.app.PendingIntent.FLAG_NO_CREATE);
+                if (old != null) {
+                    am.cancel(old);
+                    old.cancel();
+                }
+                c.stopService(new Intent(c, OverlayService.class));
+                return;
+            }
+            if (!reset && tick(c, android.app.PendingIntent.FLAG_NO_CREATE) != null) return;
+            long ms = Math.max(1, c.getSharedPreferences("magiic", MODE_PRIVATE).getInt("ov_freq", 30)) * 60000L;
+            android.app.PendingIntent pi = tick(c, android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+            try {
+                am.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + ms, pi);
+            } catch (SecurityException e) {
+                am.setAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + ms, pi);
+            }
+        } catch (RuntimeException ignored) {
+            // the next time the app opens it is tried again
+        }
     }
 
     @Override
@@ -83,6 +97,7 @@ public class OverlayService extends Service {
         return null;
     }
 
+    /** Runs only while a card is on the screen: the notice appears with the card and goes with it. */
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         sp = getSharedPreferences("magiic", MODE_PRIVATE);
@@ -90,33 +105,31 @@ public class OverlayService extends Service {
         NotificationManager nm = getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel(CHANNEL, "الأذكار فوق التطبيقات", NotificationManager.IMPORTANCE_MIN));
         Notification n = new Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_crescent)
-            .setContentTitle("الأذكار فوق التطبيقات تعمل").setOngoing(true).setContentIntent(android.app.PendingIntent.getActivity(this, 0, new Intent(this, PhoneActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP), android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT)).build();
+            .setContentTitle("ذكر الآن").setOngoing(true).setContentIntent(android.app.PendingIntent.getActivity(this, 0, new Intent(this, PhoneActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP), android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT)).build();
         if (Build.VERSION.SDK_INT >= 29) startForeground(77, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         else startForeground(77, n);
+        h.removeCallbacks(stop);
         boolean now = intent != null && intent.getBooleanExtra("now", false);
-        if (!Settings.canDrawOverlays(this) || (!wanted(this) && !now)) {
-            stopSelf();
-            return START_NOT_STICKY;
-        }
-        h.removeCallbacks(show);
-        if (now) {
+        if (Settings.canDrawOverlays(this) && (wanted(this) || now)) {
             try {
                 showCard();
             } catch (RuntimeException ignored) {
-                // the preview failed; nothing else to do
+                // a failed card is skipped; the next one comes at the usual time
             }
         }
-        if (wanted(this)) {
-            h.postDelayed(show, freqMs());
-            return START_STICKY;
-        }
-        h.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                stopSelf();
-            }
-        }, SHOWN_MS + 1000L);
+        h.postDelayed(stop, SHOWN_MS + 300L);
         return START_NOT_STICKY;
+    }
+
+    /** Called by the alarm: sets the next one, then shows a card. */
+    static void fire(Context c) {
+        schedule(c, true);
+        if (!(wanted(c) && Settings.canDrawOverlays(c) && !Wc.on(c))) return;
+        try {
+            c.startForegroundService(new Intent(c, OverlayService.class));
+        } catch (RuntimeException ignored) {
+            // refused by the system: the next alarm tries again
+        }
     }
 
     @Override
@@ -185,8 +198,6 @@ public class OverlayService extends Service {
         lp.width = Math.round(getResources().getDisplayMetrics().widthPixels * 0.72f);
         wm.addView(c, lp);
         card = c;
-        h.removeCallbacks(hide);
-        h.postDelayed(hide, SHOWN_MS);
     }
 
     private void hideCard() {

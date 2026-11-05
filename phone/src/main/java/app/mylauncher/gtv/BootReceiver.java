@@ -14,5 +14,6 @@ public class BootReceiver extends BroadcastReceiver {
         Scheduler.scheduleNext(c);
         Reminders.scheduleNext(c);
         BubbleService.sync(c);
+        OverlayService.sync(c);
     }
 }
