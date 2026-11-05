@@ -238,6 +238,10 @@ final class TvSetup {
     }
 
     private static String shRaw(Context c, String cmd) throws Exception {
+        // The ADB library sizes its packet by characters, not bytes: a non-ASCII command would overflow it.
+        for (int i = 0; i < cmd.length(); i++) {
+            if (cmd.charAt(i) > 127) throw new java.io.IOException("أمر غير ASCII: " + cmd);
+        }
         AdbStream s;
         try {
             s = TvAdb.get(c).openStream("shell:" + cmd);
@@ -390,7 +394,7 @@ final class TvSetup {
         String ge = "/data/local/tmp/salah_ge.txt";
         String out = sh(c, "rm -f " + ge + "; logcat -c; (timeout 12 getevent -l > " + ge + " 2>&1 &); "
             + "timeout 12 logcat -v brief ActivityTaskManager:I *:S | grep -E 'START|cmp=|Force|finish' | cut -c1-230 | head -20; "
-            + "echo '- الزر الخام:'; sleep 1; grep -E 'KEY_|BTN_' " + ge + " | grep DOWN | cut -c1-110 | head -8", 35);
+            + "echo '- RAW:'; sleep 1; grep -E 'KEY_|BTN_' " + ge + " | grep DOWN | cut -c1-110 | head -8", 35);
         out = out.trim();
         boolean started = out.contains("START") || out.contains("cmp=");
         boolean raw = out.contains("KEY_") || out.contains("BTN_");
