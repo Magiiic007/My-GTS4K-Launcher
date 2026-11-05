@@ -179,11 +179,7 @@ public class PhoneActivity extends Activity {
         Reminders.scheduleNext(this);
         openFromBubble(getIntent());
         build();
-        Intent li = getIntent();
-        if (b == null && li != null && Intent.ACTION_MAIN.equals(li.getAction())
-            && li.hasCategory(Intent.CATEGORY_LAUNCHER) && sp.getBoolean("splash_on", true)) {
-            splash();
-        }
+        if (b == null && sp.getBoolean("splash_on", true)) splash();
     }
 
     private static final String[] SPLASH_WORDS = {"النوم", "اللهو", "التجارة", "العمل", "الدنيا"};
@@ -192,6 +188,7 @@ public class PhoneActivity extends Activity {
 
     /** The opening screen: the app's background, its icon in the middle, and "الصلاة خير من" with a word that changes every second. */
     private void splash() {
+        if (splashView != null) return;
         final FrameLayout v = new FrameLayout(this);
         v.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
@@ -231,12 +228,7 @@ public class PhoneActivity extends Activity {
         rootFrame.addView(v, new FrameLayout.LayoutParams(-1, -1));
         splashView = v;
         splashStep = 0;
-        v.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View x) {
-                endSplash();
-            }
-        });
+        // no tap or back button closes it: it runs its six seconds (touches are swallowed so nothing behind it is pressed)
         final Runnable next = new Runnable() {
             @Override
             public void run() {
@@ -287,6 +279,8 @@ public class PhoneActivity extends Activity {
     protected void onNewIntent(Intent in) {
         super.onNewIntent(in);
         setIntent(in);
+        // opened again from a notification, the widget or the adhkar icon: the opening screen shows then too
+        if (sp.getBoolean("splash_on", true)) splash();
         if (in != null && in.getIntExtra("open_cat", 0) != 0) {
             openFromBubble(in);
             build();
@@ -350,10 +344,7 @@ public class PhoneActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (splashView != null) {
-            endSplash();
-            return;
-        }
+        if (splashView != null) return; // the opening screen is not closed by Back
         if (drawerOpen) {
             closeDrawer();
             return;
@@ -1407,7 +1398,7 @@ public class PhoneActivity extends Activity {
         }
         title("الإعدادات", false);
         section("الشكل");
-        switchRow("الشاشة الافتتاحية", "تظهر نحو 6 ثوانٍ عند فتح التطبيق، وتُغلق بلمسة", sp.getBoolean("splash_on", true),
+        switchRow("الشاشة الافتتاحية", "تظهر نحو 6 ثوانٍ كلما فتحت التطبيق من أي مكان", sp.getBoolean("splash_on", true),
             new CompoundListener() {
                 @Override
                 public void changed(boolean on) {
