@@ -321,7 +321,7 @@ public class RadioService extends Service {
             new Intent(this, RadioService.class).setAction(ACTION_STOP),
             android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
         Notification.Action stopAction = new Notification.Action.Builder(
-            android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_note),
+            android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_launcher_phone),
             getString(R.string.radio_stop), stop).build();
         Notification.Action prevAction = new Notification.Action.Builder(
             android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_media_previous),
@@ -334,7 +334,7 @@ public class RadioService extends Service {
                 new Intent(this, RadioService.class).setAction(ACTION_NEXT),
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE)).build();
         Notification n = new Notification.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_note)
+            .setSmallIcon(R.drawable.ic_launcher_phone)
             .setContentTitle(STATIONS[stationIndex].name(arabic))
             .setContentText(getString(R.string.radio_btn))
             .setOngoing(true)

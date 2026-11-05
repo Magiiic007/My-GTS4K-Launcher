@@ -295,7 +295,7 @@ final class PrayerNote {
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification n = new Notification.Builder(c, CHANNEL)
-            .setSmallIcon(R.drawable.ic_note)
+            .setSmallIcon(R.drawable.ic_launcher_phone)
             .setStyle(new Notification.DecoratedCustomViewStyle())
             .setCustomContentView(rv)
             .setContentTitle(title)
@@ -329,7 +329,7 @@ final class PrayerNote {
                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             Notification n = new Notification.Builder(c, "prayer_warn")
-                .setSmallIcon(R.drawable.ic_note)
+                .setSmallIcon(R.drawable.ic_launcher_phone)
                 .setContentTitle("اقترب خروج وقت " + name)
                 .setContentText("باقي " + mins + " دقيقة، يخرج الوقت عند " + until)
                 .setAutoCancel(true)
@@ -392,7 +392,7 @@ final class PrayerNote {
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         try {
-            nm.notify(7312, new Notification.Builder(c, "qm").setSmallIcon(R.drawable.ic_note)
+            nm.notify(7312, new Notification.Builder(c, "qm").setSmallIcon(R.drawable.ic_launcher_phone)
                 .setContentTitle("أقم الصلاة").setContentText("لم تعلّم بعد: " + b)
                 .setContentIntent(open).setAutoCancel(true).setTimeoutAfter(30 * 60_000L).build());
         } catch (RuntimeException ignored) {
@@ -453,7 +453,7 @@ final class PrayerNote {
             ch.enableVibration(false);
             ch.setShowBadge(false);
             nm.createNotificationChannel(ch);
-            nm.notify(7311, new Notification.Builder(c, "silence_note").setSmallIcon(R.drawable.ic_note)
+            nm.notify(7311, new Notification.Builder(c, "silence_note").setSmallIcon(R.drawable.ic_launcher_phone)
                 .setContentTitle(title).setContentText(text).setTimeoutAfter(8000L).setAutoCancel(true).build());
             android.os.Vibrator v = c.getSystemService(android.os.Vibrator.class);
             if (v != null && v.hasVibrator()) {
