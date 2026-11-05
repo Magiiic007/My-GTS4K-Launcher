@@ -31,6 +31,8 @@ android {
         play {
             dimension 'dist'
             targetSdk 36
+            // A test copy of the Play build that installs next to the real app (CI passes -PplayTest).
+            if (project.hasProperty('playTest')) applicationIdSuffix '.test'
             buildConfigField 'boolean', 'PLAY', 'true'
         }
     }

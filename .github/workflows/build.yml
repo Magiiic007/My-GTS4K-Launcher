@@ -106,3 +106,19 @@ jobs:
           grep -o 'targetSdkVersion="[0-9]*"' "$M"
           grep -o 'android:name="android.permission[^"]*"' "$M"
           if grep -q REQUEST_INSTALL_PACKAGES "$M"; then echo "INSTALL PERMISSION STILL THERE"; exit 1; fi
+
+      # A test copy of the Play build (its own package name, so it installs next to the real app).
+      - name: Build the Play test APK
+        id: playtest
+        continue-on-error: true
+        run: ./gradlew :phone:assemblePlayDebug -PplayTest --no-daemon --stacktrace
+
+      - name: Publish the Play test APK as release "play-test"
+        if: steps.playtest.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp phone/build/outputs/apk/play/debug/phone-play-debug.apk my-phone-play-test.apk
+          gh release delete play-test --yes --cleanup-tag || true
+          gh release create play-test my-phone-play-test.apk --prerelease --target "$GITHUB_SHA" \
+            --title "Play build, test copy" --notes "Test copy of the Google Play build (package app.magiic.phone.test). commit=${GITHUB_SHA::7}"
