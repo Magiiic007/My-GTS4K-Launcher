@@ -315,10 +315,15 @@ final class PrayerNote {
         }
     }
 
-    /** Puts the ringer on silent inside the window and gives it back afterwards. */
+    /**
+     * Quiets the phone inside the window and gives it back afterwards, with Do Not Disturb (priority only) instead of
+     * the ringer mode, because some phones pop up a dialog every time an app changes the ringer. A short note and a
+     * buzz tell the user, and the note goes away by itself.
+     */
     private static void silence(Context c, List<Slot> slots, long now) {
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
         AudioManager am = c.getSystemService(AudioManager.class);
-        if (am == null) return;
+        if (nm == null || am == null) return;
         SharedPreferences sp = p(c);
         boolean inside = false;
         for (Slot s : slots) {
@@ -331,20 +336,46 @@ final class PrayerNote {
         boolean active = sp.getBoolean("sil_active", false);
         try {
             if (want && !active) {
-                int mode = am.getRingerMode();
-                if (mode != AudioManager.RINGER_MODE_SILENT) {
-                    sp.edit().putInt("sil_prev", mode).putBoolean("sil_active", true).apply();
-                    am.setRingerMode(AudioManager.RINGER_MODE_SILENT);
+                int f = nm.getCurrentInterruptionFilter();
+                if (f == NotificationManager.INTERRUPTION_FILTER_ALL || f == NotificationManager.INTERRUPTION_FILTER_UNKNOWN) {
+                    sp.edit().putInt("sil_prev_f", f).putBoolean("sil_dnd", true).putBoolean("sil_active", true).apply();
+                    nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY);
+                    tell(c, nm, "الهاتف صامت أثناء الصلاة", "يرجع للوضع العادي بعد الصلاة");
                 }
             } else if (!want && active) {
-                sp.edit().putBoolean("sil_active", false).apply();
-                // Give it back only if nobody changed it meanwhile.
-                if (am.getRingerMode() == AudioManager.RINGER_MODE_SILENT) {
-                    am.setRingerMode(sp.getInt("sil_prev", AudioManager.RINGER_MODE_NORMAL));
+                boolean dnd = sp.getBoolean("sil_dnd", false);
+                sp.edit().putBoolean("sil_active", false).putBoolean("sil_dnd", false).apply();
+                if (dnd) {
+                    // Give it back only if nobody changed it meanwhile.
+                    if (nm.getCurrentInterruptionFilter() == NotificationManager.INTERRUPTION_FILTER_PRIORITY) {
+                        nm.setInterruptionFilter(sp.getInt("sil_prev_f", NotificationManager.INTERRUPTION_FILTER_ALL));
+                        tell(c, nm, "رجع الهاتف للوضع العادي", "انتهى وقت الصمت");
+                    }
+                } else if (am.getRingerMode() == AudioManager.RINGER_MODE_SILENT) {
+                    am.setRingerMode(sp.getInt("sil_prev", AudioManager.RINGER_MODE_NORMAL)); // set by an older version
                 }
             }
         } catch (SecurityException ignored) {
             sp.edit().putBoolean("sil_active", false).apply();
+        }
+    }
+
+    /** A short note that removes itself, with a double buzz. */
+    private static void tell(Context c, NotificationManager nm, String title, String text) {
+        try {
+            NotificationChannel ch = new NotificationChannel("silence_note", "تنبيه الصامت", NotificationManager.IMPORTANCE_DEFAULT);
+            ch.setSound(null, null);
+            ch.enableVibration(false);
+            ch.setShowBadge(false);
+            nm.createNotificationChannel(ch);
+            nm.notify(7311, new Notification.Builder(c, "silence_note").setSmallIcon(R.drawable.ic_crescent)
+                .setContentTitle(title).setContentText(text).setTimeoutAfter(8000L).setAutoCancel(true).build());
+            android.os.Vibrator v = c.getSystemService(android.os.Vibrator.class);
+            if (v != null && v.hasVibrator()) {
+                v.vibrate(android.os.VibrationEffect.createWaveform(new long[] {0, 180, 120, 180}, -1));
+            }
+        } catch (RuntimeException ignored) {
+            // no permission to post the note, or no vibrator; the change itself still happened
         }
     }
 }
