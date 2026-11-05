@@ -215,11 +215,18 @@ final class TvSetup {
     }
 
     private static String readAll(InputStream in) throws java.io.IOException {
-        StringBuilder b = new StringBuilder();
+        java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
         byte[] buf = new byte[4096];
-        int n;
-        while ((n = in.read(buf)) > 0) b.append(new String(buf, 0, n, "UTF-8"));
-        return b.toString();
+        try {
+            int n;
+            while ((n = in.read(buf)) >= 0) {
+                if (n > 0) b.write(buf, 0, n);
+            }
+        } catch (java.io.IOException e) {
+            // The TV closing the stream right after its last bytes is the normal end, if something was received.
+            if (b.size() == 0) throw e;
+        }
+        return b.toString("UTF-8");
     }
 
     static String info(Context c) throws Exception {
@@ -330,7 +337,12 @@ final class TvSetup {
     /** Makes the launcher the home screen; if that does not work, puts the original one back. */
     static void setHome(Context c, Say say) throws Exception {
         String pk = sh(c, "pm list packages -e");
-        if (!has(pk, PKG)) throw new java.io.IOException("اللانشر غير مثبّت على التلفزيون بعد. ثبّته أولاً.");
+        String where = sh(c, "pm path " + PKG).trim();
+        if (!where.contains("package:") && !has(pk, PKG)) {
+            String got = pk.length() > 80 ? pk.substring(0, 80) : pk;
+            throw new java.io.IOException("اللانشر غير مثبّت على التلفزيون بعد. ثبّته أولاً. (رد التلفزيون: "
+                + (where.isEmpty() ? "فارغ" : where) + " | " + pk.length() + " حرف: " + got.replace('\n', ' ') + ")");
+        }
         String stockAct;
         String[] off;
         if (has(pk, STOCK_X)) {
