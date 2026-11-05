@@ -3601,6 +3601,31 @@ public class PhoneActivity extends Activity {
                     BubbleService.sync(PhoneActivity.this);
                 }
             });
+        switchRow("أيقونة أذكار بعد الصلاة", "تظهر بعد الإقامة بعدد الدقائق أدناه، وتفتح أذكار ما بعد الصلاة المناسبة: واحدة للفجر والمغرب وأخرى لباقي الصلوات. تبقى 30 دقيقة أو حتى تضغطها أو تغلقها", sp.getBoolean("pp_bubble", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("pp_bubble", on).apply();
+                    if (on && !Settings.canDrawOverlays(PhoneActivity.this)) openOverlayPermission();
+                    BubbleService.sync(PhoneActivity.this);
+                    build();
+                }
+            });
+        if (sp.getBoolean("pp_bubble", true)) {
+            row("وقت ظهور الأيقونة", "بعد الإقامة بـ " + BubbleService.postDelayMin(this) + " دقائق", "›", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    numberDialog("دقائق بعد الإقامة", 0, 60, BubbleService.postDelayMin(PhoneActivity.this), new IntSetter() {
+                        @Override
+                        public void set(int val) {
+                            sp.edit().putInt("pp_min", val).apply();
+                            BubbleService.sync(PhoneActivity.this);
+                            build();
+                        }
+                    });
+                }
+            });
+        }
         final int f = sp.getInt("ov_freq", 30);
         row("معدل الظهور", "يظهر ذكر كل " + f + " دقيقة", "›", new View.OnClickListener() {
             @Override

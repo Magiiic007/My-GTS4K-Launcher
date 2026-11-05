@@ -76,8 +76,45 @@ final class Adhkar {
         } catch (Exception ignored) {
             // an unreadable file shows an empty list
         }
+        splitAfterPrayer(l);
         cache = l;
         return l;
+    }
+
+    /** The chapter of what is said after the prayer, as two: Fajr and Maghrib (with the ten times), and the others. */
+    static final int AFTER_OTHER = 27;
+    static final int AFTER_FAJR_MAGHRIB = 134;
+
+    private static Category slice(Category c, int from, int to, int id, String name) {
+        int n = to - from;
+        String[] t = new String[n];
+        int[] k = new int[n];
+        String[] pr = new String[n];
+        String[] po = new String[n];
+        boolean[] inf = new boolean[n];
+        for (int i = 0; i < n; i++) {
+            t[i] = c.texts[from + i];
+            k[i] = c.counts[from + i];
+            pr[i] = c.pre[from + i];
+            po[i] = c.post[from + i];
+            inf[i] = c.info != null && c.info[from + i];
+        }
+        Category r = new Category(id, name, t, k, pr, po);
+        r.info = inf;
+        return r;
+    }
+
+    private static void splitAfterPrayer(List<Category> l) {
+        for (int i = 0; i < l.size(); i++) {
+            Category c = l.get(i);
+            if (c.id != AFTER_OTHER || c.texts.length < 14) continue;
+            // 0..11 are said after every prayer; 12 (ten times) is for Maghrib and Fajr; 13 is for Fajr only
+            Category other = slice(c, 0, 12, AFTER_OTHER, "الأذكار بعد الظهر والعصر والعشاء");
+            Category fm = slice(c, 0, 14, AFTER_FAJR_MAGHRIB, "الأذكار بعد الفجر والمغرب");
+            l.set(i, other);
+            l.add(i + 1, fm);
+            return;
+        }
     }
 
     /** Hadiths with a short explanation: {text, source, explanation}. */

@@ -60,6 +60,58 @@ public class BubbleService extends Service {
         return c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("az_bubble", true);
     }
 
+    /** The icon after the prayer (a few minutes after the iqama), with the adhkar of that prayer. */
+    static boolean postWanted(Context c) {
+        return c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("pp_bubble", true);
+    }
+
+    static int postDelayMin(Context c) {
+        return Math.max(0, c.getSharedPreferences("magiic", MODE_PRIVATE).getInt("pp_min", 5));
+    }
+
+    private static final long POST_SHOWN_MS = 30 * 60_000L;
+
+    private static boolean anyWanted(Context c) {
+        return wanted(c) || postWanted(c);
+    }
+
+    private static String postKey(int prayer) {
+        return "az_done_" + day() + "_p" + prayer;
+    }
+
+    /** When the post-prayer icon of prayer i of the day {@code t} starts: the iqama time plus the delay. */
+    private static long postStart(Context c, long[] t, int i) {
+        return t[i] + PrayerPrefs.iqama(c)[i] * 60_000L + postDelayMin(c) * 60_000L;
+    }
+
+    /** What to show now: {chapter, prayer index or -1 for morning/evening}, or null. */
+    static int[] pick(Context c) {
+        if (Wc.on(c)) return null;
+        android.content.SharedPreferences sp = c.getSharedPreferences("magiic", MODE_PRIVATE);
+        Cities.City city = Cities.selected(c);
+        if (city == null) return null;
+        long now = System.currentTimeMillis();
+        long[] t = PrayerCalc.day(city, now, 0, PrayerPrefs.adjust(c));
+        if (postWanted(c)) {
+            for (int i = 0; i < 5; i++) {
+                long st = postStart(c, t, i);
+                if (now >= st && now < st + POST_SHOWN_MS && !sp.getBoolean(postKey(i), false)) {
+                    boolean fm = i == PrayerCalc.FAJR || i == PrayerCalc.MAGHRIB;
+                    return new int[] {fm ? Adhkar.AFTER_FAJR_MAGHRIB : Adhkar.AFTER_OTHER, i};
+                }
+            }
+        }
+        if (wanted(c)) {
+            int p = period(c);
+            if (p != 0 && !sp.getBoolean(doneKey(p), false)) return new int[] {p, -1};
+        }
+        return null;
+    }
+
+    static String keyOf(int[] pk) {
+        return pk[1] >= 0 ? postKey(pk[1]) : doneKey(pk[0]);
+    }
+
     private static String day() {
         return new SimpleDateFormat("yyyyMMdd", Locale.US).format(new Date());
     }
@@ -81,10 +133,8 @@ public class BubbleService extends Service {
 
     /** The period to show the icon for right now: none when it is not the time, or when it was tapped or closed today. */
     static int active(Context c) {
-        if (Wc.on(c)) return 0;
-        int p = period(c);
-        if (p != 0 && c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean(doneKey(p), false)) return 0;
-        return p;
+        int[] pk = pick(c);
+        return pk == null ? 0 : pk[0];
     }
 
     /**
@@ -94,7 +144,7 @@ public class BubbleService extends Service {
     static void sync(Context c) {
         try {
             schedule(c);
-            if (wanted(c) && Settings.canDrawOverlays(c) && active(c) != 0) {
+            if (anyWanted(c) && Settings.canDrawOverlays(c) && active(c) != 0) {
                 c.startForegroundService(new Intent(c, BubbleService.class));
             } else {
                 c.stopService(new Intent(c, BubbleService.class));
@@ -110,7 +160,7 @@ public class BubbleService extends Service {
         Cities.City city = Cities.selected(c);
         android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(c, 77,
             new Intent(c, BubbleReceiver.class), android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
-        if (am == null || city == null || !wanted(c)) {
+        if (am == null || city == null || !anyWanted(c)) {
             if (am != null) am.cancel(pi);
             return;
         }
@@ -119,8 +169,16 @@ public class BubbleService extends Service {
         long next = Long.MAX_VALUE;
         for (int off = 0; off <= 1; off++) {
             long[] t = PrayerCalc.day(city, now, off, adj);
-            if (t[0] > now + 1000L) next = Math.min(next, t[0]);
-            if (t[2] > now + 1000L) next = Math.min(next, t[2]);
+            if (wanted(c)) {
+                if (t[0] > now + 1000L) next = Math.min(next, t[0]);
+                if (t[2] > now + 1000L) next = Math.min(next, t[2]);
+            }
+            if (postWanted(c)) {
+                for (int i = 0; i < 5; i++) {
+                    long st = postStart(c, t, i);
+                    if (st > now + 1000L) next = Math.min(next, st);
+                }
+            }
         }
         if (next == Long.MAX_VALUE) return;
         try {
@@ -145,7 +203,7 @@ public class BubbleService extends Service {
             .setContentTitle("أيقونة أذكار الصباح والمساء تعمل").setOngoing(true).setContentIntent(android.app.PendingIntent.getActivity(this, 0, new Intent(this, PhoneActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP), android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT)).build();
         if (Build.VERSION.SDK_INT >= 29) startForeground(78, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         else startForeground(78, n);
-        if (!Settings.canDrawOverlays(this) || !wanted(this)) {
+        if (!Settings.canDrawOverlays(this) || !anyWanted(this)) {
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -161,16 +219,19 @@ public class BubbleService extends Service {
         super.onDestroy();
     }
 
+    private String curKey;
+
     private void update() {
-        int p = active(this);
-        if (p == 0) {
+        int[] pk = pick(this);
+        if (pk == null) {
             hide();
             stopSelf(); // not the time, or already tapped or closed: the icon and its notification go
             return;
         }
-        if (view != null && shownFor == p) return;
+        if (view != null && shownFor == pk[0] && keyOf(pk).equals(curKey)) return;
         hide();
-        show(p);
+        curKey = keyOf(pk);
+        show(pk[0]);
     }
 
     private int dp(int v) {
@@ -183,14 +244,14 @@ public class BubbleService extends Service {
         col.setGravity(Gravity.CENTER_HORIZONTAL);
 
         TextView b = new TextView(this);
-        b.setText(cat == MORNING ? "أذكار\nالصباح" : "أذكار\nالمساء");
+        b.setText(cat == MORNING ? "أذكار\nالصباح" : cat == EVENING ? "أذكار\nالمساء" : "أذكار بعد\nالصلاة");
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         b.setTypeface(Typeface.DEFAULT_BOLD);
         b.setTextColor(0xFFF6ECD2);
         b.setGravity(Gravity.CENTER);
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.OVAL);
-        bg.setColor(cat == MORNING ? 0xF2186548 : 0xF2284583);
+        bg.setColor(cat == MORNING ? 0xF2186548 : cat == EVENING ? 0xF2284583 : 0xF27A4A12);
         bg.setStroke(dp(2), 0xFFE8B84A);
         b.setBackground(bg);
         col.addView(b, new LinearLayout.LayoutParams(dp(64), dp(64)));
@@ -210,7 +271,7 @@ public class BubbleService extends Service {
         x.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                sp.edit().putBoolean(doneKey(cat), true).apply();
+                sp.edit().putBoolean(curKey != null ? curKey : doneKey(cat), true).apply();
                 hide();
                 stopSelf();
             }
@@ -272,7 +333,7 @@ public class BubbleService extends Service {
     }
 
     private void open(int cat) {
-        sp.edit().putBoolean(doneKey(cat), true).apply();
+        sp.edit().putBoolean(curKey != null ? curKey : doneKey(cat), true).apply();
         hide();
         stopSelf();
         Intent in = new Intent(this, PhoneActivity.class)
