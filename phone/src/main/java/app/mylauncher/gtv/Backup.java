@@ -23,7 +23,8 @@ final class Backup {
     /** Things that only describe the moment (diagnostics, the silent window in progress, one-time warning marks). */
     private static boolean skip(String k) {
         return k.startsWith("dbg_") || k.equals("radio_log") || k.startsWith("sil_") || k.startsWith("warn_at_")
-            || k.equals("radio_resume") || k.startsWith("tv_") || k.startsWith("az_done_");
+            || k.equals("radio_resume") || k.startsWith("tv_") || k.startsWith("az_done_")
+            || k.startsWith("wc_") || k.equals("qm_next") || k.startsWith("qm_at_");
     }
 
     static String export(Context c) throws JSONException {

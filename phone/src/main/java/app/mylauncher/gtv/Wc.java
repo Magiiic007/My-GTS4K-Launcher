@@ -46,6 +46,7 @@ final class Wc {
     static void set(Context c, boolean on, boolean feedback) {
         c = c.getApplicationContext();
         p(c).edit().putBoolean("wc_on", on).putLong("wc_at", on ? System.currentTimeMillis() : 0L).apply();
+        if (!on) p(c).edit().remove("qm_next").apply(); // the "establish the prayer" timer starts over, so it does not pop up the moment you come out
         try {
             if (on) {
                 if (RadioService.on()) RadioService.stop(c);
