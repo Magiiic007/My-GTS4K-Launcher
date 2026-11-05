@@ -3663,8 +3663,8 @@ public class PhoneActivity extends Activity {
         acc("tk:stats", "الإحصائية", week + " من 35 هذا الأسبوع");
         LinearLayout st = hbox();
         String[][] cards = {
-            {week + " من 35", "آخر 7 أيام"},
-            {month + " من " + (monthDays * 5), "هذا الشهر"},
+            {week + " / 35", "آخر 7 أيام"},
+            {month + " / " + (monthDays * 5), "هذا الشهر"},
             {String.valueOf(streak), "أيام متتالية كاملة"}};
         for (String[] cd : cards) {
             LinearLayout c1 = vbox();
