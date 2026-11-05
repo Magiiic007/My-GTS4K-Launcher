@@ -53,6 +53,26 @@ final class Backup {
         return out.toString(1);
     }
 
+    /**
+     * First start of a fresh install: the settings I chose as the starting point (assets/default_settings.json) are
+     * applied once. Nothing is touched when the app already has any settings of its own.
+     */
+    static void applyDefaults(Context c) {
+        try {
+            SharedPreferences sp = c.getSharedPreferences("magiic", Context.MODE_PRIVATE);
+            if (!sp.getAll().isEmpty()) return;
+            java.io.InputStream in = c.getAssets().open("default_settings.json");
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int r;
+            while ((r = in.read(buf)) > 0) bo.write(buf, 0, r);
+            in.close();
+            restore(c, bo.toString("UTF-8"));
+        } catch (java.io.IOException | RuntimeException ignored) {
+            // no defaults file: the app starts with its built-in settings
+        }
+    }
+
     /** Puts a saved file back. Returns how many settings were restored, or -1 if the file is not one of ours. */
     static int restore(Context c, String json) {
         try {
