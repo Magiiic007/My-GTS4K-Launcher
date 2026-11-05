@@ -304,5 +304,5 @@
     <string name="rem_in_days">in %1$d days</string>
     <string name="rem_day_before_occ">the day before the occasion</string>
     <string name="rem_same_day_occ">on the day of the occasion</string>
-    <string name="remote_keys_desc">Lets the remote's YouTube and star buttons work while this app is the home screen. It only watches those key presses.</string>
+    <string name="remote_keys_desc">Lets the YouTube and star buttons of the remote work while this app is the home screen. It only watches those key presses.</string>
 </resources>
