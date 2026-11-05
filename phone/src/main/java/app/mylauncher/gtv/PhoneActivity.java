@@ -524,6 +524,10 @@ public class PhoneActivity extends Activity {
         // a new visit to the tasbih starts the round from 0 (the last count and today's totals stay)
         if (tab == 6 && (lastKey == null || !lastKey.startsWith("6:"))) endTasbihRound();
         lastKey = key;
+        // The screen stays on while a dhikr (or the tasbih) is open, and goes back to the normal timeout on leaving it.
+        boolean reading = (tab == 5 && sub != null && (sub.startsWith("cat:") || sub.equals("hadith"))) || tab == 6;
+        if (reading) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        else getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         clockTv = apTv = nameTv = cdTv = altTv = iqLabel = iqValue = weatherTv = null;
         applyBackground();
         body.removeAllViews();
