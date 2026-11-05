@@ -66,59 +66,112 @@ final class Qibla {
             invalidate();
         }
 
+        /** A 3D Kaaba: a lit top, a front and a darker right side, a ground shadow, and a glow when it is lit. */
         private void kaaba(Canvas cv, float cx, float top, float u) {
             float t = glow;
+            float h = u * 2f;
+            float fw = u * 1.35f;          // width of the front face
+            float sk = u * 0.22f;          // how much the side face rises towards the back
+            // ground shadow
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0x33000000);
+            cv.drawOval(new RectF(cx - u * 1.1f, top + h - u * 0.12f, cx + u * 1.5f, top + h + u * 0.38f), paint);
             if (t > 0.01f) {
-                paint.setStyle(Paint.Style.FILL);
-                paint.setShader(new android.graphics.RadialGradient(cx, top + u, u * 3.4f,
-                    new int[] {((int) (0x99 * t) << 24) | 0x00FFD54A, 0x00FFD54A}, null, android.graphics.Shader.TileMode.CLAMP));
-                cv.drawCircle(cx, top + u, u * 3.4f, paint);
+                paint.setShader(new android.graphics.RadialGradient(cx, top + u, u * 3.6f,
+                    new int[] {((int) (0xAA * t) << 24) | 0x00FFD54A, 0x00FFD54A}, null, android.graphics.Shader.TileMode.CLAMP));
+                cv.drawCircle(cx, top + u, u * 3.6f, paint);
                 paint.setShader(null);
             }
-            float h = u * 2f;
+            float l = cx - u, m = cx - u + fw, r = cx + u * 1.0f + (fw - u * 1.35f);
+            float rr = m + u * 0.65f;
+            // top face
             Path topFace = new Path();
-            topFace.moveTo(cx - u, top);
-            topFace.lineTo(cx + u, top);
-            topFace.lineTo(cx + u * 0.8f, top - u * 0.45f);
-            topFace.lineTo(cx - u * 0.8f, top - u * 0.45f);
+            topFace.moveTo(l, top);
+            topFace.lineTo(m, top);
+            topFace.lineTo(rr, top - sk);
+            topFace.lineTo(l + u * 0.65f, top - sk);
             topFace.close();
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(mix(0xFFB0B0AA, 0xFF3A3A3A, t));
+            paint.setColor(mix(0xFFC8C8C2, 0xFF4A4A4A, t));
             cv.drawPath(topFace, paint);
-            RectF front = new RectF(cx - u, top, cx + u, top + h);
-            paint.setColor(mix(0xFF9C9C96, 0xFF0C0C0C, t));
+            // right side face (darkest)
+            Path side = new Path();
+            side.moveTo(m, top);
+            side.lineTo(rr, top - sk);
+            side.lineTo(rr, top - sk + h);
+            side.lineTo(m, top + h);
+            side.close();
+            paint.setColor(mix(0xFF7E7E78, 0xFF050505, t));
+            cv.drawPath(side, paint);
+            // front face with a soft vertical shade
+            RectF front = new RectF(l, top, m, top + h);
+            paint.setShader(new android.graphics.LinearGradient(0f, top, 0f, top + h,
+                mix(0xFFA8A8A2, 0xFF2A2A2A, t), mix(0xFF8C8C86, 0xFF0A0A0A, t), android.graphics.Shader.TileMode.CLAMP));
             cv.drawRect(front, paint);
-            int band = mix(0xFFC4C4BE, gold, t);
+            paint.setShader(null);
+            // the gold band (hizam) across the front and the side, and the door
+            int band = mix(0xFFD2D2CC, gold, t);
             paint.setColor(band);
-            cv.drawRect(cx - u, top + h * 0.22f, cx + u, top + h * 0.34f, paint);
-            cv.drawRect(cx - u * 0.28f, top + h * 0.5f, cx + u * 0.04f, top + h * 0.92f, paint);
+            cv.drawRect(l, top + h * 0.22f, m, top + h * 0.34f, paint);
+            Path sb = new Path();
+            sb.moveTo(m, top + h * 0.22f);
+            sb.lineTo(rr, top - sk + h * 0.22f);
+            sb.lineTo(rr, top - sk + h * 0.34f);
+            sb.lineTo(m, top + h * 0.34f);
+            sb.close();
+            paint.setColor(mix(0xFFA6A6A0, 0xFFB8892F, t));
+            cv.drawPath(sb, paint);
+            paint.setColor(band);
+            cv.drawRect(l + fw * 0.52f, top + h * 0.5f, l + fw * 0.80f, top + h * 0.94f, paint);
+            // edges
             paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(2f);
-            paint.setColor(band);
+            paint.setStrokeWidth(1.5f);
+            paint.setColor(mix(0xFFB4B4AE, 0xFF000000, t));
             cv.drawRect(front, paint);
             cv.drawPath(topFace, paint);
+            cv.drawPath(side, paint);
+            paint.setStyle(Paint.Style.FILL);
+        }
+
+        /** A soft drop shadow under a circle, drawn as a few fading rings. */
+        private void dropShadow(Canvas cv, float cx, float cy, float r, float dy) {
+            paint.setStyle(Paint.Style.FILL);
+            for (int i = 0; i < 9; i++) {
+                float grow = i * r * 0.012f;
+                paint.setColor(((0x1E - i * 2) << 24));
+                cv.drawCircle(cx, cy + dy, r + grow, paint);
+            }
         }
 
         @Override
         protected void onDraw(Canvas cv) {
             float w = getWidth(), h = getHeight();
-            float r = Math.min(w / 2f - 14f, (h - 14f) * 0.40f);
-            float cx = w / 2f, cy = h - r - 14f;
+            float r = Math.min(w / 2f - 16f, (h - 22f) * 0.40f);
+            float cx = w / 2f, cy = h - r - 22f;
             float t = glow;
-            int ring = mix(0xFFD9D4C4, 0xFF4CD08A, t);
+            int hi = mix(0xFFF1E3B0, 0xFFB6F0D0, t);
+            int lo = mix(0xFF8E7430, 0xFF1F7A4C, t);
 
             // the Kaaba above the dial
-            float u = r * 0.16f;
+            float u = r * 0.15f;
             kaaba(cv, cx, cy - r - r * 0.10f - u * 2f, u);
 
-            // the plate
+            // the dial stands off the page: a drop shadow, a metal rim, a domed face
+            dropShadow(cv, cx, cy, r, r * 0.05f);
             paint.setStyle(Paint.Style.FILL);
-            paint.setColor(0xFFF7F4EC);
+            paint.setShader(new android.graphics.LinearGradient(cx - r, cy - r, cx + r, cy + r, hi, lo,
+                android.graphics.Shader.TileMode.CLAMP));
             cv.drawCircle(cx, cy, r, paint);
+            paint.setShader(null);
+            float face = r * 0.93f;
+            paint.setShader(new android.graphics.RadialGradient(cx - face * 0.3f, cy - face * 0.35f, face * 1.45f,
+                new int[] {0xFFFFFFFF, 0xFFF4EFE2, 0xFFD9D2BE}, new float[] {0f, 0.55f, 1f}, android.graphics.Shader.TileMode.CLAMP));
+            cv.drawCircle(cx, cy, face, paint);
+            paint.setShader(null);
+            // an inner edge that gives the face a rim
             paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(6f);
-            paint.setColor(ring);
-            cv.drawCircle(cx, cy, r - 3f, paint);
+            paint.setStrokeWidth(2.5f);
+            paint.setColor(0x44000000);
+            cv.drawCircle(cx, cy, face, paint);
 
             cv.save();
             cv.rotate(-heading, cx, cy);
@@ -129,7 +182,7 @@ final class Qibla {
                 paint.setColor(big ? 0xFF222222 : 0xFF9A9A92);
                 cv.save();
                 cv.rotate(d, cx, cy);
-                cv.drawLine(cx, cy - r + 14f, cx, cy - r + (big ? 14f + r * 0.10f : 14f + r * 0.05f), paint);
+                cv.drawLine(cx, cy - face + 12f, cx, cy - face + (big ? 12f + r * 0.10f : 12f + r * 0.05f), paint);
                 cv.restore();
             }
             // an ornament ring of small diamonds
@@ -169,7 +222,7 @@ final class Qibla {
                 cv.restore();
             }
             paint.setFakeBoldText(false);
-            // the mark at the qibla bearing: a dashed line and a triangle at the rim
+            // the mark at the qibla bearing: a dashed line and a raised triangle at the rim
             cv.save();
             cv.rotate(target, cx, cy);
             paint.setStyle(Paint.Style.STROKE);
@@ -179,12 +232,17 @@ final class Qibla {
             cv.drawLine(cx, cy - r * 0.36f, cx, cy - r * 0.62f, paint);
             paint.setPathEffect(null);
             Path tri = new Path();
-            float ty = cy - r + 2f, ts = r * 0.07f;
+            float ty = cy - face + 2f, ts = r * 0.07f;
             tri.moveTo(cx, ty - ts * 0.4f);
             tri.lineTo(cx - ts, ty + ts * 1.7f);
             tri.lineTo(cx + ts, ty + ts * 1.7f);
             tri.close();
             paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0x44000000);
+            cv.save();
+            cv.translate(2.5f, 3.5f);
+            cv.drawPath(tri, paint);
+            cv.restore();
             paint.setColor(0xFF1F5D3A);
             cv.drawPath(tri, paint);
             cv.restore();
@@ -194,16 +252,30 @@ final class Qibla {
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(5f);
             paint.setColor(mix(0xFF444444, 0xFF2E9E66, t));
-            cv.drawLine(cx, cy - r - 4f, cx, cy - r + 12f, paint);
+            cv.drawLine(cx, cy - r - 2f, cx, cy - face + 10f, paint);
 
-            // the empty centre
+            // the centre: a sunken disc (dark at the top edge, light at the bottom) with a cap
+            float ci = r * 0.40f;
             paint.setStyle(Paint.Style.FILL);
-            paint.setColor(0xFFFFFFFF);
-            cv.drawCircle(cx, cy, r * 0.40f, paint);
+            paint.setShader(new android.graphics.LinearGradient(0f, cy - ci, 0f, cy + ci, 0xFFD6D0BE, 0xFFFFFFFF,
+                android.graphics.Shader.TileMode.CLAMP));
+            cv.drawCircle(cx, cy, ci, paint);
+            paint.setShader(null);
             paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(2f);
+            paint.setStrokeWidth(3f);
             paint.setColor(0x33000000);
-            cv.drawCircle(cx, cy, r * 0.40f, paint);
+            cv.drawCircle(cx, cy, ci, paint);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setShader(new android.graphics.RadialGradient(cx - r * 0.02f, cy - r * 0.02f, r * 0.07f, hi, lo,
+                android.graphics.Shader.TileMode.CLAMP));
+            cv.drawCircle(cx, cy, r * 0.055f, paint);
+            paint.setShader(null);
+
+            // a glass-like shine across the upper left of the dial
+            paint.setShader(new android.graphics.RadialGradient(cx - face * 0.35f, cy - face * 0.55f, face * 0.9f,
+                0x33FFFFFF, 0x00FFFFFF, android.graphics.Shader.TileMode.CLAMP));
+            cv.drawCircle(cx, cy, face, paint);
+            paint.setShader(null);
         }
     }
 }

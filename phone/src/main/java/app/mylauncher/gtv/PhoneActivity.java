@@ -383,7 +383,9 @@ public class PhoneActivity extends Activity {
         } else {
             bg1 = 0xFF01490E; bg2 = 0xFF05601A; gold = 0xFFE8B84A; cream = 0xFFF6ECD2; dim = 0xFFB9C9BD;
         }
-        card = 0x14FFFFFF;
+        // The cards have their own colour, different from the page, and fairly see-through: deep ink blue over the green
+        // look, deep teal over the navy look.
+        card = look == 1 ? 0x880B4D45 : 0x880A2A4A;
         line = (gold & 0x00FFFFFF) | 0x59000000;
         hl = (gold & 0x00FFFFFF) | 0x33000000;
     }
@@ -395,7 +397,7 @@ public class PhoneActivity extends Activity {
     private android.graphics.drawable.Drawable shape(int fill, int stroke, int radiusDp) {
         // the cards of the pages look raised (a soft shadow and a light top edge); other shapes stay flat
         if (fill == card && stroke == line && radiusDp >= 10 && sp != null && sp.getBoolean("depth_on", true)) {
-            return new Raised(getResources().getDisplayMetrics().density, radiusDp, stroke);
+            return new Raised(getResources().getDisplayMetrics().density, radiusDp, stroke, fill);
         }
         GradientDrawable g = new GradientDrawable();
         g.setColor(fill);

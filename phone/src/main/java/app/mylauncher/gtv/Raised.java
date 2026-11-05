@@ -18,11 +18,12 @@ import android.graphics.drawable.Drawable;
 final class Raised extends Drawable {
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final float den, rad;
-    private final int stroke;
+    private final int stroke, fill;
     private final Path path = new Path();
     private final RectF rf = new RectF();
 
-    Raised(float density, int radiusDp, int stroke) {
+    Raised(float density, int radiusDp, int stroke, int fill) {
+        this.fill = fill;
         this.den = density;
         this.rad = radiusDp * density;
         this.stroke = stroke;
@@ -50,7 +51,7 @@ final class Raised extends Drawable {
         c.restore();
 
         // the face: lighter at the top, a little darker at the bottom
-        p.setShader(new LinearGradient(0f, rf.top, 0f, rf.bottom, 0x24FFFFFF, 0x0AFFFFFF, Shader.TileMode.CLAMP));
+        p.setShader(new LinearGradient(0f, rf.top, 0f, rf.bottom, lighter(fill), fill, Shader.TileMode.CLAMP));
         c.drawPath(path, p);
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE);
@@ -61,6 +62,15 @@ final class Raised extends Drawable {
         p.setColor(0x40FFFFFF);
         p.setStrokeWidth(den);
         c.drawLine(rf.left + rad * 0.8f, rf.top + 1.2f * den, rf.right - rad * 0.8f, rf.top + 1.2f * den, p);
+    }
+
+    /** The same colour mixed a little with white (keeping its transparency). */
+    private static int lighter(int c) {
+        int a = c >>> 24;
+        int r = ((c >> 16) & 255) + (255 - ((c >> 16) & 255)) * 18 / 100;
+        int g = ((c >> 8) & 255) + (255 - ((c >> 8) & 255)) * 18 / 100;
+        int b = (c & 255) + (255 - (c & 255)) * 18 / 100;
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     @Override
