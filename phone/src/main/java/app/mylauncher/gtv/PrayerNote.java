@@ -204,7 +204,8 @@ final class PrayerNote {
             rv.setTextViewText(R.id.w_hijri, Hijri.hijriAr(Hijri.of(cal, Hijri.adjust(c))));
 
             rv.setChronometerCountDown(R.id.w_clock, true);
-            rv.setChronometer(R.id.w_clock, SystemClock.elapsedRealtime() + (target - now), null, true);
+            rv.setChronometer(R.id.w_clock, SystemClock.elapsedRealtime() + (target - now),
+            iqama ? "باقي على الإقامة %s" : "باقي على الأذان %s", true);
             String name = PrayerCalc.name(c, s.index, s.friday);
             rv.setTextViewText(R.id.w_until, (iqama ? "حتى إقامة " : "حتى أذان ") + name);
 
@@ -253,7 +254,7 @@ final class PrayerNote {
         boolean iqama = s.hasIqama && now >= s.a;
         long target = iqama ? s.q : s.a;
         String name = PrayerCalc.name(c, s.index, s.friday);
-        String title = (iqama ? "باقي على إقامة " : "باقي على أذان ") + name + " · " + ap(PrayerCalc.time(c, city, target));
+        String title = (iqama ? "إقامة " : "أذان ") + name + " " + ap(PrayerCalc.time(c, city, target));
 
         RemoteViews rv = new RemoteViews(c.getPackageName(), R.layout.note_prayer);
         rv.setTextViewText(R.id.note_title, title);
