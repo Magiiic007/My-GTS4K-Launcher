@@ -199,7 +199,7 @@ public class BubbleService extends Service {
         wm = getSystemService(WindowManager.class);
         NotificationManager nm = getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel(CHANNEL, "أيقونة الأذكار", NotificationManager.IMPORTANCE_MIN));
-        Notification n = new Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_crescent)
+        Notification n = new Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_note)
             .setContentTitle("أيقونة أذكار الصباح والمساء تعمل").setOngoing(true).setContentIntent(android.app.PendingIntent.getActivity(this, 0, new Intent(this, PhoneActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP), android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT)).build();
         if (Build.VERSION.SDK_INT >= 29) startForeground(78, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         else startForeground(78, n);
