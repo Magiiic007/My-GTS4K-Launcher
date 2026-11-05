@@ -1924,7 +1924,7 @@ public class PhoneActivity extends Activity {
                     sp.edit().putBoolean("ad_dua", on).apply();
                 }
             });
-        switchRow("أقم الصلاة", "نافذة فوق التطبيقات تذكّرك بالصلوات التي جاء وقتها ولم تعلّمها ✓، ولا تختفي إلا بزر OK، وتوقف الفيديو أو الصوت الشغّال", PrayerNote.missedOn(this),
+        switchRow("أقم الصلاة", "كل فترة تحددها، لو فيه صلوات جاء وقتها ولم تعلّمها ✓ تظهر نافذة فوق التطبيقات لا تختفي إلا بزر OK، وتوقف الفيديو أو الصوت الشغّال. لا تظهر بعد منتصف الليل", PrayerNote.missedOn(this),
             new CompoundListener() {
                 @Override
                 public void changed(boolean on) {
@@ -1934,13 +1934,13 @@ public class PhoneActivity extends Activity {
                 }
             });
         if (PrayerNote.missedOn(this)) {
-            row("وقت التذكير", "بعد الأذان بـ " + PrayerNote.missedMin(this) + " دقيقة", "›", new View.OnClickListener() {
+            row("تكرار التذكير", "كل " + PrayerNote.missedMin(this) + " دقيقة، ما دامت هناك صلوات لم تُعلَّم", "›", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    numberDialog("دقائق بعد الأذان", 5, 120, PrayerNote.missedMin(PhoneActivity.this), new IntSetter() {
+                    numberDialog("التذكير كل كم دقيقة", 5, 240, PrayerNote.missedMin(PhoneActivity.this), new IntSetter() {
                         @Override
                         public void set(int val) {
-                            sp.edit().putInt("qm_min", val).apply();
+                            sp.edit().putInt("qm_min", val).putLong("qm_next", 0L).apply();
                             PrayerNote.refresh(PhoneActivity.this);
                             build();
                         }

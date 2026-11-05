@@ -157,6 +157,10 @@ final class MissedPopup {
         }
     }
 
+    static boolean isShown() {
+        return shown != null;
+    }
+
     static void hide() {
         if (shown != null && wm != null) {
             try {
