@@ -60,15 +60,72 @@ public class BubbleService extends Service {
         return c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("az_bubble", true);
     }
 
+    private static String day() {
+        return new SimpleDateFormat("yyyyMMdd", Locale.US).format(new Date());
+    }
+
+    static String doneKey(int cat) {
+        return "az_done_" + day() + "_" + cat;
+    }
+
+    /** Which period it is now (MORNING, EVENING or 0), by the selected city's prayer times. */
+    private static int period(Context c) {
+        Cities.City city = Cities.selected(c);
+        if (city == null) return 0;
+        long now = System.currentTimeMillis();
+        long[] t = PrayerCalc.day(city, now, 0, PrayerPrefs.adjust(c));
+        if (now >= t[0] && now < t[1]) return MORNING;
+        if (now >= t[2] && now < t[4]) return EVENING;
+        return 0;
+    }
+
+    /** The period to show the icon for right now: none when it is not the time, or when it was tapped or closed today. */
+    static int active(Context c) {
+        int p = period(c);
+        if (p != 0 && c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean(doneKey(p), false)) return 0;
+        return p;
+    }
+
+    /**
+     * The service runs only while the icon is on screen (so its notification shows only then): it is started at the
+     * beginning of each period by an alarm, and stops when the icon is tapped, closed, or the period ends.
+     */
     static void sync(Context c) {
         try {
-            if (wanted(c) && Settings.canDrawOverlays(c)) {
+            schedule(c);
+            if (wanted(c) && Settings.canDrawOverlays(c) && active(c) != 0) {
                 c.startForegroundService(new Intent(c, BubbleService.class));
             } else {
                 c.stopService(new Intent(c, BubbleService.class));
             }
         } catch (RuntimeException ignored) {
-            // starting from the background can be refused; it is tried again when the app opens
+            // starting from the background can be refused; it is tried again at the next alarm or when the app opens
+        }
+    }
+
+    /** An alarm at the start of the next period (Fajr or Asr). */
+    private static void schedule(Context c) {
+        android.app.AlarmManager am = c.getSystemService(android.app.AlarmManager.class);
+        Cities.City city = Cities.selected(c);
+        android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(c, 77,
+            new Intent(c, BubbleReceiver.class), android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+        if (am == null || city == null || !wanted(c)) {
+            if (am != null) am.cancel(pi);
+            return;
+        }
+        long now = System.currentTimeMillis();
+        int[] adj = PrayerPrefs.adjust(c);
+        long next = Long.MAX_VALUE;
+        for (int off = 0; off <= 1; off++) {
+            long[] t = PrayerCalc.day(city, now, off, adj);
+            if (t[0] > now + 1000L) next = Math.min(next, t[0]);
+            if (t[2] > now + 1000L) next = Math.min(next, t[2]);
+        }
+        if (next == Long.MAX_VALUE) return;
+        try {
+            am.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, next, pi);
+        } catch (SecurityException e) {
+            am.setAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, next, pi);
         }
     }
 
@@ -103,30 +160,11 @@ public class BubbleService extends Service {
         super.onDestroy();
     }
 
-    private static String day() {
-        return new SimpleDateFormat("yyyyMMdd", Locale.US).format(new Date());
-    }
-
-    private String doneKey(int cat) {
-        return "az_done_" + day() + "_" + cat;
-    }
-
-    /** Which period it is now (MORNING, EVENING or 0), by the selected city's prayer times. */
-    private int period() {
-        Cities.City city = Cities.selected(this);
-        if (city == null) return 0;
-        long now = System.currentTimeMillis();
-        long[] t = PrayerCalc.day(city, now, 0, PrayerPrefs.adjust(this));
-        if (now >= t[0] && now < t[1]) return MORNING;
-        if (now >= t[2] && now < t[4]) return EVENING;
-        return 0;
-    }
-
     private void update() {
-        int p = period();
-        if (p != 0 && sp.getBoolean(doneKey(p), false)) p = 0;
+        int p = active(this);
         if (p == 0) {
             hide();
+            stopSelf(); // not the time, or already tapped or closed: the icon and its notification go
             return;
         }
         if (view != null && shownFor == p) return;
@@ -173,6 +211,7 @@ public class BubbleService extends Service {
             public void onClick(View v) {
                 sp.edit().putBoolean(doneKey(cat), true).apply();
                 hide();
+                stopSelf();
             }
         });
 
@@ -234,6 +273,7 @@ public class BubbleService extends Service {
     private void open(int cat) {
         sp.edit().putBoolean(doneKey(cat), true).apply();
         hide();
+        stopSelf();
         Intent in = new Intent(this, PhoneActivity.class)
             .putExtra("open_cat", cat)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);

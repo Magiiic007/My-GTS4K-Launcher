@@ -82,6 +82,7 @@
         </service>
 
         <receiver android:name=".AdhanReceiver" android:exported="false" />
+        <receiver android:name=".BubbleReceiver" android:exported="false" />
         <receiver android:name=".ReminderReceiver" android:exported="false" />
         <receiver android:name=".InstallReceiver" android:exported="false" />
 
