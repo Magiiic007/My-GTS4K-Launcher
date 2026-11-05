@@ -1,6 +1,7 @@
 package app.mylauncher.gtv;
 
 import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
@@ -75,6 +76,7 @@ public class AdhanService extends Service {
         prayerIndex = index;
         boolean friday = intent != null && intent.getBooleanExtra("friday", false);
         boolean test = intent != null && intent.getBooleanExtra("test", false);
+        tested = test;
         isIqama = intent != null && intent.getBooleanExtra("iqama", false);
         boolean first = intent != null && intent.getBooleanExtra("first", false);
 
@@ -317,7 +319,36 @@ public class AdhanService extends Service {
         }
         if (wake != null && wake.isHeld()) wake.release();
         stopForeground(true);
+        if (!isIqama && !tested) postDua();
         stopSelf();
+    }
+
+    private boolean tested;
+
+    /** After the adhan: the dua that is said after hearing it, as a notification that goes away by itself. */
+    private void postDua() {
+        try {
+            if (!getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("ad_dua", true)) return;
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            nm.createNotificationChannel(new NotificationChannel("dua", "دعاء بعد الأذان", NotificationManager.IMPORTANCE_LOW));
+            String text = "اللَّهُمَّ رَبَّ هَذِهِ الدَّعْوَةِ التَّامَّةِ، وَالصَّلَاةِ الْقَائِمَةِ، آتِ مُحَمَّدًا الْوَسِيلَةَ وَالْفَضِيلَةَ، "
+                + "وَابْعَثْهُ مَقَامًا مَحْمُودًا الَّذِي وَعَدْتَهُ.\n\nثم صلِّ على النبي ﷺ، وادعُ بما شئت، فالدعاء بين الأذان والإقامة لا يُرَدّ.";
+            PendingIntent open = PendingIntent.getActivity(this, 5, new Intent(this, PhoneActivity.class)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            Notification n = new Notification.Builder(this, "dua")
+                .setSmallIcon(R.drawable.ic_crescent)
+                .setContentTitle("دعاء بعد الأذان")
+                .setContentText("اللهم رب هذه الدعوة التامة…")
+                .setStyle(new Notification.BigTextStyle().bigText(text))
+                .setContentIntent(open)
+                .setAutoCancel(true)
+                .setTimeoutAfter(15 * 60_000L)
+                .build();
+            nm.notify(NOTE_ID + 1, n);
+        } catch (RuntimeException ignored) {
+            // No notification permission: nothing to show.
+        }
     }
 
     @Override

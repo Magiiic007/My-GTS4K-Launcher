@@ -548,6 +548,7 @@ public class PhoneActivity extends Activity {
             else if (tab == 8) overlayPage();
             else if (tab == 10) calendarPage();
             else if (tab == 11) trackPage();
+            else if (tab == 12) qadaPage();
             else qiblaPage();
         } catch (Throwable t) {
             // A screen that fails shows what went wrong instead of closing the app.
@@ -1783,6 +1784,13 @@ public class PhoneActivity extends Activity {
                     PrayerNote.refresh(PhoneActivity.this);
                 }
             });
+        switchRow("دعاء بعد الأذان", "إشعار بدعاء ما بعد الأذان يختفي وحده بعد 15 دقيقة", sp.getBoolean("ad_dua", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("ad_dua", on).apply();
+                }
+            });
         switchRow("رفع صوت الأذان تدريجياً", "يبدأ هادئاً ويعلو خلال 15 ثانية حتى مستوى صوت المنبّه في الهاتف", sp.getBoolean("ad_ramp", false),
             new CompoundListener() {
                 @Override
@@ -1953,6 +1961,7 @@ public class PhoneActivity extends Activity {
         menuItem("مواقيت الصلاة", 0);
         menuItem("الأذان والإقامة", 4);
         menuItem("متابعة الصلوات", 11);
+        menuItem("قضاء الصلوات", 12);
         menuItem("التقويم الهجري", 10);
         menuGroup("الأذكار والتذكيرات");
         menuItem("الأذكار والأدعية", 5);
@@ -2864,6 +2873,64 @@ public class PhoneActivity extends Activity {
                 build();
             }
         });
+    }
+
+    /** The missed prayers to make up: a counter for each prayer, + when one is missed and − when it is made up. */
+    private void qadaPage() {
+        title("قضاء الصلوات", false);
+        add(tv("عدّاد للصلوات الفائتة. اضغط «+ فاتت» لتسجيل صلاة فاتتك، و«− قضيت» كلما قضيت واحدة. اضغط على الرقم لضبط العدد دفعة واحدة. يُحفظ مع النسخة الاحتياطية.", 12, dim, false), 4);
+        final String[] names = {"الفجر", "الظهر", "العصر", "المغرب", "العشاء"};
+        int total = 0;
+        for (int i = 0; i < 5; i++) total += sp.getInt("qada_" + i, 0);
+        TextView tt = tv(total == 0 ? "لا توجد صلوات للقضاء" : "المتبقي للقضاء: " + total + " صلاة", 18, gold, true);
+        tt.setGravity(Gravity.CENTER);
+        add(tt, 8);
+        for (int i = 0; i < 5; i++) {
+            final int idx = i;
+            final String key = "qada_" + i;
+            LinearLayout r = hbox();
+            r.setGravity(Gravity.CENTER_VERTICAL);
+            r.setBackground(shape(card, line, 14));
+            r.setPadding(dp(12), dp(8), dp(12), dp(8));
+            r.addView(tv(names[i], 17, cream, true), new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView minus = smallBtn("− قضيت", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int c = sp.getInt(key, 0);
+                    if (c > 0) sp.edit().putInt(key, c - 1).apply();
+                    build();
+                }
+            });
+            minus.setPadding(dp(10), dp(8), dp(10), dp(8));
+            r.addView(minus);
+            final int cur = sp.getInt(key, 0);
+            TextView n = tv(String.valueOf(cur), 20, gold, true);
+            n.setGravity(Gravity.CENTER);
+            n.setMinWidth(dp(56));
+            n.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    numberDialog("عدد صلوات " + names[idx] + " الفائتة", 0, 9999, cur, new IntSetter() {
+                        @Override
+                        public void set(int val) {
+                            sp.edit().putInt(key, val).apply();
+                            build();
+                        }
+                    });
+                }
+            });
+            r.addView(n);
+            TextView plus = smallBtn("+ فاتت", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    sp.edit().putInt(key, sp.getInt(key, 0) + 1).apply();
+                    build();
+                }
+            });
+            plus.setPadding(dp(10), dp(8), dp(10), dp(8));
+            r.addView(plus);
+            add(r, 6);
+        }
     }
 
     private void trackPage() {
