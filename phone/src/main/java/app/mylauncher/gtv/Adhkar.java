@@ -111,7 +111,7 @@ final class Adhkar {
             // the supplication starts at "اللهم لا مانع لما أعطيت", without the tahlil before it
             for (int q = 0; q < c.texts.length; q++) {
                 int m = c.texts[q].indexOf("مَانِعَ");
-                int st = m > 0 ? c.texts[q].lastIndexOf("اللَّهُمَّ", m) : -1;
+                int st = m > 0 ? c.texts[q].lastIndexOf("\u0627\u0644\u0644\u0651", m) : -1;
                 if (st > 0) c.texts[q] = c.texts[q].substring(st);
             }
             // 0..11 are said after every prayer; 12 (ten times) is for Maghrib and Fajr; 13 is for Fajr only
