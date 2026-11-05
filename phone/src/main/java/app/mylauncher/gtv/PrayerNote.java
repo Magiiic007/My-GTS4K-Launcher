@@ -204,8 +204,7 @@ final class PrayerNote {
             rv.setTextViewText(R.id.w_hijri, Hijri.hijriAr(Hijri.of(cal, Hijri.adjust(c))));
 
             rv.setChronometerCountDown(R.id.w_clock, true);
-            rv.setChronometer(R.id.w_clock, SystemClock.elapsedRealtime() + (target - now),
-            iqama ? "باقي على الإقامة %s" : "باقي على الأذان %s", true);
+            rv.setChronometer(R.id.w_clock, SystemClock.elapsedRealtime() + (target - now), null, true);
             String name = PrayerCalc.name(c, s.index, s.friday);
             rv.setTextViewText(R.id.w_until, (iqama ? "حتى إقامة " : "حتى أذان ") + name);
 
@@ -259,7 +258,8 @@ final class PrayerNote {
         RemoteViews rv = new RemoteViews(c.getPackageName(), R.layout.note_prayer);
         rv.setTextViewText(R.id.note_title, title);
         rv.setChronometerCountDown(R.id.note_clock, true);
-        rv.setChronometer(R.id.note_clock, SystemClock.elapsedRealtime() + (target - now), null, true);
+        rv.setChronometer(R.id.note_clock, SystemClock.elapsedRealtime() + (target - now),
+            iqama ? "باقي على الإقامة %s" : "باقي على الأذان %s", true);
 
         PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, PhoneActivity.class)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
