@@ -111,6 +111,10 @@ final class Adhkar {
             // 0..11 are said after every prayer; 12 (ten times) is for Maghrib and Fajr; 13 is for Fajr only
             Category other = slice(c, 0, 12, AFTER_OTHER, "الأذكار بعد الظهر والعصر والعشاء");
             Category fm = slice(c, 0, 14, AFTER_FAJR_MAGHRIB, "الأذكار بعد الفجر والمغرب");
+            // the three "Quls" (Ikhlas, Falaq, Nas) are said three times after Fajr and Maghrib, once after the others
+            for (int q = 8; q <= 10; q++) fm.counts[q] = 3;
+            fm.post[8] = "ثلاث مرات بعد صلاتي الفجر والمغرب";
+            fm.post[10] = "ثلاث مرات بعد صلاتي الفجر والمغرب";
             l.set(i, other);
             l.add(i + 1, fm);
             return;
