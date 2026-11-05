@@ -357,6 +357,19 @@ final class TvSetup {
         if (homeSet(c)) armGuard(c);
     }
 
+    /** Whether the remote-buttons service is installed, enabled and actually running on the TV (for the log). */
+    static String keysStatus(Context c) {
+        try {
+            String v = sh(c, "dumpsys package " + PKG + " | grep -m1 versionName").trim();
+            String en = sh(c, "settings get secure enabled_accessibility_services").trim();
+            String on = sh(c, "settings get secure accessibility_enabled").trim();
+            String run = sh(c, "dumpsys accessibility | grep -c RemoteKeys").trim();
+            return "اللانشر: " + v + " | الخدمات المفعّلة: " + cut(en) + " | التفعيل العام: " + on + " | ظهور الخدمة في النظام: " + run;
+        } catch (Exception e) {
+            return "تعذّر فحص الخدمة: " + e.getMessage();
+        }
+    }
+
     /** Switches on the launcher's remote-buttons service (YouTube and star buttons). Best effort. */
     static void enableKeys(Context c, Say say) {
         try {
@@ -367,7 +380,7 @@ final class TvSetup {
                 sh(c, "settings put secure enabled_accessibility_services " + (cur.isEmpty() ? svc : cur + ":" + svc));
             }
             sh(c, "settings put secure accessibility_enabled 1");
-            say.say("تم تفعيل خدمة أزرار الريموت (يوتيوب والنجمة)");
+            say.say("تم تفعيل خدمة أزرار الريموت (يوتيوب والنجمة)\n" + keysStatus(c));
         } catch (Exception e) {
             say.say("تعذّر تفعيل خدمة أزرار الريموت: " + e.getMessage());
         }
@@ -411,6 +424,7 @@ final class TvSetup {
         String ge = "/data/local/tmp/salah_ge.txt";
         String out = sh(c, "rm -f " + ge + "; logcat -c; (timeout 12 getevent -l > " + ge + " 2>&1 &); "
             + "timeout 12 logcat -v brief ActivityTaskManager:I *:S | grep -E 'START|cmp=|Force|finish' | cut -c1-230 | head -20; "
+            + "echo '- SVC:'; logcat -d -s SalahKeys:I | tail -6; "
             + "echo '- RAW:'; sleep 1; grep -E 'KEY_|BTN_' " + ge + " | grep DOWN | cut -c1-110 | head -8", 35);
         out = out.trim();
         boolean started = out.contains("START") || out.contains("cmp=");
