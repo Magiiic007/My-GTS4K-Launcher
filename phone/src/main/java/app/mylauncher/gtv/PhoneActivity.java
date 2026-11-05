@@ -2321,8 +2321,7 @@ public class PhoneActivity extends Activity {
         menuGroup("الصلاة");
         menuItem("مواقيت الصلاة", 0);
         menuItem("الأذان والإقامة", 4);
-        menuItem("متابعة الصلوات", 11);
-        menuItem("قضاء الصلوات", 12);
+        menuItem("متابعة وقضاء الصلوات", 11);
         menuItem("مدن أخرى", 13);
         menuItem("التقويم الهجري", 10);
         menuGroup("الأذكار والتذكيرات");
@@ -3534,7 +3533,11 @@ public class PhoneActivity extends Activity {
 
     /** The missed prayers to make up: a counter for each prayer, + when one is missed and − when it is made up. */
     private void qadaPage() {
-        title("قضاء الصلوات", false);
+        title("متابعة وقضاء الصلوات", false);
+        qadaBody();
+    }
+
+    private void qadaBody() {
         Track.scan(this);
         add(tv("عدّاد للصلوات الفائتة. اضغط «+ فاتت» لتسجيل صلاة فاتتك، و«− قضيت» كلما قضيت واحدة. اضغط على الرقم لضبط العدد دفعة واحدة. يُحفظ مع النسخة الاحتياطية.", 12, dim, false), 4);
         final String[] names = {"الفجر", "الظهر", "العصر", "المغرب", "العشاء"};
@@ -3633,7 +3636,8 @@ public class PhoneActivity extends Activity {
     }
 
     private void trackPage() {
-        title("متابعة الصلوات", false);
+        title("متابعة وقضاء الصلوات", false);
+        Track.scan(this);
         Calendar today = Track.cal(this, System.currentTimeMillis());
         String[] names = {"الفجر", "الظهر", "العصر", "المغرب", "العشاء"};
         add(tv("علّم كل صلاة بعد أدائها من علامة ○ بجانبها في الصفحة الرئيسية. وإذا علّمتها لا يصلك تنبيه قرب خروج وقتها. تُحفظ مع النسخة الاحتياطية.", 12, dim, false), 4);
@@ -3656,7 +3660,7 @@ public class PhoneActivity extends Activity {
                 streakOn = false; // today still being open does not break the streak
             }
         }
-        section("الإحصائية");
+        acc("tk:stats", "الإحصائية", week + " من 35 هذا الأسبوع");
         LinearLayout st = hbox();
         String[][] cards = {
             {week + " / 35", "آخر 7 أيام"},
@@ -3680,7 +3684,7 @@ public class PhoneActivity extends Activity {
         add(st, 6);
         add(tv("أيام كاملة (الخمس) خلال آخر 31 يوم: " + full, 12, dim, false), 6);
 
-        section("آخر 7 أيام");
+        acc("tk:week", "آخر 7 أيام", "جدول الصلوات يومًا بيوم");
         LinearLayout head = hbox();
         head.addView(tv("", 11, dim, false), new LinearLayout.LayoutParams(0, -2, 1.6f));
         for (String n : names) {
@@ -3708,6 +3712,11 @@ public class PhoneActivity extends Activity {
             add(r, 3);
         }
         add(tv("↺ = صلاة قُضيت لاحقًا من صفحة قضاء الصلوات. التعديل على الأيام السابقة غير متاح؛ تُعلَّم الصلاة في يومها فقط.", 11, dim, false), 8);
+        int totalQ = 0;
+        for (int q = 0; q < 5; q++) totalQ += sp.getInt("qada_" + q, 0);
+        acc("tk:qada", "قضاء الصلوات", totalQ == 0 ? "لا توجد صلوات للقضاء" : "المتبقي: " + totalQ + " صلاة");
+        qadaBody();
+        accEnd();
     }
 
     private void calendarPage() {
