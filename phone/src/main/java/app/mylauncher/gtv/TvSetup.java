@@ -393,6 +393,15 @@ final class TvSetup {
         }
     }
 
+    // ------------------------------------------------------------ the home screen
+    private static SharedPreferences p(Context c) {
+        return c.getSharedPreferences("magiic", Context.MODE_PRIVATE);
+    }
+
+    static boolean homeSet(Context c) {
+        return p(c).getBoolean("tv_home", false);
+    }
+
     /** What the TV says is its home screen, and what is on the screen now. */
     private static String[] homeInfo(Context c) throws Exception {
         String r = sh(c, "cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1").trim();
