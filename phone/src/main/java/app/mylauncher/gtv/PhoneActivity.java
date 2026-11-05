@@ -177,7 +177,30 @@ public class PhoneActivity extends Activity {
         }
         Scheduler.scheduleNext(this);
         Reminders.scheduleNext(this);
+        openFromBubble(getIntent());
         build();
+    }
+
+    /** The round adhkar icon over other apps opens the morning or evening chapter directly. */
+    private void openFromBubble(Intent in) {
+        if (in == null) return;
+        int cat = in.getIntExtra("open_cat", 0);
+        if (cat == 0) return;
+        in.removeExtra("open_cat");
+        tab = 5;
+        clearDone(cat);
+        editCat = false;
+        sub = "cat:" + cat;
+    }
+
+    @Override
+    protected void onNewIntent(Intent in) {
+        super.onNewIntent(in);
+        setIntent(in);
+        if (in != null && in.getIntExtra("open_cat", 0) != 0) {
+            openFromBubble(in);
+            build();
+        }
     }
 
     @Override
@@ -187,6 +210,7 @@ public class PhoneActivity extends Activity {
         RadioService.listen(radioListener);
         RadioService.resumeIfCutOff(this);
         OverlayService.sync(this);
+        BubbleService.sync(this);
         PrayerNote.refresh(this);
         if (tab == 8 || tab == 6 || (tab == 0 && sub == null) || tvVisible()) build();
         if (tab == 9) qiblaStart();
@@ -1755,6 +1779,13 @@ public class PhoneActivity extends Activity {
                     PrayerNote.refresh(PhoneActivity.this);
                 }
             });
+        switchRow("رفع صوت الأذان تدريجياً", "يبدأ هادئاً ويعلو خلال 15 ثانية حتى مستوى صوت المنبّه في الهاتف", sp.getBoolean("ad_ramp", false),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("ad_ramp", on).apply();
+                }
+            });
         final boolean silent = PrayerNote.silentOn(this);
         switchRow("الصامت وقت الصلاة", "يحوّل الهاتف لصامت بعد انتهاء الأذان، ويرجعه بعد الإقامة", silent,
             new CompoundListener() {
@@ -2455,11 +2486,11 @@ public class PhoneActivity extends Activity {
                 }
             });
         }
-        tvLogBlock();
         if (tvStage == 0) tvPrepare();
         else if (tvStage == 1) tvConnect();
         else if (tvStage == 2) tvInstall();
         else tvHome();
+        tvLogBlock();
     }
 
     /** The notes, newest first, at the top of the page. */
@@ -2503,7 +2534,6 @@ public class PhoneActivity extends Activity {
                 }
             });
         }
-        tvLogBlock();
         row("تفعيل أزرار اليوتيوب والنجمة", "يعمل بعد تحديث اللانشر على التلفزيون (الخطوة 3)", "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -3039,6 +3069,15 @@ public class PhoneActivity extends Activity {
                     sp.edit().putBoolean("ov_on", on).apply();
                     if (on && !Settings.canDrawOverlays(PhoneActivity.this)) openOverlayPermission();
                     OverlayService.sync(PhoneActivity.this);
+                }
+            });
+        switchRow("أيقونة أذكار الصباح والمساء", "أيقونة دائرية فوق التطبيقات وقت الأذكار (من الفجر للظهر، ومن العصر للعشاء). اضغطها لتفتح الذكر مباشرة", sp.getBoolean("az_bubble", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("az_bubble", on).apply();
+                    if (on && !Settings.canDrawOverlays(PhoneActivity.this)) openOverlayPermission();
+                    BubbleService.sync(PhoneActivity.this);
                 }
             });
         final int f = sp.getInt("ov_freq", 30);

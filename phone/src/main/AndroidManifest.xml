@@ -72,6 +72,15 @@
                 android:value="Shows a short dhikr card with tasbih counters over other apps, only when the user turns it on" />
         </service>
 
+        <service
+            android:name=".BubbleService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Shows a small icon over other apps during the morning and evening adhkar times, only when the user turns it on" />
+        </service>
+
         <receiver android:name=".AdhanReceiver" android:exported="false" />
         <receiver android:name=".ReminderReceiver" android:exported="false" />
         <receiver android:name=".InstallReceiver" android:exported="false" />

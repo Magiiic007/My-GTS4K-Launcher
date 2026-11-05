@@ -13,5 +13,6 @@ public class BootReceiver extends BroadcastReceiver {
     public void onReceive(Context c, Intent i) {
         Scheduler.scheduleNext(c);
         Reminders.scheduleNext(c);
+        BubbleService.sync(c);
     }
 }

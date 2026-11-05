@@ -213,7 +213,10 @@ public class AdhanService extends Service {
             player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                 @Override
                 public void onPrepared(MediaPlayer mp) {
+                    boolean ramp = getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("ad_ramp", false);
+                    if (ramp) mp.setVolume(0f, 0f);
                     mp.start();
+                    if (ramp) rampUp();
                 }
             });
             player.prepareAsync();
@@ -223,6 +226,26 @@ public class AdhanService extends Service {
             releasePlayer();
             return false;
         }
+    }
+
+    /** Raises the adhan from silence to the phone's own volume level over about 15 seconds. */
+    private void rampUp() {
+        final long t0 = SystemClock.uptimeMillis();
+        final long total = 15_000L;
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                MediaPlayer p = player;
+                if (p == null || finished) return;
+                float f = Math.min(1f, (SystemClock.uptimeMillis() - t0) / (float) total);
+                try {
+                    p.setVolume(f * f, f * f);
+                } catch (IllegalStateException ignored) {
+                    return;
+                }
+                if (f < 1f) handler.postDelayed(this, 200L);
+            }
+        });
     }
 
     private void beep() {
