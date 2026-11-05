@@ -2405,6 +2405,10 @@ public class PhoneActivity extends Activity {
 
     private LinearLayout catList;
 
+    private static String bobs(int n) {
+        return n == 1 ? "باب واحد" : n == 2 ? "بابان" : n <= 10 ? n + " أبواب" : n + " بابًا";
+    }
+
     private void fillCategories(List<Adhkar.Category> all, String q) {
         catList.removeAllViews();
         accs.clear();
@@ -2422,7 +2426,7 @@ public class PhoneActivity extends Activity {
                 int n = 0;
                 for (Adhkar.Category c : all) if (Adhkar.groupOf(this, c.id) == g) n++;
                 if (n == 0) continue;
-                acc("ak:" + g, Adhkar.GROUPS[g], n + " باب");
+                acc("ak:" + g, Adhkar.GROUP_ICONS[g] + "  " + Adhkar.GROUPS[g], bobs(n));
                 for (Adhkar.Category c : all) {
                     if (Adhkar.groupOf(this, c.id) == g) chapterRow(c, false);
                 }
