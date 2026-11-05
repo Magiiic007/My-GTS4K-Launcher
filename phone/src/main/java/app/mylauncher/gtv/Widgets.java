@@ -16,6 +16,7 @@ final class Widgets {
     static final String A_ADD = "app.mylauncher.gtv.W_ADD";
     static final String A_NEXT = "app.mylauncher.gtv.W_NEXT";
     static final String A_RESET = "app.mylauncher.gtv.W_RESET";
+    static final String A_WC = "app.mylauncher.gtv.W_WC";
 
     private static final int GOLD = 0xFFE8B84A;
     private static final int[] SHOW = {0, 1, 2, 3, 4};
@@ -72,6 +73,8 @@ final class Widgets {
             sp.edit().putInt("w_tk", (sel(c) + 1) % Adhkar.TASBIH.length).apply();
         } else if (A_RESET.equals(a)) {
             Adhkar.reset(c, sel(c));
+        } else if (A_WC.equals(a)) {
+            Wc.toggle(c);
         }
         PrayerNote.refresh(c); // redraws the combined widget and these
         if (Cities.selected(c) == null) refresh(c);

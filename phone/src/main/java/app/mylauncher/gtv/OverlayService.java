@@ -64,7 +64,7 @@ public class OverlayService extends Service {
     /** Starts or stops the service to match the setting and the permission. */
     static void sync(Context c) {
         try {
-            if (wanted(c) && Settings.canDrawOverlays(c)) {
+            if (wanted(c) && Settings.canDrawOverlays(c) && !Wc.on(c)) {
                 c.startForegroundService(new Intent(c, OverlayService.class));
             } else {
                 c.stopService(new Intent(c, OverlayService.class));
@@ -141,7 +141,7 @@ public class OverlayService extends Service {
     }
 
     private void showCard() {
-        if (AdhanService.playing) return;
+        if (AdhanService.playing || Wc.on(this)) return;
         hideCard();
         List<String> items = new ArrayList<>();
         for (String[] s : Adhkar.overlay(this)) if (s[1].equals("1") && !s[0].trim().isEmpty()) items.add(s[0]);

@@ -146,7 +146,9 @@ final class PrayerNote {
                 break;
             }
         }
-        if (noteOn(c)) {
+        Wc.expire(c);
+        boolean wc = Wc.on(c);
+        if (noteOn(c) && !wc) {
             if (cur != null) post(c, nm, city, cur, now);
         } else {
             nm.cancel(NOTE_ID);
@@ -155,14 +157,18 @@ final class PrayerNote {
         Widgets.refresh(c);
 
         silence(c, slots, now);
-        warn(c, nm, city, slots, now);
-        missed(c, nm, city, slots, now);
+        if (!wc) {
+            warn(c, nm, city, slots, now);
+            missed(c, nm, city, slots, now);
+        }
 
         long next = Long.MAX_VALUE;
         for (Slot s : slots) {
             long[] ts = {s.a, s.q, s.s, s.e, s.w};
             for (long x : ts) if (x > now && x < next) next = x;
         }
+        long we = Wc.endsAt(c);
+        if (we > now && we < next) next = we;
         if (missedOn(c)) {
             long qn = p(c).getLong("qm_next", 0L);
             if (qn > now && qn < next) next = qn;
@@ -222,6 +228,11 @@ final class PrayerNote {
             rv.setChronometer(R.id.w_clock, SystemClock.elapsedRealtime() + (target - now), null, true);
             String name = PrayerCalc.name(c, s.index, s.friday);
             rv.setTextViewText(R.id.w_until, (iqama ? "حتى إقامة " : "حتى أذان ") + name);
+            boolean wcOn = Wc.on(c);
+            rv.setTextViewText(R.id.w_wc, wcOn ? "🚻 الخلاء: شغّال" : "🚻 الخلاء");
+            rv.setTextColor(R.id.w_wc, wcOn ? 0xFF0B2A4A : 0xFFFFFFFF);
+            rv.setInt(R.id.w_wc, "setBackgroundResource", wcOn ? R.drawable.w_chip_gold : R.drawable.w_chip);
+            rv.setOnClickPendingIntent(R.id.w_wc, Widgets.tap(c, 350, Widgets.A_WC, 0));
 
             long[] t = PrayerCalc.day(city, now, 0, adj);
             int curIdx = 4;

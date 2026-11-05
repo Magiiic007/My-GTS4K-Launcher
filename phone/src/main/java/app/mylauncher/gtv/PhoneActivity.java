@@ -1837,6 +1837,15 @@ public class PhoneActivity extends Activity {
 
     private void adhanPage() {
         title("الأذان والإقامة", false);
+        section("وضع الخلاء");
+        switchRow("وضع الخلاء", "يوقف الأذان والإقامة والأذكار والتذكيرات والإشعارات والراديو بضغطة، ويرجعها بضغطة ثانية. يتوقف وحده بعد 30 دقيقة لو نسيته. الزر أيضاً في الويدجت", Wc.on(this),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    if (on != Wc.on(PhoneActivity.this)) Wc.set(PhoneActivity.this, on, true);
+                    build();
+                }
+            });
         section("طريقة الحساب");
         final int m = sp.getInt("calc_method", -1);
         switchRow("تلقائي حسب الموقع", "يختار الطريقة والمذهب حسب بلد مدينتك", m < 0, new CompoundListener() {

@@ -56,6 +56,9 @@
     <!-- the radio in one row: the station and previous, play or stop, next -->
     <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="0.9" android:layout_marginTop="4dp"
         android:background="@drawable/widget_bar" android:gravity="center_vertical" android:layoutDirection="rtl" android:orientation="horizontal" android:paddingStart="10dp" android:paddingEnd="6dp">
+        <TextView android:id="@+id/w_wc" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginEnd="8dp" android:text="🚻 الخلاء"
+            android:textColor="#FFFFFFFF" android:textSize="12sp" android:textStyle="bold" android:maxLines="1" android:background="@drawable/w_chip"
+            android:paddingStart="10dp" android:paddingEnd="10dp" android:paddingTop="6dp" android:paddingBottom="6dp" />
         <TextView android:id="@+id/w_station" android:layout_width="0dp" android:layout_height="wrap_content" android:maxLines="1" android:textColor="#FFD5D9EC" android:textSize="14sp" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="8sp" android:autoSizeMaxTextSize="14sp" android:autoSizeStepGranularity="1sp" android:layout_weight="1" />
         <LinearLayout android:layout_width="wrap_content" android:layout_height="match_parent" android:gravity="center" android:layoutDirection="ltr" android:orientation="horizontal">
             <ImageView android:id="@+id/w_prev" android:layout_width="40dp" android:layout_height="match_parent" android:padding="8dp" android:src="@drawable/ic_w_prev" />

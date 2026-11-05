@@ -81,6 +81,7 @@ public class BubbleService extends Service {
 
     /** The period to show the icon for right now: none when it is not the time, or when it was tapped or closed today. */
     static int active(Context c) {
+        if (Wc.on(c)) return 0;
         int p = period(c);
         if (p != 0 && c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean(doneKey(p), false)) return 0;
         return p;

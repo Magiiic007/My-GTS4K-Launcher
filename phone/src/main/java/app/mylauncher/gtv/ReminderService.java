@@ -25,6 +25,7 @@ public class ReminderService extends Service {
         ArrayList<String> titles = intent == null ? null : intent.getStringArrayListExtra("titles");
         ArrayList<String> texts = intent == null ? null : intent.getStringArrayListExtra("texts");
         ArrayList<Integer> minutes = intent == null ? null : intent.getIntegerArrayListExtra("minutes");
+        if (Wc.on(this)) titles = null; // bathroom mode: nothing is shown
         NotificationManager nm = getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel(
             CHANNEL, getString(R.string.rem_channel), NotificationManager.IMPORTANCE_HIGH));

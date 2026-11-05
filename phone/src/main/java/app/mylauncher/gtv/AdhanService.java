@@ -104,9 +104,10 @@ public class AdhanService extends Service {
         int mode = test ? 0 : sp.getInt("ad_mode_" + index, 0);
         int ringer = audio != null ? audio.getRingerMode() : AudioManager.RINGER_MODE_NORMAL;
         boolean quietPhone = ringer != AudioManager.RINGER_MODE_NORMAL;
-        boolean mute = mode != 0 || (!test && quietPhone && !sp.getBoolean("ad_ring_" + index, true));
+        boolean wc = Wc.on(this);
+        boolean mute = wc || mode != 0 || (!test && quietPhone && !sp.getBoolean("ad_ring_" + index, true));
         if (mute) {
-            if (mode == 1 || (mode == 0 && ringer == AudioManager.RINGER_MODE_VIBRATE)) buzz();
+            if (!wc && (mode == 1 || (mode == 0 && ringer == AudioManager.RINGER_MODE_VIBRATE))) buzz();
             handler.postDelayed(finisher, 4000L);
         } else {
             takeAudio();
@@ -352,7 +353,7 @@ public class AdhanService extends Service {
     /** After the adhan: the dua that is said after hearing it, as a notification that goes away by itself. */
     private void postDua() {
         try {
-            if (!getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("ad_dua", true)) return;
+            if (Wc.on(this) || !getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("ad_dua", true)) return;
             if (DuaPopup.show(this)) return; // shown over the open app; the notification below is the fallback
             NotificationManager nm = getSystemService(NotificationManager.class);
             nm.createNotificationChannel(new NotificationChannel("dua", "دعاء بعد الأذان", NotificationManager.IMPORTANCE_LOW));
