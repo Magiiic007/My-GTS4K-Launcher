@@ -69,7 +69,7 @@ public class BubbleService extends Service {
     }
 
     /** Which period it is now (MORNING, EVENING or 0), by the selected city's prayer times. */
-    private static int period(Context c) {
+    static int period(Context c) {
         Cities.City city = Cities.selected(c);
         if (city == null) return 0;
         long now = System.currentTimeMillis();

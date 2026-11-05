@@ -95,6 +95,32 @@
                 android:resource="@xml/prayer_widget_info" />
         </receiver>
 
+        <receiver android:name=".TrackWidget" android:exported="true" android:label="متابعة الصلوات">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/track_widget_info" />
+        </receiver>
+        <receiver android:name=".TasbihWidget" android:exported="true" android:label="السبحة">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/tasbih_widget_info" />
+        </receiver>
+        <receiver android:name=".AzkarWidget" android:exported="true" android:label="أذكار الصباح والمساء">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/azkar_widget_info" />
+        </receiver>
+        <receiver android:name=".HijriWidget" android:exported="true" android:label="التاريخ الهجري والأيام البيض">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/hijri_widget_info" />
+        </receiver>
+        <receiver android:name=".WidgetReceiver" android:exported="false" />
+
         <receiver android:name=".NoteReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

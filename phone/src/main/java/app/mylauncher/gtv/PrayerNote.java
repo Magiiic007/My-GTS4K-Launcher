@@ -143,6 +143,7 @@ final class PrayerNote {
             nm.cancel(NOTE_ID);
         }
         if (cur != null) widgets(c, city, cur, now);
+        Widgets.refresh(c);
 
         silence(c, slots, now);
         warn(c, nm, city, slots, now);

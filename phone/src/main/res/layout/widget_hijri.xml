@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/hj_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_bg" android:gravity="center_vertical" android:layoutDirection="rtl" android:orientation="horizontal" android:padding="10dp">
+    <TextView android:id="@+id/hj_icon" android:layout_width="40dp" android:layout_height="40dp" android:gravity="center" android:text="☾" android:textSize="22sp" android:textColor="#FFE8B84A" android:background="@drawable/w_chip" />
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="10dp" android:orientation="vertical">
+        <TextView android:id="@+id/hj_title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FFFFFFFF" android:textSize="16sp" android:textStyle="bold" android:singleLine="true"/>
+        <TextView android:id="@+id/hj_sub" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FFE9DDBB" android:textSize="12sp" android:maxLines="2"/>
+    </LinearLayout>
+</LinearLayout>
