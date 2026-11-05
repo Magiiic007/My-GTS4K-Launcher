@@ -182,7 +182,7 @@ public class PhoneActivity extends Activity {
         if (b == null && sp.getBoolean("splash_on", true)) splash();
     }
 
-    private static final String[] SPLASH_WORDS = {"النوم", "اللهو", "التجارة", "العمل", "الدنيا"};
+    private static final String[] SPLASH_WORDS = {"النوم", "اللهو", "التجارة", "العمل", "الدنيا", "السهر", "الراحة", "الفرجة", "التصفّح", "المال", "الكسل", "التسويف"};
     private View splashView;
     private int splashStep;
 
@@ -218,7 +218,7 @@ public class PhoneActivity extends Activity {
         splashView = v;
         splashStep = 0;
         // no tap or back button closes it: it runs its six seconds (touches are swallowed so nothing behind it is pressed)
-        // three of the five words, in a random order each time
+        // three of the twelve words, in a random order each time
         final java.util.List<String> pool = new java.util.ArrayList<>(java.util.Arrays.asList(SPLASH_WORDS));
         java.util.Collections.shuffle(pool);
         final java.util.List<String> words = pool.subList(0, 3);
