@@ -223,8 +223,8 @@ final class TvSetup {
                 if (n > 0) b.write(buf, 0, n);
             }
         } catch (java.io.IOException e) {
-            // The TV closing the stream right after its last bytes is the normal end, if something was received.
-            if (b.size() == 0) throw e;
+            // The TV closing the stream is the normal end of a command, also when it printed nothing.
+            if (!"Stream closed.".equals(e.getMessage())) throw e;
         }
         return b.toString("UTF-8");
     }
