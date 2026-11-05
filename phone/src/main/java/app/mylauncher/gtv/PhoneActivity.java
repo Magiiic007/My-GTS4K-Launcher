@@ -43,6 +43,9 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.NumberPicker;
+import android.widget.CheckBox;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -1882,7 +1885,8 @@ public class PhoneActivity extends Activity {
         for (int i = 0; i < 5; i++) {
             final int idx = i;
             row(PrayerCalc.name(this, i, false), "الإقامة: " + PrayerPrefs.iqamaText(this, iq[i])
-                + " · التعديل: " + PrayerPrefs.adjustText(this, adj[i]), "›", new View.OnClickListener() {
+                + " · التعديل: " + PrayerPrefs.adjustText(this, adj[i])
+                + " · " + new String[] {"صوت", "اهتزاز", "صامت"}[Math.max(0, Math.min(2, sp.getInt("ad_mode_" + i, 0)))], "›", new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         prayerDialog(idx);
@@ -2026,11 +2030,33 @@ public class PhoneActivity extends Activity {
         c2.addView(b);
         l.addView(c1, new LinearLayout.LayoutParams(0, -2, 1f));
         l.addView(c2, new LinearLayout.LayoutParams(0, -2, 1f));
-        new Pop(this).title(PrayerCalc.name(this, idx, false)).view(l).ok("حفظ", new Runnable() {
+        final LinearLayout all = vbox();
+        all.addView(l);
+        all.addView(tv("عند الأذان والإقامة", 13, dim, false), lp(-1, -2, 12));
+        final RadioGroup modes = new RadioGroup(this);
+        String[] mn = {"صوت الأذان", "اهتزاز فقط", "بدون صوت ولا اهتزاز"};
+        for (int i = 0; i < 3; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setId(1000 + i);
+            rb.setText(mn[i]);
+            rb.setTextColor(cream);
+            rb.setTextSize(15);
+            modes.addView(rb);
+        }
+        modes.check(1000 + sp.getInt("ad_mode_" + idx, 0));
+        all.addView(modes);
+        final CheckBox ring = new CheckBox(this);
+        ring.setText("تشغيل الأذان حتى لو الهاتف على الصامت أو الاهتزاز");
+        ring.setTextColor(cream);
+        ring.setTextSize(14);
+        ring.setChecked(sp.getBoolean("ad_ring_" + idx, true));
+        all.addView(ring);
+        new Pop(this).title(PrayerCalc.name(this, idx, false)).view(all).ok("حفظ", new Runnable() {
             @Override
             public void run() {
                 PrayerPrefs.setIqama(PhoneActivity.this, idx, a.getValue());
                 PrayerPrefs.setAdjust(PhoneActivity.this, idx, b.getValue() - 10);
+                sp.edit().putInt("ad_mode_" + idx, modes.getCheckedRadioButtonId() - 1000).putBoolean("ad_ring_" + idx, ring.isChecked()).apply();
                 Scheduler.scheduleNext(PhoneActivity.this);
                 build();
             }

@@ -6,6 +6,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
 import android.content.res.AssetFileDescriptor;
 import android.media.AudioAttributes;
@@ -97,8 +98,20 @@ public class AdhanService extends Service {
         }
 
         audio = getSystemService(AudioManager.class);
-        takeAudio();
-        playSound();
+        // Per prayer: 0 adhan sound, 1 vibration only, 2 nothing but the notification; and whether the sound still
+        // plays while the phone's ringer is on silent or vibrate (it always did before this setting existed).
+        SharedPreferences sp = getSharedPreferences("magiic", MODE_PRIVATE);
+        int mode = test ? 0 : sp.getInt("ad_mode_" + index, 0);
+        int ringer = audio != null ? audio.getRingerMode() : AudioManager.RINGER_MODE_NORMAL;
+        boolean quietPhone = ringer != AudioManager.RINGER_MODE_NORMAL;
+        boolean mute = mode != 0 || (!test && quietPhone && !sp.getBoolean("ad_ring_" + index, true));
+        if (mute) {
+            if (mode == 1 || (mode == 0 && ringer == AudioManager.RINGER_MODE_VIBRATE)) buzz();
+            handler.postDelayed(finisher, 4000L);
+        } else {
+            takeAudio();
+            playSound();
+        }
         flip = new FlipDetector(this, new Runnable() {
             @Override
             public void run() {
@@ -112,6 +125,17 @@ public class AdhanService extends Service {
         });
         flip.start();
         return START_NOT_STICKY;
+    }
+
+    private void buzz() {
+        try {
+            android.os.Vibrator v = getSystemService(android.os.Vibrator.class);
+            if (v != null && v.hasVibrator()) {
+                v.vibrate(android.os.VibrationEffect.createWaveform(new long[] {0, 600, 300, 600, 300, 600}, -1));
+            }
+        } catch (RuntimeException ignored) {
+            // no vibrator: nothing to do
+        }
     }
 
     private void goForeground(String title, String text) {
