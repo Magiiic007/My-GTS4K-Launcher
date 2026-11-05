@@ -621,6 +621,8 @@ public class PhoneActivity extends Activity {
         // a new visit to the tasbih starts the round from 0 (the last count and today's totals stay)
         if (tab == 6 && (lastKey == null || !lastKey.startsWith("6:"))) endTasbihRound();
         lastKey = key;
+        if (tab != 3 || sub == null) addingOther = false;
+        otherTick.clear();
         // The screen stays on while a dhikr (or the tasbih) is open, and goes back to the normal timeout on leaving it.
         boolean reading = (tab == 5 && sub != null && (sub.startsWith("cat:") || sub.equals("hadith"))) || tab == 6;
         if (reading) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -646,6 +648,7 @@ public class PhoneActivity extends Activity {
             else if (tab == 10) calendarPage();
             else if (tab == 11) trackPage();
             else if (tab == 12) qadaPage();
+            else if (tab == 13) otherPage();
             else qiblaPage();
         } catch (Throwable t) {
             // A screen that fails shows what went wrong instead of closing the app.
@@ -903,6 +906,10 @@ public class PhoneActivity extends Activity {
     }
 
     private void tick() {
+        if (tab == 13) {
+            for (Runnable r : new ArrayList<>(otherTick)) r.run();
+            return;
+        }
         if (tab != 0 || sub != null || clockTv == null) return;
         Cities.City city = Cities.selected(this);
         if (city == null) return;
@@ -1732,6 +1739,10 @@ public class PhoneActivity extends Activity {
 
     /** A place chosen by hand from a list. */
     private void pickPlace(Cities.City c) {
+        if (addingOther) {
+            addOther(c);
+            return;
+        }
         if (country.equals("EG") || country.equals("SA")) {
             applyCity(c);
         } else {
@@ -1784,6 +1795,12 @@ public class PhoneActivity extends Activity {
                                     r.setOnClickListener(new View.OnClickListener() {
                                         @Override
                                         public void onClick(View v2) {
+                                            if (addingOther) {
+                                                Cities.City cc = new Cities.City(hit.country, hit.name, hit.name, hit.lat, hit.lon);
+                                                if (hit.tz != null && !hit.tz.isEmpty()) cc.tz = hit.tz;
+                                                addOther(cc);
+                                                return;
+                                            }
                                             sp.edit().putString("city", hit.country + "|" + hit.name).putString("city_custom",
                                                 hit.name + "|" + hit.lat + "|" + hit.lon + "|" + hit.tz).apply();
                                             afterCity();
@@ -2074,6 +2091,7 @@ public class PhoneActivity extends Activity {
         menuItem("الأذان والإقامة", 4);
         menuItem("متابعة الصلوات", 11);
         menuItem("قضاء الصلوات", 12);
+        menuItem("مدن أخرى", 13);
         menuItem("التقويم الهجري", 10);
         menuGroup("الأذكار والتذكيرات");
         menuItem("الأذكار والأدعية", 5);
@@ -2985,6 +3003,182 @@ public class PhoneActivity extends Activity {
                 build();
             }
         });
+    }
+
+    // ---------------------------------------------------------------- other cities
+    private boolean addingOther;
+    private final ArrayList<Runnable> otherTick = new ArrayList<>();
+    private final java.util.HashSet<String> otherOpen = new java.util.HashSet<>();
+
+    /** The cities the user follows besides their own: one line each, "country|en|ar|lat|lon|tz". */
+    private List<Cities.City> otherCities() {
+        List<Cities.City> l = new ArrayList<>();
+        for (String line1 : sp.getString("other_cities", "").split("\n")) {
+            String[] a = line1.split("\\|", -1);
+            if (a.length < 5) continue;
+            try {
+                Cities.City c = new Cities.City(a[0], a[1], a[2], Double.parseDouble(a[3]), Double.parseDouble(a[4]));
+                if (a.length > 5 && !a[5].isEmpty()) c.tz = a[5];
+                l.add(c);
+            } catch (NumberFormatException ignored) {
+                // an unreadable line is skipped
+            }
+        }
+        return l;
+    }
+
+    private void saveOther(List<Cities.City> l) {
+        StringBuilder sb = new StringBuilder();
+        for (Cities.City c : l) {
+            if (sb.length() > 0) sb.append('\n');
+            sb.append(c.country).append('|').append(c.en.replace("|", " ")).append('|').append(c.ar.replace("|", " "))
+                .append('|').append(c.lat).append('|').append(c.lon).append('|').append(c.tz == null ? "" : c.tz);
+        }
+        sp.edit().putString("other_cities", sb.toString()).apply();
+    }
+
+    private void addOther(Cities.City c) {
+        List<Cities.City> l = otherCities();
+        boolean dup = false;
+        for (Cities.City x : l) if (x.ar.equals(c.ar) && x.country.equals(c.country)) dup = true;
+        if (!dup && l.size() < 30) {
+            l.add(c);
+            saveOther(l);
+        }
+        addingOther = false;
+        tab = 13;
+        sub = null;
+        build();
+    }
+
+    private static String diffText(long minutes) {
+        long m = Math.abs(minutes);
+        if (m == 0) return "نفس الوقت";
+        long hh = m / 60, mm = m % 60;
+        String h2 = hh == 0 ? "" : hh == 1 ? "ساعة" : hh == 2 ? "ساعتين" : hh <= 10 ? hh + " ساعات" : hh + " ساعة";
+        String m2 = mm == 0 ? "" : (mm == 30 ? (hh == 0 ? "نصف ساعة" : "ونصف") : (hh == 0 ? mm + " دقيقة" : "و" + mm + " دقيقة"));
+        return (minutes > 0 ? "متقدم بـ " : "متأخر بـ ") + (h2 + (h2.isEmpty() || m2.isEmpty() ? "" : " ") + m2).trim();
+    }
+
+    /** The other cities: for each, its own clock, how far it is from yours, and its next prayer; a tap opens the five prayers. */
+    private void otherPage() {
+        title("مدن أخرى", false);
+        add(tv("تابع مواقيت الصلاة في مدن أخرى (أهلك أو سفرك)، مع فرق التوقيت عن مدينتك. اضغط على المدينة لترى الصلوات الخمس.", 12, dim, false), 4);
+        row("إضافة مدينة", "من أي دولة، أو بالبحث عن الاسم", "+", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                addingOther = true;
+                tab = 3;
+                sub = "country";
+                build();
+            }
+        });
+        final Cities.City mine = Cities.selected(this);
+        List<Cities.City> list = otherCities();
+        if (list.isEmpty()) {
+            add(tv("لم تضف مدناً بعد.", 14, dim, false), 10);
+            return;
+        }
+        final int[] zero = new int[5];
+        for (final Cities.City c : list) {
+            final String k = c.country + "|" + c.en;
+            LinearLayout box = vbox();
+            box.setBackground(shape(card, line, 16));
+            box.setPadding(dp(14), dp(10), dp(14), dp(10));
+
+            LinearLayout top = hbox();
+            top.setGravity(Gravity.CENTER_VERTICAL);
+            top.addView(tv(c.ar, 18, cream, true), new LinearLayout.LayoutParams(0, -2, 1f));
+            final TextView local = tv("", 22, gold, true);
+            top.addView(local);
+            box.addView(top);
+            final TextView rel = tv("", 12, dim, false);
+            box.addView(rel);
+
+            LinearLayout nx = hbox();
+            nx.setGravity(Gravity.CENTER_VERTICAL);
+            final TextView nxName = tv("", 15, cream, false);
+            nx.addView(nxName, new LinearLayout.LayoutParams(0, -2, 1f));
+            final TextView cd = tv("", 15, gold, true);
+            nx.addView(cd);
+            box.addView(nx, lp(-1, -2, 8));
+
+            long now0 = System.currentTimeMillis();
+            final java.util.TimeZone tz = PrayerCalc.zone(c);
+            long myOff = mine == null ? tz.getOffset(now0) : PrayerCalc.zone(mine).getOffset(now0);
+            final String relText = diffText((tz.getOffset(now0) - myOff) / 60000L);
+            rel.setText(relText);
+
+            final long[] nextAt = {0};
+            final int[] nextIdx = {-1};
+            Runnable upd = new Runnable() {
+                @Override
+                public void run() {
+                    long now = System.currentTimeMillis();
+                    Calendar cal = Calendar.getInstance(tz);
+                    cal.setTimeInMillis(now);
+                    int hr = cal.get(Calendar.HOUR);
+                    if (hr == 0) hr = 12;
+                    local.setText(String.format(Locale.US, "%d:%02d %s", hr, cal.get(Calendar.MINUTE),
+                        cal.get(Calendar.AM_PM) == Calendar.AM ? "ص" : "م"));
+                    if (nextIdx[0] < 0 || now >= nextAt[0]) {
+                        long[] t = PrayerCalc.day(c, now, 0, zero);
+                        int idx = -1;
+                        long at = 0;
+                        for (int i = 0; i < 5; i++) {
+                            if (t[i] > now) {
+                                idx = i;
+                                at = t[i];
+                                break;
+                            }
+                        }
+                        long when = now;
+                        if (idx < 0) {
+                            at = PrayerCalc.day(c, now, 1, zero)[0];
+                            idx = 0;
+                            when = now + 86_400_000L;
+                        }
+                        nextIdx[0] = idx;
+                        nextAt[0] = at;
+                        nxName.setText(PrayerCalc.name(PhoneActivity.this, idx, PrayerCalc.isFriday(c, when)) + " " + ap(PrayerCalc.time(PhoneActivity.this, c, at)));
+                    }
+                    cd.setText(PrayerCalc.countdown(Math.max(0, nextAt[0] - now)));
+                }
+            };
+            upd.run();
+            otherTick.add(upd);
+
+            if (otherOpen.contains(k)) {
+                long[] t = PrayerCalc.day(c, System.currentTimeMillis(), 0, zero);
+                for (int i = 0; i < 5; i++) {
+                    LinearLayout pr = hbox();
+                    pr.addView(tv(PrayerCalc.name(this, i, PrayerCalc.isFriday(c, System.currentTimeMillis())), 14, dim, false),
+                        new LinearLayout.LayoutParams(0, -2, 1f));
+                    pr.addView(tv(ap(PrayerCalc.time(this, c, t[i])), 14, cream, true));
+                    box.addView(pr, lp(-1, -2, 4));
+                }
+                TextView del = smallBtn("حذف المدينة", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        List<Cities.City> l2 = otherCities();
+                        for (int i = l2.size() - 1; i >= 0; i--) if ((l2.get(i).country + "|" + l2.get(i).en).equals(k)) l2.remove(i);
+                        saveOther(l2);
+                        otherOpen.remove(k);
+                        build();
+                    }
+                });
+                del.setPadding(dp(12), dp(8), dp(12), dp(8));
+                box.addView(del, lp(-2, -2, 10));
+            }
+            box.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (!otherOpen.remove(k)) otherOpen.add(k);
+                    build();
+                }
+            });
+            add(box, 8);
+        }
     }
 
     /** The missed prayers to make up: a counter for each prayer, + when one is missed and − when it is made up. */
