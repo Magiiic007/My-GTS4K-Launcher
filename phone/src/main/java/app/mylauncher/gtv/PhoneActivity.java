@@ -2335,7 +2335,8 @@ public class PhoneActivity extends Activity {
             @Override
             public void run() {
                 tvLogText.append(line).append('\n');
-                if (tvLogText.length() > 3000) tvLogText.delete(0, tvLogText.length() - 2500);
+                if (tvLogText.length() > 4000) tvLogText.delete(0, tvLogText.length() - 3000);
+                sp.edit().putString("tv_log", tvLogText.toString()).apply();
                 if (tvVisible()) build();
             }
         });
@@ -2433,6 +2434,17 @@ public class PhoneActivity extends Activity {
             st.addView(t, p);
         }
         add(st, 6);
+        if (tvLogText.length() == 0) tvLogText.append(sp.getString("tv_log", ""));
+        if (tvBusy) {
+            row("خطوة تعمل الآن…", "لو لا تنتهي، اضغط هنا لإلغائها وقطع الاتصال", "إلغاء", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    tvBusy = false;
+                    TvSetup.disconnect(PhoneActivity.this);
+                    tvSay("أُلغيت الخطوة الحالية وانقطع الاتصال. اتصل من جديد.");
+                }
+            });
+        }
         if (tvStage == 0) tvPrepare();
         else if (tvStage == 1) tvConnect();
         else if (tvStage == 2) tvInstall();
@@ -2448,6 +2460,7 @@ public class PhoneActivity extends Activity {
                 @Override
                 public void onClick(View v) {
                     tvLogText.setLength(0);
+                    sp.edit().putString("tv_log", "").apply();
                     build();
                 }
             });
@@ -2492,7 +2505,23 @@ public class PhoneActivity extends Activity {
                     build();
                 }
             });
-            row("إعداد الشاشة الرئيسية أو الرجوع للأصلية", null, "›", new View.OnClickListener() {
+            row("رجوع إلى الشاشة الأصلية للتلفزيون", "يعيد لانشر Google ويفعّل أزرار الريموت", "›", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    tvRun("إرجاع الشاشة الأصلية…", new TvTask() {
+                        @Override
+                        public void run() throws Exception {
+                            TvSetup.restore(PhoneActivity.this, new TvSetup.Say() {
+                                @Override
+                                public void say(String s) {
+                                    tvSay(s);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+            row("إعداد الشاشة الرئيسية", null, "›", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     tvStage = 3;

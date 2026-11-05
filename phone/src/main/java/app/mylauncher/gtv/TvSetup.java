@@ -211,8 +211,29 @@ final class TvSetup {
         }
     }
 
-    /** Runs one command on the TV and returns what it printed. */
-    static String sh(Context c, String cmd) throws Exception {
+    private static final java.util.concurrent.ExecutorService IO = java.util.concurrent.Executors.newCachedThreadPool();
+
+    /** Runs one command on the TV and returns what it printed; gives up after 25 seconds instead of waiting forever. */
+    static String sh(final Context c, final String cmd) throws Exception {
+        java.util.concurrent.Future<String> f = IO.submit(new java.util.concurrent.Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                return shRaw(c, cmd);
+            }
+        });
+        try {
+            return f.get(25, TimeUnit.SECONDS);
+        } catch (java.util.concurrent.TimeoutException e) {
+            f.cancel(true);
+            throw new java.io.IOException("انتهت مهلة أمر على التلفزيون: " + (cmd.length() > 60 ? cmd.substring(0, 60) + "…" : cmd));
+        } catch (java.util.concurrent.ExecutionException e) {
+            Throwable t = e.getCause();
+            if (t instanceof Exception) throw (Exception) t;
+            throw e;
+        }
+    }
+
+    private static String shRaw(Context c, String cmd) throws Exception {
         AdbStream s;
         try {
             s = TvAdb.get(c).openStream("shell:" + cmd);
@@ -336,14 +357,16 @@ final class TvSetup {
         return p(c).getBoolean("tv_home", false);
     }
 
-    private static boolean isOurHome(Context c) throws Exception {
+    /** What the TV says is its home screen, and what is on the screen now. */
+    private static String[] homeInfo(Context c) throws Exception {
         String r = sh(c, "cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1").trim();
-        return r.startsWith(PKG + "/");
+        String t = sh(c, "dumpsys activity activities | grep -m1 -E 'topResumedActivity|mResumedActivity'").trim();
+        return new String[] {r, t};
     }
 
-    private static boolean onScreen(Context c) throws Exception {
-        String r = sh(c, "dumpsys activity activities | grep -m1 -E 'topResumedActivity|mResumedActivity'");
-        return r.contains(" " + PKG + "/");
+    private static String cut(String s) {
+        s = s.replace('\n', ' ');
+        return s.length() > 90 ? s.substring(0, 90) + "…" : s;
     }
 
     private static void sleep(long ms) {
@@ -427,7 +450,9 @@ final class TvSetup {
             for (int i = 0; i < 3 && !ok; i++) {
                 sh(c, "input keyevent KEYCODE_HOME");
                 sleep(2500);
-                ok = isOurHome(c) && onScreen(c);
+                String[] hi = homeInfo(c);
+                ok = hi[0].startsWith(PKG + "/") && hi[1].contains(" " + PKG + "/");
+                say.say("فحص " + (i + 1) + ": الرئيسية = " + cut(hi[0]) + " | المعروض = " + cut(hi[1]));
             }
             if (ok) {
                 sh(c, "touch " + OK);
