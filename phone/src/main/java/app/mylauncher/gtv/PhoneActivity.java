@@ -1021,14 +1021,14 @@ public class PhoneActivity extends Activity {
         hero.addView(altTv, lp(-2, -2, 2));
         LinearLayout iq = hbox();
         iq.setBackground(shape(0x38000000, line, 14));
-        iq.setPadding(dp(12), dp(6), dp(12), dp(6));
+        iq.setPadding(dp(12), dp(Math.round(6 * Math.max(f, 0.6f))), dp(12), dp(Math.round(6 * Math.max(f, 0.6f))));
         iqLabel = tv("", 12, dim, false);
-        iqValue = tv("", 18, gold, true);
+        iqValue = tv("", Math.round(18 * Math.max(f, 0.8f)), gold, true);
         iq.setGravity(Gravity.CENTER);
         iqValue.setPadding(dp(10), 0, 0, 0);
         iq.addView(iqLabel);
         iq.addView(iqValue);
-        hero.addView(iq, lp(-2, dp(Math.round(50 * f)), 6));
+        hero.addView(iq, lp(-2, -2, 6)); // wraps its text: a fixed height cut the letters when the page was squeezed
         add(hero, 8);
 
         // the six times: they share whatever height is left, so the page fills the screen
@@ -3938,7 +3938,8 @@ public class PhoneActivity extends Activity {
                         }
                     });
                 }
-                LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, dp(52), 1f);
+                cell.setMinimumHeight(dp(52)); // grows with big text instead of cutting it
+                LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -1, 1f);
                 cp.setMargins(dp(1), dp(1), dp(1), dp(1));
                 row.addView(cell, cp);
             }
