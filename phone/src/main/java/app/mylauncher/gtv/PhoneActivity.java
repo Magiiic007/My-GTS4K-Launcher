@@ -392,7 +392,11 @@ public class PhoneActivity extends Activity {
         return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics()));
     }
 
-    private GradientDrawable shape(int fill, int stroke, int radiusDp) {
+    private android.graphics.drawable.Drawable shape(int fill, int stroke, int radiusDp) {
+        // the cards of the pages look raised (a soft shadow and a light top edge); other shapes stay flat
+        if (fill == card && stroke == line && radiusDp >= 10 && sp != null && sp.getBoolean("depth_on", true)) {
+            return new Raised(getResources().getDisplayMetrics().density, radiusDp, stroke);
+        }
         GradientDrawable g = new GradientDrawable();
         g.setColor(fill);
         g.setCornerRadius(dp(radiusDp));
@@ -1404,6 +1408,14 @@ public class PhoneActivity extends Activity {
         }
         title("الإعدادات", false);
         section("الشكل");
+        switchRow("ظلال وعمق البطاقات", "تعطي إحساس البروز ثلاثي الأبعاد", sp.getBoolean("depth_on", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("depth_on", on).apply();
+                    build();
+                }
+            });
         switchRow("الشاشة الافتتاحية", "تظهر نحو 5 ثوانٍ كلما فتحت التطبيق من أي مكان", sp.getBoolean("splash_on", true),
             new CompoundListener() {
                 @Override
