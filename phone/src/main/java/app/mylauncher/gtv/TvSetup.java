@@ -13,7 +13,6 @@ import java.net.URL;
 import java.util.concurrent.TimeUnit;
 
 import io.github.muntashirakon.adb.AdbStream;
-import io.github.muntashirakon.adb.android.AdbMdns;
 
 /**
  * Installs the TV launcher from the phone and makes it the home screen, through the TV's wireless debugging.
@@ -37,36 +36,123 @@ final class TvSetup {
     }
 
     // ------------------------------------------------------------ finding the TV on the Wi-Fi
+    // (The ADB library's own finder only reports the phone itself, so the TV is searched for here.)
     static volatile String pairHost, connHost;
     static volatile int pairPort, connPort;
-    private static AdbMdns mdnsPair, mdnsConn;
+    private static volatile String pairName, connName;
+    private static android.net.nsd.NsdManager nsd;
+    private static android.net.nsd.NsdManager.DiscoveryListener dlPair, dlConn;
+    private static final java.util.ArrayDeque<Object[]> queue = new java.util.ArrayDeque<>();
+    private static boolean resolving;
+    private static Runnable onFound;
 
-    static synchronized void startDiscovery(Context c, final Runnable changed) {
+    private static String hostOf(android.net.nsd.NsdServiceInfo i) {
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            for (InetAddress a : i.getHostAddresses()) {
+                if (a instanceof java.net.Inet4Address) return a.getHostAddress();
+            }
+        }
+        InetAddress h = i.getHost();
+        if (h instanceof java.net.Inet4Address) return h.getHostAddress();
+        return null; // an IPv6-only answer is not usable here
+    }
+
+    private static synchronized void next() {
+        if (resolving || queue.isEmpty() || nsd == null) return;
+        final Object[] job = queue.poll();
+        final android.net.nsd.NsdServiceInfo info = (android.net.nsd.NsdServiceInfo) job[0];
+        final boolean pairing = (Boolean) job[1];
+        resolving = true;
+        try {
+            nsd.resolveService(info, new android.net.nsd.NsdManager.ResolveListener() {
+                @Override
+                public void onResolveFailed(android.net.nsd.NsdServiceInfo i, int code) {
+                    synchronized (TvSetup.class) {
+                        resolving = false;
+                    }
+                    next();
+                }
+
+                @Override
+                public void onServiceResolved(android.net.nsd.NsdServiceInfo i) {
+                    String h = hostOf(i);
+                    if (h != null && i.getPort() > 0) {
+                        if (pairing) {
+                            pairHost = h;
+                            pairPort = i.getPort();
+                            pairName = i.getServiceName();
+                        } else {
+                            connHost = h;
+                            connPort = i.getPort();
+                            connName = i.getServiceName();
+                        }
+                        Runnable r = onFound;
+                        if (r != null) r.run();
+                    }
+                    synchronized (TvSetup.class) {
+                        resolving = false;
+                    }
+                    next();
+                }
+            });
+        } catch (RuntimeException e) {
+            resolving = false;
+        }
+    }
+
+    private static android.net.nsd.NsdManager.DiscoveryListener listener(final boolean pairing) {
+        return new android.net.nsd.NsdManager.DiscoveryListener() {
+            @Override
+            public void onStartDiscoveryFailed(String t, int code) {
+            }
+
+            @Override
+            public void onStopDiscoveryFailed(String t, int code) {
+            }
+
+            @Override
+            public void onDiscoveryStarted(String t) {
+            }
+
+            @Override
+            public void onDiscoveryStopped(String t) {
+            }
+
+            @Override
+            public void onServiceFound(android.net.nsd.NsdServiceInfo i) {
+                synchronized (TvSetup.class) {
+                    queue.add(new Object[] {i, pairing});
+                }
+                next();
+            }
+
+            @Override
+            public void onServiceLost(android.net.nsd.NsdServiceInfo i) {
+                String n = i.getServiceName();
+                if (pairing && n != null && n.equals(pairName)) {
+                    pairHost = null;
+                    pairPort = 0;
+                } else if (!pairing && n != null && n.equals(connName)) {
+                    connHost = null;
+                    connPort = 0;
+                }
+                Runnable r = onFound;
+                if (r != null) r.run();
+            }
+        };
+    }
+
+    static synchronized void startDiscovery(Context c, Runnable changed) {
         stopDiscovery();
-        Context a = c.getApplicationContext();
         pairHost = connHost = null;
         pairPort = connPort = 0;
+        onFound = changed;
         try {
-            mdnsPair = new AdbMdns(a, AdbMdns.SERVICE_TYPE_TLS_PAIRING, new AdbMdns.OnAdbDaemonDiscoveredListener() {
-                @Override
-                public void onPortChanged(InetAddress host, int port) {
-                    if (host == null || port <= 0) return;
-                    pairHost = host.getHostAddress();
-                    pairPort = port;
-                    changed.run();
-                }
-            });
-            mdnsPair.start();
-            mdnsConn = new AdbMdns(a, AdbMdns.SERVICE_TYPE_TLS_CONNECT, new AdbMdns.OnAdbDaemonDiscoveredListener() {
-                @Override
-                public void onPortChanged(InetAddress host, int port) {
-                    if (host == null || port <= 0) return;
-                    connHost = host.getHostAddress();
-                    connPort = port;
-                    changed.run();
-                }
-            });
-            mdnsConn.start();
+            nsd = (android.net.nsd.NsdManager) c.getApplicationContext().getSystemService(Context.NSD_SERVICE);
+            dlPair = listener(true);
+            dlConn = listener(false);
+            nsd.discoverServices("_adb-tls-pairing._tcp", android.net.nsd.NsdManager.PROTOCOL_DNS_SD, dlPair);
+            nsd.discoverServices("_adb-tls-connect._tcp", android.net.nsd.NsdManager.PROTOCOL_DNS_SD, dlConn);
         } catch (RuntimeException ignored) {
             // Searching is a convenience: the address can always be typed.
         }
@@ -74,13 +160,16 @@ final class TvSetup {
 
     static synchronized void stopDiscovery() {
         try {
-            if (mdnsPair != null) mdnsPair.stop();
-            if (mdnsConn != null) mdnsConn.stop();
+            if (nsd != null && dlPair != null) nsd.stopServiceDiscovery(dlPair);
+            if (nsd != null && dlConn != null) nsd.stopServiceDiscovery(dlConn);
         } catch (RuntimeException ignored) {
             // Already stopped.
         }
-        mdnsPair = null;
-        mdnsConn = null;
+        dlPair = dlConn = null;
+        nsd = null;
+        onFound = null;
+        queue.clear();
+        resolving = false;
     }
 
     // ------------------------------------------------------------ pairing and connecting
