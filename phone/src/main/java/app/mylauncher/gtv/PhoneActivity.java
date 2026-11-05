@@ -202,56 +202,62 @@ public class PhoneActivity extends Activity {
         android.widget.ImageView icon = new android.widget.ImageView(this);
         icon.setImageResource(R.drawable.ic_launcher_phone);
         col.addView(icon, new LinearLayout.LayoutParams(dp(150), dp(150)));
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        TextView fixed = new TextView(this);
-        fixed.setText("الصلاة خير من");
-        fixed.setTextColor(0xFFFFFFFF);
-        fixed.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        fixed.setTypeface(Typeface.DEFAULT_BOLD);
-        fixed.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
-        row.addView(fixed);
-        final TextView word = new TextView(this);
-        word.setText("");
-        word.setTextColor(0xFFFFD54A);
-        word.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        word.setTypeface(Typeface.DEFAULT_BOLD);
-        word.setMinWidth(dp(96));
-        word.setPadding(dp(8), 0, 0, 0);
-        row.addView(word);
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
+        // one centred line: "الصلاة خير من" in white and the changing word in yellow
+        final TextView phrase = new TextView(this);
+        phrase.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+        phrase.setTypeface(Typeface.DEFAULT_BOLD);
+        phrase.setGravity(Gravity.CENTER);
+        phrase.setTextColor(0xFFFFFFFF);
+        phrase.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
+        phrase.setText("الصلاة خير من");
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
         rp.topMargin = dp(26);
-        col.addView(row, rp);
+        col.addView(phrase, rp);
         v.addView(col, new FrameLayout.LayoutParams(-1, -1));
         rootFrame.addView(v, new FrameLayout.LayoutParams(-1, -1));
         splashView = v;
         splashStep = 0;
         // no tap or back button closes it: it runs its six seconds (touches are swallowed so nothing behind it is pressed)
+        // three of the five words, in a random order each time
+        final java.util.List<String> pool = new java.util.ArrayList<>(java.util.Arrays.asList(SPLASH_WORDS));
+        java.util.Collections.shuffle(pool);
+        final java.util.List<String> words = pool.subList(0, 3);
         final Runnable next = new Runnable() {
             @Override
             public void run() {
                 if (splashView == null || isFinishing()) return;
-                if (splashStep < SPLASH_WORDS.length) {
-                    word.setAlpha(0f);
-                    word.setText(SPLASH_WORDS[splashStep++]);
-                    word.animate().alpha(1f).setDuration(250).start();
-                    h.postDelayed(this, 1000L);
+                if (splashStep < words.size()) {
+                    final String w = words.get(splashStep++);
+                    android.animation.ValueAnimator an = android.animation.ValueAnimator.ofInt(0, 255);
+                    an.setDuration(250);
+                    an.addUpdateListener(new android.animation.ValueAnimator.AnimatorUpdateListener() {
+                        @Override
+                        public void onAnimationUpdate(android.animation.ValueAnimator x) {
+                            int al = (Integer) x.getAnimatedValue();
+                            android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder("الصلاة خير من ");
+                            int st = sb.length();
+                            sb.append(w);
+                            sb.setSpan(new android.text.style.ForegroundColorSpan((al << 24) | 0x00FFD54A), st, sb.length(),
+                                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                            phrase.setText(sb);
+                        }
+                    });
+                    an.start();
+                    h.postDelayed(this, 1500L);
                 } else {
                     endSplash();
                 }
             }
         };
-        // about 0.5 s of the icon alone, then five words one second each, then it fades out: 6 seconds in all
-        h.postDelayed(next, 500L);
+        // 0.2 s of the icon alone, three words 1.5 s each, then a 0.3 s fade: 5 seconds in all
+        h.postDelayed(next, 200L);
     }
 
     private void endSplash() {
         final View v = splashView;
         if (v == null) return;
         splashView = null;
-        v.animate().alpha(0f).setDuration(350).withEndAction(new Runnable() {
+        v.animate().alpha(0f).setDuration(300).withEndAction(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -1398,7 +1404,7 @@ public class PhoneActivity extends Activity {
         }
         title("الإعدادات", false);
         section("الشكل");
-        switchRow("الشاشة الافتتاحية", "تظهر نحو 6 ثوانٍ كلما فتحت التطبيق من أي مكان", sp.getBoolean("splash_on", true),
+        switchRow("الشاشة الافتتاحية", "تظهر نحو 5 ثوانٍ كلما فتحت التطبيق من أي مكان", sp.getBoolean("splash_on", true),
             new CompoundListener() {
                 @Override
                 public void changed(boolean on) {
