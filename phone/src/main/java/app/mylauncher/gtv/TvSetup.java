@@ -417,7 +417,8 @@ final class TvSetup {
         String[] off;
         if (has(pk, STOCK_X)) {
             stockAct = STOCK_X + "/" + STOCK_X + ".home.HomeActivity";
-            off = has(pk, SETUP) ? new String[] {SETUP, STOCK_X} : new String[] {STOCK_X};
+            // Google's emergency home screen (setupwraith) takes over when the launcher is off, so it goes too.
+            off = new String[] {SETUP, STOCK_X};
         } else if (has(pk, STOCK_T)) {
             stockAct = STOCK_T + "/.MainActivity";
             off = new String[] {STOCK_T};
@@ -441,11 +442,12 @@ final class TvSetup {
         try {
             say.say("تعيين اللانشر كشاشة رئيسية…");
             sh(c, "cmd role add-role-holder --user 0 android.app.role.HOME " + PKG + " >/dev/null 2>&1");
-            sh(c, "cmd package set-home-activity --user 0 " + PKG + "/.MainActivity");
             for (String o : off) {
                 say.say("تعطيل " + o);
-                sh(c, "pm disable-user --user 0 " + o);
+                sh(c, "pm disable-user --user 0 " + o + " 2>&1");
             }
+            // after the others are off, so nothing resets the choice
+            sh(c, "cmd package set-home-activity --user 0 " + PKG + "/.MainActivity");
             boolean ok = false;
             for (int i = 0; i < 3 && !ok; i++) {
                 sh(c, "input keyevent KEYCODE_HOME");
