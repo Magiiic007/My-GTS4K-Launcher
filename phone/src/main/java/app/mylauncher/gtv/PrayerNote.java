@@ -66,6 +66,15 @@ final class PrayerNote {
     /** What the time of each prayer runs out at (for the settings). */
     static final String[] END_NAMES = {"الشروق", "العصر", "المغرب", "العشاء", "منتصف الليل"};
 
+    static boolean missedOn(Context c) {
+        return p(c).getBoolean("qm_on", true);
+    }
+
+    /** Minutes after the adhan at which the missed prayers are listed. */
+    static int missedMin(Context c) {
+        return Math.max(5, p(c).getInt("qm_min", 30));
+    }
+
     static boolean policyGranted(Context c) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         return nm != null && nm.isNotificationPolicyAccessGranted();
@@ -80,6 +89,7 @@ final class PrayerNote {
         long e;       // silence ends
         long end;     // the prayer's time runs out
         long w;       // the warning before it (0 = none)
+        long m;       // the "establish the prayer" reminder (0 = off)
         boolean hasIqama;
     }
 
@@ -108,6 +118,7 @@ final class PrayerNote {
                 else s.end = t[3] + (nx[0] - t[3]) / 2L;
                 int wm = warnMin(c, i);
                 s.w = wm > 0 ? s.end - wm * 60_000L : 0L;
+                s.m = missedOn(c) ? s.a + missedMin(c) * 60_000L : 0L;
                 out.add(s);
             }
         }
@@ -147,10 +158,11 @@ final class PrayerNote {
 
         silence(c, slots, now);
         warn(c, nm, city, slots, now);
+        missed(c, nm, city, slots, now);
 
         long next = Long.MAX_VALUE;
         for (Slot s : slots) {
-            long[] ts = {s.a, s.q, s.s, s.e, s.w};
+            long[] ts = {s.a, s.q, s.s, s.e, s.w, s.m};
             for (long x : ts) if (x > now && x < next) next = x;
         }
         PendingIntent pi = PendingIntent.getBroadcast(c, REQ,
@@ -315,6 +327,48 @@ final class PrayerNote {
             } catch (RuntimeException ignored) {
                 // No notification permission yet.
             }
+        }
+    }
+
+    /** "Establish the prayer": lists today's prayers that are due and not yet marked, once after each adhan. */
+    private static void missed(Context c, NotificationManager nm, Cities.City city, List<Slot> slots, long now) {
+        for (Slot s : slots) {
+            if (s.m <= 0 || now < s.m || now >= s.m + 20 * 60_000L) continue;
+            if (p(c).getLong("qm_at_" + s.index, 0L) == s.a) continue;
+            p(c).edit().putLong("qm_at_" + s.index, s.a).apply();
+            long[] t = PrayerCalc.day(city, now, 0, PrayerPrefs.adjust(c));
+            boolean fri = PrayerCalc.isFriday(city, now);
+            List<Integer> list = new ArrayList<>();
+            for (int i = 0; i < 5; i++) if (t[i] <= now && !Track.done(c, t[i], i)) list.add(i);
+            if (list.isEmpty()) return;
+            int n = list.size();
+            int[] idx = new int[n];
+            String[] names = new String[n];
+            String[] times = new String[n];
+            long[] at = new long[n];
+            StringBuilder b = new StringBuilder();
+            for (int k = 0; k < n; k++) {
+                int i = list.get(k);
+                idx[k] = i;
+                names[k] = PrayerCalc.name(c, i, fri);
+                times[k] = ap(PrayerCalc.time(c, city, t[i]));
+                at[k] = t[i];
+                b.append(k > 0 ? "، " : "").append(names[k]);
+            }
+            if (MissedPopup.show(c, idx, names, times, at)) return;
+            NotificationChannel ch = new NotificationChannel("qm", "أقم الصلاة", NotificationManager.IMPORTANCE_HIGH);
+            nm.createNotificationChannel(ch);
+            PendingIntent open = PendingIntent.getActivity(c, 6, new Intent(c, PhoneActivity.class)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            try {
+                nm.notify(7312, new Notification.Builder(c, "qm").setSmallIcon(R.drawable.ic_crescent)
+                    .setContentTitle("أقم الصلاة").setContentText("لم تعلّم بعد: " + b)
+                    .setContentIntent(open).setAutoCancel(true).build());
+            } catch (RuntimeException ignored) {
+                // No notification permission yet.
+            }
+            return;
         }
     }
 

@@ -1924,6 +1924,30 @@ public class PhoneActivity extends Activity {
                     sp.edit().putBoolean("ad_dua", on).apply();
                 }
             });
+        switchRow("أقم الصلاة", "نافذة فوق التطبيقات تذكّرك بالصلوات التي جاء وقتها ولم تعلّمها ✓، ولا تختفي إلا بزر OK، وتوقف الفيديو أو الصوت الشغّال", PrayerNote.missedOn(this),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("qm_on", on).apply();
+                    PrayerNote.refresh(PhoneActivity.this);
+                    build();
+                }
+            });
+        if (PrayerNote.missedOn(this)) {
+            row("وقت التذكير", "بعد الأذان بـ " + PrayerNote.missedMin(this) + " دقيقة", "›", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    numberDialog("دقائق بعد الأذان", 5, 120, PrayerNote.missedMin(PhoneActivity.this), new IntSetter() {
+                        @Override
+                        public void set(int val) {
+                            sp.edit().putInt("qm_min", val).apply();
+                            PrayerNote.refresh(PhoneActivity.this);
+                            build();
+                        }
+                    });
+                }
+            });
+        }
         switchRow("رفع صوت الأذان تدريجياً", "يبدأ هادئاً ويعلو خلال 15 ثانية حتى مستوى صوت المنبّه في الهاتف", sp.getBoolean("ad_ramp", false),
             new CompoundListener() {
                 @Override
