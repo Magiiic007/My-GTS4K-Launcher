@@ -771,6 +771,8 @@ public class PhoneActivity extends Activity {
             occNear = Reminders.nearest(this);
         }
 
+        if (!homeRetry) homeTries = 0;
+        homeRetry = false;
         float f = fit();
         // top row: the menu, the place (down to the neighbourhood when the phone's location is used) and the weather
         LinearLayout top = hbox();
@@ -923,14 +925,34 @@ public class PhoneActivity extends Activity {
         vc.addView(v1);
         vc.addView(v2);
         add(vc, 8);
+        body.post(new Runnable() {
+            @Override
+            public void run() {
+                if (tab != 0 || sub != null || scroll == null || drawerOpen) return;
+                int need = body.getHeight();
+                int have = scroll.getHeight();
+                if (have > 0 && need > have + 2 && homeTries < 5 && homeAdj > 0.46f) {
+                    homeTries++;
+                    homeAdj *= Math.max(0.75f, (float) have / need * 0.97f);
+                    homeRetry = true;
+                    build();
+                }
+            }
+        });
     }
 
     /** 1.0 on a tall screen; smaller on a short one, so the home page fits without scrolling. */
     private float fit() {
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         float availDp = (dm.heightPixels - homeTop - homeBottom) / dm.density - 50f;
-        return Math.max(0.62f, Math.min(1f, availDp / 780f));
+        return Math.max(0.45f, Math.min(1f, availDp / 780f) * homeAdj);
     }
+
+    // The first estimate in fit() can be off on some screens: after the page is laid out, it is measured, and if it is
+    // taller than the screen the text and spacing shrink a little and the page is drawn again (a few times at most).
+    private float homeAdj = 1f;
+    private int homeTries;
+    private boolean homeRetry;
 
     /** The times come with AM/PM; the phone is Arabic only. */
     private static String ap(String s) {
