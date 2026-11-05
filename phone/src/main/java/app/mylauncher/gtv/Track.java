@@ -46,7 +46,7 @@ final class Track {
         if (b == 0) ed.remove(key(k));
         else ed.putInt(key(k), b);
         ed.apply();
-        Widgets.refresh(c);
+        PrayerNote.refresh(c);
         return (b >> idx & 1) != 0;
     }
 

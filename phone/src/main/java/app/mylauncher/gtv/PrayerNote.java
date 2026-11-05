@@ -170,7 +170,7 @@ final class PrayerNote {
         }
     }
 
-    private static final int[] W_L = {R.id.w_l0, R.id.w_l1, R.id.w_l2, R.id.w_l3, R.id.w_l4};
+    private static final int[] W_B = {R.id.w_b0, R.id.w_b1, R.id.w_b2, R.id.w_b3, R.id.w_b4};
     private static final int[] W_D = {R.id.w_d0, R.id.w_d1, R.id.w_d2, R.id.w_d3, R.id.w_d4};
     private static final int[] W_N = {R.id.w_n0, R.id.w_n1, R.id.w_n2, R.id.w_n3, R.id.w_n4};
     private static final int[] W_T = {R.id.w_t0, R.id.w_t1, R.id.w_t2, R.id.w_t3, R.id.w_t4};
@@ -213,19 +213,22 @@ final class PrayerNote {
             int curIdx = 4;
             for (int i = 0; i < 5; i++) if (t[i] <= now) curIdx = i;
             if (t[0] > now) curIdx = 4;
+            int bits = Track.bits(c, Track.cal(c, now));
+            boolean friday = PrayerCalc.isFriday(city, now);
             for (int i = 0; i < 5; i++) {
-                boolean on = i == curIdx;
-                rv.setTextViewText(W_N[i], PrayerCalc.name(c, i, PrayerCalc.isFriday(city, now)));
+                boolean done = (bits >> i & 1) != 0;
+                boolean reached = t[i] <= now;
+                rv.setTextViewText(W_N[i], PrayerCalc.name(c, i, friday));
                 rv.setTextViewText(W_T[i], ap(PrayerCalc.time(c, city, t[i])));
-                rv.setTextColor(W_N[i], on ? 0xFFFFFFFF : 0xFFB8C2DC);
-                rv.setTextColor(W_T[i], on ? 0xFFFFFFFF : 0xFFB8C2DC);
-                rv.setTextColor(W_D[i], on ? 0xFFE8B84A : 0xFFC9CCE0);
-                rv.setTextViewTextSize(W_D[i], android.util.TypedValue.COMPLEX_UNIT_SP, on ? 26 : 18);
-                rv.setInt(W_L[i], "setBackgroundColor", i <= curIdx ? 0xFFE8B84A : 0xFF8A8FB0);
+                rv.setTextViewText(W_D[i], done ? "✓" : reached ? "○" : "·");
+                rv.setTextColor(W_D[i], done ? 0xFFE8B84A : 0xFFC9CCE0);
+                rv.setTextColor(W_N[i], reached ? 0xFFFFFFFF : 0xFF8F97B5);
+                rv.setTextColor(W_T[i], reached ? 0xFFB8C2DC : 0xFF8F97B5);
+                rv.setInt(W_B[i], "setBackgroundResource", done ? R.drawable.w_tile_done : i == curIdx ? R.drawable.w_tile_cur : R.drawable.w_tile);
+                rv.setOnClickPendingIntent(W_B[i], Widgets.tap(c, 310 + i, Widgets.A_TRACK, i));
             }
             long rise = PrayerCalc.sunrise(city, now, 0, adj);
-            rv.setTextViewText(R.id.w_sun, "☀ الشروق " + ap(PrayerCalc.time(c, city, rise)));
-            rv.setTextViewText(R.id.w_city, "📍 " + city.name(true));
+            rv.setTextViewText(R.id.w_sun, "☀ " + ap(PrayerCalc.time(c, city, rise)) + " · " + city.name(true));
 
             boolean radio = RadioService.on();
             int st = radio ? RadioService.station() : RadioService.lastStation(c);

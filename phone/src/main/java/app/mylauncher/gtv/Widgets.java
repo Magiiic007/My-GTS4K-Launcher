@@ -37,7 +37,7 @@ final class Widgets {
             | Intent.FLAG_ACTIVITY_CLEAR_TOP), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    private static PendingIntent tap(Context c, int req, String action, int idx) {
+    static PendingIntent tap(Context c, int req, String action, int idx) {
         Intent i = new Intent(c, WidgetReceiver.class).setAction(action).putExtra("idx", idx)
             .setData(Uri.parse("widget://" + action + "/" + idx));
         return PendingIntent.getBroadcast(c, req, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -73,7 +73,8 @@ final class Widgets {
         } else if (A_RESET.equals(a)) {
             Adhkar.reset(c, sel(c));
         }
-        refresh(c);
+        PrayerNote.refresh(c); // redraws the combined widget and these
+        if (Cities.selected(c) == null) refresh(c);
     }
 
     private static int sel(Context c) {
