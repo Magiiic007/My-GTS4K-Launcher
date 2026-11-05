@@ -30,6 +30,9 @@
     <string name="next_in">%1$s بعد %2$s</string>
     <string name="pick_city_hint">اختر مدينتك من مربع الطقس لعرض مواقيت الصلاة</string>
     <string name="popup_title">حان الآن موعد صلاة %1$s</string>
+    <string name="dua_title">دعاء بعد الأذان</string>
+    <string name="dua_text">اللَّهُمَّ رَبَّ هَذِهِ الدَّعْوَةِ التَّامَّةِ، وَالصَّلَاةِ الْقَائِمَةِ، آتِ سَيِّدَنَا مُحَمَّدًا الْوَسِيلَةَ وَالْفَضِيلَةَ، وَابْعَثْهُ مَقَامًا مَحْمُودًا الَّذِي وَعَدْتَهُ.</string>
+    <string name="dua_hint">تُغلق بعد قليل، أو اضغط رجوع للإغلاق</string>
     <string name="popup_hint">اضغط رجوع لإيقاف الأذان</string>
     <string name="popup_test">(تجربة)</string>
     <string name="notif_channel">الأذان</string>

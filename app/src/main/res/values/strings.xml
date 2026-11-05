@@ -30,6 +30,9 @@
     <string name="next_in">%1$s in %2$s</string>
     <string name="pick_city_hint">Choose your city in the weather box to see prayer times</string>
     <string name="popup_title">It is time for %1$s prayer</string>
+    <string name="dua_title">Dua after the adhan</string>
+    <string name="dua_text">اللَّهُمَّ رَبَّ هَذِهِ الدَّعْوَةِ التَّامَّةِ، وَالصَّلَاةِ الْقَائِمَةِ، آتِ سَيِّدَنَا مُحَمَّدًا الْوَسِيلَةَ وَالْفَضِيلَةَ، وَابْعَثْهُ مَقَامًا مَحْمُودًا الَّذِي وَعَدْتَهُ.</string>
+    <string name="dua_hint">Closes in a moment, or press Back to close</string>
     <string name="popup_hint">Press Back to stop the adhan</string>
     <string name="popup_test">(test)</string>
     <string name="notif_channel">Adhan</string>
