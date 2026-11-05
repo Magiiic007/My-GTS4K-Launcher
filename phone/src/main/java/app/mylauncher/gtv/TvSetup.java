@@ -353,7 +353,24 @@ final class TvSetup {
             + " GET_USAGE_STATS allow");
         String v = sh(c, "dumpsys package " + PKG + " | grep -m1 versionName").trim();
         say.say("تم التثبيت" + (v.isEmpty() ? "" : " (" + v + ")"));
+        enableKeys(c, say);
         if (homeSet(c)) armGuard(c);
+    }
+
+    /** Switches on the launcher's remote-buttons service (YouTube and star buttons). Best effort. */
+    static void enableKeys(Context c, Say say) {
+        try {
+            String svc = PKG + "/" + PKG + ".RemoteKeys";
+            String cur = sh(c, "settings get secure enabled_accessibility_services").trim();
+            if (cur.equals("null")) cur = "";
+            if (!cur.contains(svc)) {
+                sh(c, "settings put secure enabled_accessibility_services " + (cur.isEmpty() ? svc : cur + ":" + svc));
+            }
+            sh(c, "settings put secure accessibility_enabled 1");
+            say.say("تم تفعيل خدمة أزرار الريموت (يوتيوب والنجمة)");
+        } catch (Exception e) {
+            say.say("تعذّر تفعيل خدمة أزرار الريموت: " + e.getMessage());
+        }
     }
 
     // ------------------------------------------------------------ the home screen
@@ -487,6 +504,7 @@ final class TvSetup {
                 sh(c, "touch " + OK);
                 p(c).edit().putBoolean("tv_home", true).apply();
                 armGuard(c);
+                enableKeys(c, say);
                 say.say("تم: اللانشر هو الشاشة الرئيسية الآن. وعلى التلفزيون حارس يُرجع الشاشة الأصلية تلقائياً لو حُذف اللانشر.");
             } else {
                 say.say("لم يظهر اللانشر كشاشة رئيسية، سأعيد الشاشة الأصلية…");

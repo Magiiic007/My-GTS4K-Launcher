@@ -2504,6 +2504,22 @@ public class PhoneActivity extends Activity {
             });
         }
         tvLogBlock();
+        row("تفعيل أزرار اليوتيوب والنجمة", "يعمل بعد تحديث اللانشر على التلفزيون (الخطوة 3)", "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tvRun("تفعيل أزرار الريموت", new TvTask() {
+                    @Override
+                    public void run() throws Exception {
+                        TvSetup.enableKeys(PhoneActivity.this, new TvSetup.Say() {
+                            @Override
+                            public void say(String s) {
+                                tvSay(s);
+                            }
+                        });
+                    }
+                }, true);
+            }
+        });
         section("الأزرار");
         String[] keys = {"المساعد الصوتي", "يوتيوب", "النجمة (المفضلة)", "Netflix", "الرئيسية (Home)", "الرجوع",
             "رفع الصوت", "خفض الصوت", "كتم الصوت", "تشغيل / إيقاف مؤقت", "المدخل (Input)", "القائمة / الإعدادات"};
