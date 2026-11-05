@@ -329,6 +329,7 @@ public class AdhanService extends Service {
     private void postDua() {
         try {
             if (!getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("ad_dua", true)) return;
+            if (DuaPopup.show(this)) return; // shown over the open app; the notification below is the fallback
             NotificationManager nm = getSystemService(NotificationManager.class);
             nm.createNotificationChannel(new NotificationChannel("dua", "دعاء بعد الأذان", NotificationManager.IMPORTANCE_LOW));
             String text = "اللَّهُمَّ رَبَّ هَذِهِ الدَّعْوَةِ التَّامَّةِ، وَالصَّلَاةِ الْقَائِمَةِ، آتِ مُحَمَّدًا الْوَسِيلَةَ وَالْفَضِيلَةَ، "

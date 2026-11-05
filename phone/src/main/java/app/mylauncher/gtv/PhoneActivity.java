@@ -1913,7 +1913,7 @@ public class PhoneActivity extends Activity {
                     PrayerNote.refresh(PhoneActivity.this);
                 }
             });
-        switchRow("دعاء بعد الأذان", "إشعار بدعاء ما بعد الأذان يختفي وحده بعد 15 دقيقة", sp.getBoolean("ad_dua", true),
+        switchRow("دعاء بعد الأذان", "نافذة بدعاء ما بعد الأذان فوق التطبيقات، تُقفل بزر «تم» أو بالضغط خارجها (وإشعار لو إذن العرض فوق التطبيقات غير مفعّل)", sp.getBoolean("ad_dua", true),
             new CompoundListener() {
                 @Override
                 public void changed(boolean on) {
