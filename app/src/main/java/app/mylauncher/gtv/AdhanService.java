@@ -346,7 +346,8 @@ public class AdhanService extends Service {
         hideOverlay();
         final AudioManager am = audio;
         if (am != null && focus != null) am.abandonAudioFocusRequest(focus);
-        if (pausedOthers && am != null) {
+        // After the iqama the other app stays paused: the prayer is starting, so it is started again by hand only.
+        if (pausedOthers && !isIqama && am != null) {
             new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                 @Override
                 public void run() {
