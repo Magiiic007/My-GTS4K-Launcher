@@ -30,6 +30,9 @@ final class TvSetup {
     private static final String SETUP = "com.google.android.tungsten.setupwraith";
     /** Created on the TV when the new home screen has been checked; until then a timer there undoes everything. */
     private static final String OK = "/data/local/tmp/salah_home_ok";
+    /** The guard that stays on the TV: if the launcher is ever removed, it brings the original home screen back. */
+    private static final String GUARD_PID = "/data/local/tmp/salah_guard.pid";
+    private static final String GUARD_STOP = "/data/local/tmp/salah_guard.stop";
 
     interface Say {
         void say(String s);
@@ -191,6 +194,12 @@ final class TvSetup {
         up = false;
         if (!m.connect(host, port)) throw new java.io.IOException("لم يتم الاتصال");
         up = true;
+        // After a restart of the TV the guard is gone: put it back whenever the phone connects.
+        try {
+            if (homeSet(c)) armGuard(c);
+        } catch (Exception ignored) {
+            // Best effort.
+        }
     }
 
     static void disconnect(Context c) {
@@ -284,6 +293,8 @@ final class TvSetup {
 
     static void install(Context c, Say say) throws Exception {
         File apk = download(c, say);
+        // while the launcher is replaced it is briefly missing: the guard must not take that for a removal
+        stopGuard(c);
         say.say("تثبيت اللانشر على التلفزيون…");
         AdbStream s = TvAdb.get(c).openStream("exec:cmd package install -r -S " + apk.length());
         String result;
@@ -313,6 +324,7 @@ final class TvSetup {
             + " GET_USAGE_STATS allow");
         String v = sh(c, "dumpsys package " + PKG + " | grep -m1 versionName").trim();
         say.say("تم التثبيت" + (v.isEmpty() ? "" : " (" + v + ")"));
+        if (homeSet(c)) armGuard(c);
     }
 
     // ------------------------------------------------------------ the home screen
@@ -342,6 +354,33 @@ final class TvSetup {
         }
     }
 
+    /** Stops the guard on the TV (before a deliberate change). */
+    private static void stopGuard(Context c) {
+        try {
+            sh(c, "touch " + GUARD_STOP + "; [ -f " + GUARD_PID + " ] && kill $(cat " + GUARD_PID + "); rm -f " + GUARD_PID);
+        } catch (Exception ignored) {
+            // Not reachable: nothing to stop.
+        }
+    }
+
+    /**
+     * Starts the guard on the TV: every 15 seconds it checks that the launcher is still installed; when it is gone
+     * (two checks in a row, so an update does not count) it enables the original home screen again. It lives until the
+     * TV restarts; the phone puts it back at its next connection.
+     */
+    static void armGuard(Context c) throws Exception {
+        String list = p(c).getString("tv_disabled", "");
+        String stock = p(c).getString("tv_stock", "");
+        if (list.isEmpty() || stock.isEmpty()) return;
+        stopGuard(c);
+        sh(c, "rm -f " + GUARD_STOP);
+        sh(c, "nohup sh -c 'echo $$ > " + GUARD_PID + "; m=0; while true; do [ -f " + GUARD_STOP + " ] && exit 0; "
+            + "if pm path " + PKG + " | grep -q package:; then m=0; else m=$((m+1)); fi; "
+            + "if [ $m -ge 2 ]; then for p in " + list + "; do pm enable $p; done; cmd package set-home-activity --user 0 "
+            + stock + "; input keyevent KEYCODE_HOME; rm -f " + GUARD_PID + "; exit 0; fi; sleep 15; done' "
+            + "</dev/null >/dev/null 2>&1 &");
+    }
+
     /** Makes the launcher the home screen; if that does not work, puts the original one back. */
     static void setHome(Context c, Say say) throws Exception {
         String pk = sh(c, "pm list packages -e");
@@ -367,7 +406,7 @@ final class TvSetup {
         for (String o : off) list.append(o).append(' ');
         if (off.length > 0) {
             say.say("الشاشة الأصلية على التلفزيون: " + off[off.length - 1]);
-            p(c).edit().putString("tv_disabled", list.toString().trim()).apply();
+            p(c).edit().putString("tv_disabled", list.toString().trim()).putString("tv_stock", stockAct).apply();
             // A timer on the TV itself: if nothing confirms the new home screen in 3 minutes, everything is undone,
             // even if the phone is gone by then.
             sh(c, "rm -f " + OK);
@@ -393,7 +432,8 @@ final class TvSetup {
             if (ok) {
                 sh(c, "touch " + OK);
                 p(c).edit().putBoolean("tv_home", true).apply();
-                say.say("تم: اللانشر هو الشاشة الرئيسية الآن.");
+                armGuard(c);
+                say.say("تم: اللانشر هو الشاشة الرئيسية الآن. وعلى التلفزيون حارس يُرجع الشاشة الأصلية تلقائياً لو حُذف اللانشر.");
             } else {
                 say.say("لم يظهر اللانشر كشاشة رئيسية، سأعيد الشاشة الأصلية…");
                 restore(c, say);
@@ -416,6 +456,7 @@ final class TvSetup {
 
     /** Back to the TV's own home screen. */
     static void restore(Context c, Say say) throws Exception {
+        stopGuard(c);
         String pk = sh(c, "pm list packages");
         String saved = p(c).getString("tv_disabled", "");
         StringBuilder all = new StringBuilder(STOCK_X + " " + SETUP + " " + STOCK_T);
