@@ -3338,22 +3338,67 @@ public class PhoneActivity extends Activity {
         double bearing = Qibla.bearing(city.lat, city.lon);
         dial = new Qibla.Dial(this, gold, cream, dim);
         dial.set(0f, (float) bearing, false);
-        LinearLayout.LayoutParams dp1 = new LinearLayout.LayoutParams(dp(290), dp(290));
+        LinearLayout.LayoutParams dp1 = new LinearLayout.LayoutParams(dp(310), dp(380));
         dp1.gravity = Gravity.CENTER_HORIZONTAL;
-        dp1.topMargin = dp(10);
+        dp1.topMargin = dp(6);
         body.addView(dial, dp1);
-        LinearLayout c = vbox();
-        c.setGravity(Gravity.CENTER_HORIZONTAL);
-        c.setBackground(shape(card, line, 18));
-        c.setPadding(dp(14), dp(10), dp(14), dp(10));
-        c.addView(tv(String.format(Locale.US, "%.0f°", bearing), 28, gold, true));
-        c.addView(tv(String.format(Locale.US, "القبلة من الشمال · المسافة نحو %.0f كم", Qibla.distanceKm(city.lat, city.lon)), 14, cream, true));
-        qiblaText = tv("", 14, dim, false);
+
+        // the heading of the phone, big, under the dial
+        qiblaHead = tv(String.format(Locale.US, "%.0f°", bearing), 46, cream, true);
+        qiblaHead.setGravity(Gravity.CENTER);
+        add(qiblaHead, 6);
+        qiblaText = tv("", 15, gold, true);
         qiblaText.setGravity(Gravity.CENTER);
-        c.addView(qiblaText, lp(-2, -2, 4));
-        add(c, 12);
-        add(tv("أدر الهاتف حتى يشير السهم الذهبي لأعلى إلى الكعبة. أمسك الهاتف مسطّحًا، وابعده عن المعادن والمغناطيس. إن كانت القراءة غير دقيقة فحرّك الهاتف على شكل رقم 8 لمعايرة البوصلة.", 12, dim, false), 10);
+        add(qiblaText, 2);
+        TextView info = tv(String.format(Locale.US, "الاتجاه التقريبي للقبلة في %s: %.0f° · المسافة نحو %.0f كم",
+            city.name(true), bearing, Qibla.distanceKm(city.lat, city.lon)), 13, dim, false);
+        info.setGravity(Gravity.CENTER);
+        add(info, 8);
+
+        // the sensor accuracy, and the calibrate button
+        LinearLayout acc = hbox();
+        acc.setGravity(Gravity.CENTER_VERTICAL);
+        acc.setBackground(shape(card, line, 14));
+        acc.setPadding(dp(14), dp(10), dp(14), dp(10));
+        qiblaDot = new View(this);
+        qiblaDot.setBackground(shape(0xFF4CD08A, 0xFF4CD08A, 8));
+        acc.addView(qiblaDot, new LinearLayout.LayoutParams(dp(14), dp(14)));
+        qiblaAcc = tv("دقة مستشعر الهاتف…", 13, cream, false);
+        LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(0, -2, 1f);
+        ap.setMargins(dp(10), 0, dp(10), 0);
+        acc.addView(qiblaAcc, ap);
+        acc.addView(smallBtn("معايرة", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new Pop(PhoneActivity.this).title("معايرة البوصلة")
+                    .message("أمسك الهاتف وحرّكه في الهواء على شكل رقم 8 عدة مرات، وابعده عن المعادن والمغناطيس وأغطية الهاتف المغناطيسية. ثم راقب مؤشر الدقة.")
+                    .ok("تم", null).show();
+            }
+        }));
+        add(acc, 6);
         qiblaStart();
+    }
+
+    private TextView qiblaHead, qiblaAcc;
+    private View qiblaDot;
+
+    /** The accuracy line under the dial (green: good, amber: medium, red: poor: calibrate). */
+    private void qiblaAccuracy(int a) {
+        if (qiblaDot == null || qiblaAcc == null) return;
+        int col;
+        String t;
+        if (a >= SensorManager.SENSOR_STATUS_ACCURACY_HIGH) {
+            col = 0xFF4CD08A;
+            t = "دقة مستشعر الهاتف جيدة";
+        } else if (a == SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM) {
+            col = 0xFFE8B84A;
+            t = "دقة مستشعر الهاتف متوسطة";
+        } else {
+            col = 0xFFE5604A;
+            t = "دقة مستشعر الهاتف ضعيفة، اضغط «معايرة»";
+        }
+        qiblaDot.setBackground(shape(col, col, 8));
+        qiblaAcc.setText(t);
     }
 
     private void qiblaStart() {
@@ -3386,6 +3431,8 @@ public class PhoneActivity extends Activity {
                     heading = (heading + d * 0.2f + 360f) % 360f;
                 }
                 if (dial != null) dial.set(heading, (float) bearing, true);
+                if (qiblaHead != null) qiblaHead.setText(String.format(Locale.US, "%.0f°", heading));
+                qiblaAccuracy(e.accuracy);
                 if (qiblaText != null) {
                     float diff = (float) (((bearing - heading + 540.0) % 360.0) - 180.0);
                     qiblaText.setText(Math.abs(diff) < 4f ? "أنت متجه نحو القبلة" : diff > 0 ? "در نحو اليمين" : "در نحو اليسار");
@@ -3394,6 +3441,7 @@ public class PhoneActivity extends Activity {
 
             @Override
             public void onAccuracyChanged(Sensor s, int a) {
+                qiblaAccuracy(a);
             }
         };
         sm.registerListener(qListener, rv, SensorManager.SENSOR_DELAY_UI);

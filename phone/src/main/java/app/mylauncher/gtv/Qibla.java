@@ -30,34 +30,50 @@ final class Qibla {
         return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    /** The dial: north marks turn opposite to the phone's heading; the gold arrow at the top is where you face. */
+    private static int mix(int from, int to, float t) {
+        int r = Math.round(((from >> 16) & 255) + (((to >> 16) & 255) - ((from >> 16) & 255)) * t);
+        int g = Math.round(((from >> 8) & 255) + (((to >> 8) & 255) - ((from >> 8) & 255)) * t);
+        int b = Math.round((from & 255) + ((to & 255) - (from & 255)) * t);
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
+
+    /**
+     * The compass: a light round dial that turns with the phone (north marks, directions, an ornament ring) with a
+     * mark at the qibla bearing, and the Kaaba above it. The Kaaba is grey, and lights up (black and gold with a
+     * glow) when the phone faces the qibla.
+     */
     static final class Dial extends View {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final int gold, cream, dim;
+        private final int gold;
         private float heading;
         private float target;
         private boolean live;
+        private float glow; // 0 = grey Kaaba, 1 = lit
 
         Dial(Context c, int gold, int cream, int dim) {
             super(c);
             this.gold = gold;
-            this.cream = cream;
-            this.dim = dim;
         }
 
         void set(float headingDeg, float bearingDeg, boolean liveCompass) {
             heading = headingDeg;
             target = bearingDeg;
             live = liveCompass;
+            float diff = ((target - heading + 540f) % 360f) - 180f;
+            boolean on = live && Math.abs(diff) < 4f;
+            glow += ((on ? 1f : 0f) - glow) * 0.35f;
+            if (Math.abs((on ? 1f : 0f) - glow) < 0.02f) glow = on ? 1f : 0f;
             invalidate();
         }
 
-        private void kaaba(Canvas cv, float cx, float top, float u, boolean glow) {
-            // a small Kaaba seen from the front, a little from above; u = half its width
-            if (glow) {
+        private void kaaba(Canvas cv, float cx, float top, float u) {
+            float t = glow;
+            if (t > 0.01f) {
                 paint.setStyle(Paint.Style.FILL);
-                paint.setColor(0x554CD08A);
-                cv.drawCircle(cx, top + u * 1.1f, u * 2.1f, paint);
+                paint.setShader(new android.graphics.RadialGradient(cx, top + u, u * 3.4f,
+                    new int[] {((int) (0x99 * t) << 24) | 0x00FFD54A, 0x00FFD54A}, null, android.graphics.Shader.TileMode.CLAMP));
+                cv.drawCircle(cx, top + u, u * 3.4f, paint);
+                paint.setShader(null);
             }
             float h = u * 2f;
             Path topFace = new Path();
@@ -67,18 +83,18 @@ final class Qibla {
             topFace.lineTo(cx - u * 0.8f, top - u * 0.45f);
             topFace.close();
             paint.setStyle(Paint.Style.FILL);
-            paint.setColor(0xFF3A3A3A);
+            paint.setColor(mix(0xFFB0B0AA, 0xFF3A3A3A, t));
             cv.drawPath(topFace, paint);
             RectF front = new RectF(cx - u, top, cx + u, top + h);
-            paint.setColor(0xFF0C0C0C);
+            paint.setColor(mix(0xFF9C9C96, 0xFF0C0C0C, t));
             cv.drawRect(front, paint);
-            // the gold band (hizam) and the door
-            paint.setColor(gold);
+            int band = mix(0xFFC4C4BE, gold, t);
+            paint.setColor(band);
             cv.drawRect(cx - u, top + h * 0.22f, cx + u, top + h * 0.34f, paint);
             cv.drawRect(cx - u * 0.28f, top + h * 0.5f, cx + u * 0.04f, top + h * 0.92f, paint);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(2f);
-            paint.setColor(gold);
+            paint.setColor(band);
             cv.drawRect(front, paint);
             cv.drawPath(topFace, paint);
         }
@@ -86,86 +102,108 @@ final class Qibla {
         @Override
         protected void onDraw(Canvas cv) {
             float w = getWidth(), h = getHeight();
-            float r = Math.min(w, h) / 2f - 10f;
-            float cx = w / 2f, cy = h / 2f + 10f;
-            float diff = ((target - heading + 540f) % 360f) - 180f;
-            boolean on = live && Math.abs(diff) < 4f;
-            int ring = on ? 0xFF4CD08A : gold;
-            // the dial plate
+            float r = Math.min(w / 2f - 14f, (h - 14f) * 0.40f);
+            float cx = w / 2f, cy = h - r - 14f;
+            float t = glow;
+            int ring = mix(0xFFD9D4C4, 0xFF4CD08A, t);
+
+            // the Kaaba above the dial
+            float u = r * 0.16f;
+            kaaba(cv, cx, cy - r - r * 0.10f - u * 2f, u);
+
+            // the plate
             paint.setStyle(Paint.Style.FILL);
-            paint.setShader(new android.graphics.RadialGradient(cx, cy, r, new int[] {0xFF1B2A24, 0xFF0B1410}, null,
-                android.graphics.Shader.TileMode.CLAMP));
+            paint.setColor(0xFFF7F4EC);
             cv.drawCircle(cx, cy, r, paint);
-            paint.setShader(null);
             paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(5f);
+            paint.setStrokeWidth(6f);
             paint.setColor(ring);
-            cv.drawCircle(cx, cy, r, paint);
-            paint.setStrokeWidth(1.5f);
-            paint.setColor((ring & 0x00FFFFFF) | 0x77000000);
-            cv.drawCircle(cx, cy, r - 9f, paint);
-            cv.drawCircle(cx, cy, r * 0.46f, paint);
+            cv.drawCircle(cx, cy, r - 3f, paint);
+
             cv.save();
             cv.rotate(-heading, cx, cy);
-            // degree ticks every 5
+            // degree ticks every 5, bold every 30
             for (int d = 0; d < 360; d += 5) {
                 boolean big = d % 30 == 0;
-                paint.setStrokeWidth(big ? 3f : 1.5f);
-                paint.setColor(big ? cream : dim);
+                paint.setStrokeWidth(big ? 4f : 1.6f);
+                paint.setColor(big ? 0xFF222222 : 0xFF9A9A92);
                 cv.save();
                 cv.rotate(d, cx, cy);
-                cv.drawLine(cx, cy - r + 11f, cx, cy - r + (big ? 28f : 19f), paint);
+                cv.drawLine(cx, cy - r + 14f, cx, cy - r + (big ? 14f + r * 0.10f : 14f + r * 0.05f), paint);
+                cv.restore();
+            }
+            // an ornament ring of small diamonds
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(r * 0.11f);
+            paint.setColor(0x22A39A55);
+            cv.drawCircle(cx, cy, r * 0.54f, paint);
+            paint.setStrokeWidth(2f);
+            paint.setColor(0x88A39A55);
+            cv.drawCircle(cx, cy, r * 0.60f, paint);
+            cv.drawCircle(cx, cy, r * 0.48f, paint);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0xAA8C8440);
+            for (int k = 0; k < 36; k++) {
+                cv.save();
+                cv.rotate(k * 10f, cx, cy);
+                Path dm = new Path();
+                float y0 = cy - r * 0.54f, s2 = r * 0.028f;
+                dm.moveTo(cx, y0 - s2 * 1.4f);
+                dm.lineTo(cx + s2, y0);
+                dm.lineTo(cx, y0 + s2 * 1.4f);
+                dm.lineTo(cx - s2, y0);
+                dm.close();
+                cv.drawPath(dm, paint);
                 cv.restore();
             }
             // the four directions
-            paint.setStyle(Paint.Style.FILL);
             paint.setTextAlign(Paint.Align.CENTER);
-            paint.setTextSize(r * 0.13f);
+            paint.setTextSize(r * 0.12f);
+            paint.setFakeBoldText(true);
             String[] n = {"شمال", "شرق", "جنوب", "غرب"};
             for (int i = 0; i < 4; i++) {
                 cv.save();
                 cv.rotate(i * 90f, cx, cy);
-                paint.setColor(i == 0 ? 0xFFE5604A : cream);
-                paint.setFakeBoldText(true);
-                cv.drawText(n[i], cx, cy - r + 52f + paint.getTextSize() / 3f, paint);
+                paint.setColor(i == 0 ? 0xFFD2452F : 0xFF5B6B2A);
+                cv.drawText(n[i], cx, cy - r * 0.74f + paint.getTextSize() / 3f, paint);
                 cv.restore();
             }
             paint.setFakeBoldText(false);
-            // the line to the Kaaba and the Kaaba, on the plate at the qibla bearing
+            // the mark at the qibla bearing: a dashed line and a triangle at the rim
             cv.save();
             cv.rotate(target, cx, cy);
             paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(4f);
-            paint.setColor(on ? 0xFF4CD08A : gold);
-            paint.setPathEffect(new android.graphics.DashPathEffect(new float[] {14f, 10f}, 0f));
-            cv.drawLine(cx, cy - r * 0.12f, cx, cy - r + r * 0.40f, paint);
-            paint.setPathEffect(null);
-            float u = r * 0.105f;
-            kaaba(cv, cx, cy - r + r * 0.19f, u, on);
-            cv.restore();
-            cv.restore();
-            // the fixed pointer: where the phone faces
-            Path t = new Path();
-            t.moveTo(cx, cy - r - 4f);
-            t.lineTo(cx - 13f, cy - r + 20f);
-            t.lineTo(cx + 13f, cy - r + 20f);
-            t.close();
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(ring);
-            cv.drawPath(t, paint);
-            // the centre
-            paint.setColor(0xFF0B1410);
-            cv.drawCircle(cx, cy, r * 0.06f, paint);
-            paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(3f);
-            paint.setColor(ring);
-            cv.drawCircle(cx, cy, r * 0.06f, paint);
+            paint.setColor(0x881F5D3A);
+            paint.setPathEffect(new android.graphics.DashPathEffect(new float[] {10f, 9f}, 0f));
+            cv.drawLine(cx, cy - r * 0.36f, cx, cy - r * 0.62f, paint);
+            paint.setPathEffect(null);
+            Path tri = new Path();
+            float ty = cy - r + 2f, ts = r * 0.07f;
+            tri.moveTo(cx, ty - ts * 0.4f);
+            tri.lineTo(cx - ts, ty + ts * 1.7f);
+            tri.lineTo(cx + ts, ty + ts * 1.7f);
+            tri.close();
             paint.setStyle(Paint.Style.FILL);
-            paint.setTextSize(r * 0.14f);
-            paint.setColor(cream);
-            paint.setFakeBoldText(true);
-            cv.drawText(String.format(Locale.US, "%.0f°", live ? heading : target), cx, cy + r * 0.30f, paint);
-            paint.setFakeBoldText(false);
+            paint.setColor(0xFF1F5D3A);
+            cv.drawPath(tri, paint);
+            cv.restore();
+            cv.restore();
+
+            // the fixed notch at the top: where the phone faces
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(5f);
+            paint.setColor(mix(0xFF444444, 0xFF2E9E66, t));
+            cv.drawLine(cx, cy - r - 4f, cx, cy - r + 12f, paint);
+
+            // the empty centre
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0xFFFFFFFF);
+            cv.drawCircle(cx, cy, r * 0.40f, paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(2f);
+            paint.setColor(0x33000000);
+            cv.drawCircle(cx, cy, r * 0.40f, paint);
         }
     }
 }
