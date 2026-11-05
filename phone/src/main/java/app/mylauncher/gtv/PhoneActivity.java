@@ -3051,6 +3051,19 @@ public class PhoneActivity extends Activity {
         build();
     }
 
+    /** Moves a followed city one place up (-1) or down (+1) in the list. */
+    private void moveOther(String key, int by) {
+        List<Cities.City> l = otherCities();
+        int i = -1;
+        for (int j = 0; j < l.size(); j++) if ((l.get(j).country + "|" + l.get(j).en).equals(key)) i = j;
+        int to = i + by;
+        if (i < 0 || to < 0 || to >= l.size()) return;
+        Cities.City c = l.remove(i);
+        l.add(to, c);
+        saveOther(l);
+        build();
+    }
+
     private static String diffText(long minutes) {
         long m = Math.abs(minutes);
         if (m == 0) return "نفس الوقت";
@@ -3157,7 +3170,21 @@ public class PhoneActivity extends Activity {
                     pr.addView(tv(ap(PrayerCalc.time(this, c, t[i])), 14, cream, true));
                     box.addView(pr, lp(-1, -2, 4));
                 }
-                TextView del = smallBtn("حذف المدينة", new View.OnClickListener() {
+                LinearLayout acts = hbox();
+                acts.setGravity(Gravity.CENTER_VERTICAL);
+                acts.addView(smallBtn("▲ أعلى", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        moveOther(k, -1);
+                    }
+                }));
+                acts.addView(smallBtn("▼ أسفل", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        moveOther(k, 1);
+                    }
+                }), lp(-2, -2, 0));
+                acts.addView(smallBtn("حذف", new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         List<Cities.City> l2 = otherCities();
@@ -3166,9 +3193,17 @@ public class PhoneActivity extends Activity {
                         otherOpen.remove(k);
                         build();
                     }
-                });
-                del.setPadding(dp(12), dp(8), dp(12), dp(8));
-                box.addView(del, lp(-2, -2, 10));
+                }), lp(-2, -2, 0));
+                for (int i = 0; i < acts.getChildCount(); i++) {
+                    View bt = acts.getChildAt(i);
+                    bt.setPadding(dp(14), dp(8), dp(14), dp(8));
+                    if (i > 0) {
+                        LinearLayout.LayoutParams ml = new LinearLayout.LayoutParams(-2, -2);
+                        ml.setMarginStart(dp(8));
+                        bt.setLayoutParams(ml);
+                    }
+                }
+                box.addView(acts, lp(-2, -2, 10));
             }
             box.setOnClickListener(new View.OnClickListener() {
                 @Override
