@@ -408,6 +408,8 @@ public class PhoneActivity extends Activity {
 
     private String backTarget(String s) {
         if (s.equals("up")) return "occ";
+        if (s.startsWith("txt:") && tab == 3) return "fonts";
+        if (s.startsWith("ad:")) return null;
         if (s.equals("tvkeys")) return "tv";
         if (s.startsWith("item:")) return itemBack;
         if (s.equals("country") || s.equals("cities")) return null;
@@ -1506,6 +1508,15 @@ public class PhoneActivity extends Activity {
             tvKeysPage();
             return;
         }
+        if ("fonts".equals(sub)) {
+            title("حجم الخط ولونه", true);
+            section("اختر المكان");
+            for (int i = 0; i < Adhkar.TEXT_PLACES.length; i++) {
+                row(Adhkar.TEXT_PLACES[i], Adhkar.SIZE_NAMES[Adhkar.sizeIdx(this, i)] + " · " + Adhkar.COLOR_NAMES[Adhkar.colorIdx(this, i)],
+                    "›", go("txt:" + i));
+            }
+            return;
+        }
         title("الإعدادات", false);
         section("الشكل");
         switchRow("ظلال وعمق البطاقات", "تعطي إحساس البروز ثلاثي الأبعاد", sp.getBoolean("depth_on", true),
@@ -1540,11 +1551,7 @@ public class PhoneActivity extends Activity {
                 }).show();
             }
         });
-        section("حجم الخط ولونه");
-        for (int i = 0; i < Adhkar.TEXT_PLACES.length; i++) {
-            row(Adhkar.TEXT_PLACES[i], Adhkar.SIZE_NAMES[Adhkar.sizeIdx(this, i)] + " · " + Adhkar.COLOR_NAMES[Adhkar.colorIdx(this, i)],
-                "›", go("txt:" + i));
-        }
+        row("حجم الخط ولونه", "للأذكار والبطاقات وغيرها", "›", go("fonts"));
         section("التشغيل في الخلفية");
         row("تأكد أن الأذان يعمل", "الإشعارات والمنبّه والبطارية", "›", go("fix"));
         row("العرض فوق التطبيقات", "لتظهر الأذكار فوق التطبيقات الأخرى", Settings.canDrawOverlays(this) ? "✓" : "فتح",
@@ -1554,7 +1561,7 @@ public class PhoneActivity extends Activity {
                     if (!Settings.canDrawOverlays(PhoneActivity.this)) openOverlayPermission();
                 }
             });
-        section("أخرى");
+        section("التطبيق");
         if (!BuildConfig.PLAY) {
             row("تحديث التطبيق", "النسخة " + PhoneUpdater.installedName(this), "›", new View.OnClickListener() {
                 @Override
@@ -1926,134 +1933,194 @@ public class PhoneActivity extends Activity {
     }
 
     private void adhanPage() {
-        title("الأذان والإقامة", false);
-        section("وضع الخلاء");
-        switchRow("وضع الخلاء", "يوقف الأذان والإقامة والأذكار والتذكيرات والإشعارات والراديو بضغطة، ويرجعها بضغطة ثانية. يتوقف وحده بعد 30 دقيقة لو نسيته. الزر أيضاً في الويدجت", Wc.on(this),
-            new CompoundListener() {
+        if (sub == null || !sub.startsWith("ad:")) {
+            title("الأذان والإقامة", false);
+            section("وضع الخلاء");
+            switchRow("وضع الخلاء", "يوقف الأذان والإقامة والأذكار والتذكيرات والإشعارات والراديو بضغطة، ويرجعها بضغطة ثانية. يتوقف وحده بعد 30 دقيقة لو نسيته. الزر أيضاً في الويدجت", Wc.on(this),
+                new CompoundListener() {
+                    @Override
+                    public void changed(boolean on) {
+                        if (on != Wc.on(PhoneActivity.this)) Wc.set(PhoneActivity.this, on, true);
+                        build();
+                    }
+                });
+            section("الإعدادات");
+            int alertsOn = (PrayerNote.noteOn(this) ? 1 : 0) + (sp.getBoolean("ad_dua", true) ? 1 : 0) + (PrayerNote.missedOn(this) ? 1 : 0);
+            row("الأذان والإقامة لكل صلاة", "الصوت والاهتزاز والإقامة وصوت الأذان", "›", go("ad:prayers"));
+            row("المواقيت", "طريقة الحساب والمذهب والتاريخ الهجري", "›", go("ad:calc"));
+            row("التنبيهات والتذكير", alertsOn + " من 3 مفعّلة، وتنبيه قبل خروج الوقت", "›", go("ad:alerts"));
+            row("الصامت وقت الصلاة", PrayerNote.silentOn(this) ? "مفعّل" : "متوقف", "›", go("ad:silent"));
+            return;
+        }
+        if (sub.equals("ad:prayers")) {
+            title("الأذان والإقامة لكل صلاة", true);
+            section("لكل صلاة");
+            final int[] adj = PrayerPrefs.adjust(this);
+            final int[] iq = PrayerPrefs.iqama(this);
+            for (int i = 0; i < 5; i++) {
+                final int idx = i;
+                row(PrayerCalc.name(this, i, false), "الإقامة: " + PrayerPrefs.iqamaText(this, iq[i])
+                    + " · التعديل: " + PrayerPrefs.adjustText(this, adj[i])
+                    + " · " + new String[] {"صوت", "اهتزاز", "صامت"}[Math.max(0, Math.min(2, sp.getInt("ad_mode_" + i, 0)))], "›", new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            prayerDialog(idx);
+                        }
+                    });
+            }
+            row("الأذان الأول للجمعة", PrayerPrefs.firstAdhanText(this, PrayerPrefs.firstAdhan(this)), "›",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        numberDialog("دقائق قبل أذان الجمعة (0 = متوقف)", 0, 60, PrayerPrefs.firstAdhan(PhoneActivity.this),
+                            new IntSetter() {
+                                @Override
+                                public void set(int val) {
+                                    PrayerPrefs.setFirstAdhan(PhoneActivity.this, val);
+                                    Scheduler.scheduleNext(PhoneActivity.this);
+                                    build();
+                                }
+                            });
+                    }
+                });
+            section("صوت الأذان");
+            switchRow("رفع صوت الأذان تدريجياً", "يبدأ هادئاً ويعلو خلال 15 ثانية حتى مستوى صوت المنبّه في الهاتف", sp.getBoolean("ad_ramp", false),
+                new CompoundListener() {
+                    @Override
+                    public void changed(boolean on) {
+                        sp.edit().putBoolean("ad_ramp", on).apply();
+                    }
+                });
+            return;
+        }
+        if (sub.equals("ad:calc")) {
+            title("المواقيت", true);
+            section("طريقة الحساب");
+            final int m = sp.getInt("calc_method", -1);
+            switchRow("تلقائي حسب الموقع", "يختار الطريقة والمذهب حسب بلد مدينتك", m < 0, new CompoundListener() {
                 @Override
                 public void changed(boolean on) {
-                    if (on != Wc.on(PhoneActivity.this)) Wc.set(PhoneActivity.this, on, true);
-                    build();
+                    Cities.City c = Cities.selected(PhoneActivity.this);
+                    int def = c != null && "EG".equals(c.country) ? 1 : 2;
+                    SharedPreferences.Editor e = sp.edit();
+                    if (on) e.putInt("calc_method", -1).putBoolean("calc_hanafi", false);
+                    else e.putInt("calc_method", def);
+                    e.apply();
+                    calcChanged();
                 }
             });
-        section("طريقة الحساب");
-        final int m = sp.getInt("calc_method", -1);
-        switchRow("تلقائي حسب الموقع", "يختار الطريقة والمذهب حسب بلد مدينتك", m < 0, new CompoundListener() {
-            @Override
-            public void changed(boolean on) {
-                Cities.City c = Cities.selected(PhoneActivity.this);
-                int def = c != null && "EG".equals(c.country) ? 1 : 2;
-                SharedPreferences.Editor e = sp.edit();
-                if (on) e.putInt("calc_method", -1).putBoolean("calc_hanafi", false);
-                else e.putInt("calc_method", def);
-                e.apply();
-                calcChanged();
-            }
-        });
-        if (m >= 0) {
-            row("طريقة الحساب", METHOD_NAMES[Math.min(m, METHOD_NAMES.length - 1)], "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    new Pop(PhoneActivity.this).title("طريقة الحساب").single(METHOD_NAMES, m, new Pop.Pick() {
-                        @Override
-                        public void on(int which) {
-                            sp.edit().putInt("calc_method", which).apply();
-                            calcChanged();
-                        }
-                    }).show();
-                }
-            });
-            final boolean han = sp.getBoolean("calc_hanafi", false);
-            row("المذهب (وقت العصر)", han ? "الحنفي" : "الجمهور (الشافعي والمالكي والحنبلي)", "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    new Pop(PhoneActivity.this).title("المذهب (وقت العصر)")
-                        .single(new String[] {"الجمهور (الشافعي والمالكي والحنبلي)", "الحنفي"}, han ? 1 : 0, new Pop.Pick() {
+            if (m >= 0) {
+                row("طريقة الحساب", METHOD_NAMES[Math.min(m, METHOD_NAMES.length - 1)], "›", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        new Pop(PhoneActivity.this).title("طريقة الحساب").single(METHOD_NAMES, m, new Pop.Pick() {
                             @Override
                             public void on(int which) {
-                                sp.edit().putBoolean("calc_hanafi", which == 1).apply();
+                                sp.edit().putInt("calc_method", which).apply();
                                 calcChanged();
                             }
                         }).show();
-                }
-            });
-        }
-        section("لكل صلاة");
-        final int[] adj = PrayerPrefs.adjust(this);
-        final int[] iq = PrayerPrefs.iqama(this);
-        for (int i = 0; i < 5; i++) {
-            final int idx = i;
-            row(PrayerCalc.name(this, i, false), "الإقامة: " + PrayerPrefs.iqamaText(this, iq[i])
-                + " · التعديل: " + PrayerPrefs.adjustText(this, adj[i])
-                + " · " + new String[] {"صوت", "اهتزاز", "صامت"}[Math.max(0, Math.min(2, sp.getInt("ad_mode_" + i, 0)))], "›", new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        prayerDialog(idx);
                     }
                 });
-        }
-        row("الأذان الأول للجمعة", PrayerPrefs.firstAdhanText(this, PrayerPrefs.firstAdhan(this)), "›",
-            new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    numberDialog("دقائق قبل أذان الجمعة (0 = متوقف)", 0, 60, PrayerPrefs.firstAdhan(PhoneActivity.this),
-                        new IntSetter() {
+                final boolean han = sp.getBoolean("calc_hanafi", false);
+                row("المذهب (وقت العصر)", han ? "الحنفي" : "الجمهور (الشافعي والمالكي والحنبلي)", "›", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        new Pop(PhoneActivity.this).title("المذهب (وقت العصر)")
+                            .single(new String[] {"الجمهور (الشافعي والمالكي والحنبلي)", "الحنفي"}, han ? 1 : 0, new Pop.Pick() {
+                                @Override
+                                public void on(int which) {
+                                    sp.edit().putBoolean("calc_hanafi", which == 1).apply();
+                                    calcChanged();
+                                }
+                            }).show();
+                    }
+                });
+            }
+            section("التاريخ الهجري");
+            row("تعديل التاريخ الهجري", (Hijri.adjust(this) > 0 ? "+" : "") + Hijri.adjust(this) + " يوم", "›",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        numberDialog("تعديل التاريخ الهجري (أيام)", -3, 3, Hijri.adjust(PhoneActivity.this), new IntSetter() {
                             @Override
                             public void set(int val) {
-                                PrayerPrefs.setFirstAdhan(PhoneActivity.this, val);
-                                Scheduler.scheduleNext(PhoneActivity.this);
+                                Hijri.setAdjust(PhoneActivity.this, val);
+                                Reminders.scheduleNext(PhoneActivity.this);
+                                occDay = "";
                                 build();
                             }
                         });
-                }
-            });
-        section("الإشعار والصامت");
-        switchRow("إشعار الصلاة الدائم", "عدّاد للأذان القادم، وخلال الإقامة يعدّ للإقامة", PrayerNote.noteOn(this),
-            new CompoundListener() {
-                @Override
-                public void changed(boolean on) {
-                    sp.edit().putBoolean("note_on", on).apply();
-                    PrayerNote.refresh(PhoneActivity.this);
-                }
-            });
-        switchRow("دعاء بعد الأذان", "نافذة بدعاء ما بعد الأذان فوق التطبيقات، تُقفل بزر «تم» أو بالضغط خارجها (وإشعار لو إذن العرض فوق التطبيقات غير مفعّل)", sp.getBoolean("ad_dua", true),
-            new CompoundListener() {
-                @Override
-                public void changed(boolean on) {
-                    sp.edit().putBoolean("ad_dua", on).apply();
-                }
-            });
-        switchRow("أقم الصلاة", "كل فترة تحددها، لو فيه صلوات جاء وقتها ولم تعلّمها ✓ تظهر نافذة فوق التطبيقات لا تختفي إلا بزر OK، وتوقف الفيديو أو الصوت الشغّال. لا تظهر بعد منتصف الليل", PrayerNote.missedOn(this),
-            new CompoundListener() {
-                @Override
-                public void changed(boolean on) {
-                    sp.edit().putBoolean("qm_on", on).apply();
-                    PrayerNote.refresh(PhoneActivity.this);
-                    build();
-                }
-            });
-        if (PrayerNote.missedOn(this)) {
-            row("تكرار التذكير", "كل " + PrayerNote.missedMin(this) + " دقيقة، ما دامت هناك صلوات لم تُعلَّم", "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    numberDialog("التذكير كل كم دقيقة", 5, 240, PrayerNote.missedMin(PhoneActivity.this), new IntSetter() {
+                    }
+                });
+            return;
+        }
+        if (sub.equals("ad:alerts")) {
+            title("التنبيهات والتذكير", true);
+            section("إشعارات الصلاة");
+            switchRow("إشعار الصلاة الدائم", "عدّاد للأذان القادم، وخلال الإقامة يعدّ للإقامة", PrayerNote.noteOn(this),
+                new CompoundListener() {
+                    @Override
+                    public void changed(boolean on) {
+                        sp.edit().putBoolean("note_on", on).apply();
+                        PrayerNote.refresh(PhoneActivity.this);
+                    }
+                });
+            switchRow("دعاء بعد الأذان", "نافذة بدعاء ما بعد الأذان فوق التطبيقات، تُقفل بزر «تم» أو بالضغط خارجها (وإشعار لو إذن العرض فوق التطبيقات غير مفعّل)", sp.getBoolean("ad_dua", true),
+                new CompoundListener() {
+                    @Override
+                    public void changed(boolean on) {
+                        sp.edit().putBoolean("ad_dua", on).apply();
+                    }
+                });
+            switchRow("أقم الصلاة", "كل فترة تحددها، لو فيه صلوات جاء وقتها ولم تعلّمها ✓ تظهر نافذة فوق التطبيقات لا تختفي إلا بزر OK، وتوقف الفيديو أو الصوت الشغّال. لا تظهر بعد منتصف الليل", PrayerNote.missedOn(this),
+                new CompoundListener() {
+                    @Override
+                    public void changed(boolean on) {
+                        sp.edit().putBoolean("qm_on", on).apply();
+                        PrayerNote.refresh(PhoneActivity.this);
+                        build();
+                    }
+                });
+            if (PrayerNote.missedOn(this)) {
+                row("تكرار التذكير", "كل " + PrayerNote.missedMin(this) + " دقيقة، ما دامت هناك صلوات لم تُعلَّم", "›", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        numberDialog("التذكير كل كم دقيقة", 5, 240, PrayerNote.missedMin(PhoneActivity.this), new IntSetter() {
+                            @Override
+                            public void set(int val) {
+                                sp.edit().putInt("qm_min", val).putLong("qm_next", 0L).apply();
+                                PrayerNote.refresh(PhoneActivity.this);
+                                build();
+                            }
+                        });
+                    }
+                });
+            }
+            section("تنبيه قبل خروج الوقت");
+            for (int i = 0; i < 5; i++) {
+                final int idx = i;
+                int wm = PrayerNote.warnMin(this, i);
+                row(PrayerCalc.name(this, i, false) + " — قبل " + PrayerNote.END_NAMES[i], wm == 0 ? "متوقف" : wm + " دقيقة", "›",
+                    new View.OnClickListener() {
                         @Override
-                        public void set(int val) {
-                            sp.edit().putInt("qm_min", val).putLong("qm_next", 0L).apply();
-                            PrayerNote.refresh(PhoneActivity.this);
-                            build();
+                        public void onClick(View v) {
+                            numberDialog("دقائق قبل خروج الوقت (0 = متوقف)", 0, 180, PrayerNote.warnMin(PhoneActivity.this, idx),
+                                new IntSetter() {
+                                    @Override
+                                    public void set(int val) {
+                                        sp.edit().putInt("warn_" + idx, val).apply();
+                                        PrayerNote.refresh(PhoneActivity.this);
+                                        build();
+                                    }
+                                });
                         }
                     });
-                }
-            });
+            }
+            return;
         }
-        switchRow("رفع صوت الأذان تدريجياً", "يبدأ هادئاً ويعلو خلال 15 ثانية حتى مستوى صوت المنبّه في الهاتف", sp.getBoolean("ad_ramp", false),
-            new CompoundListener() {
-                @Override
-                public void changed(boolean on) {
-                    sp.edit().putBoolean("ad_ramp", on).apply();
-                }
-            });
+        title("الصامت وقت الصلاة", true);
+        section("الصامت");
         final boolean silent = PrayerNote.silentOn(this);
         switchRow("الصامت وقت الصلاة", "يحوّل الهاتف لصامت بعد انتهاء الأذان، ويرجعه بعد الإقامة", silent,
             new CompoundListener() {
@@ -2093,42 +2160,6 @@ public class PhoneActivity extends Activity {
                     });
             }
         }
-        section("تنبيه قبل خروج الوقت");
-        for (int i = 0; i < 5; i++) {
-            final int idx = i;
-            int wm = PrayerNote.warnMin(this, i);
-            row(PrayerCalc.name(this, i, false) + " — قبل " + PrayerNote.END_NAMES[i], wm == 0 ? "متوقف" : wm + " دقيقة", "›",
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        numberDialog("دقائق قبل خروج الوقت (0 = متوقف)", 0, 180, PrayerNote.warnMin(PhoneActivity.this, idx),
-                            new IntSetter() {
-                                @Override
-                                public void set(int val) {
-                                    sp.edit().putInt("warn_" + idx, val).apply();
-                                    PrayerNote.refresh(PhoneActivity.this);
-                                    build();
-                                }
-                            });
-                    }
-                });
-        }
-        section("التاريخ الهجري");
-        row("تعديل التاريخ الهجري", (Hijri.adjust(this) > 0 ? "+" : "") + Hijri.adjust(this) + " يوم", "›",
-            new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    numberDialog("تعديل التاريخ الهجري (أيام)", -3, 3, Hijri.adjust(PhoneActivity.this), new IntSetter() {
-                        @Override
-                        public void set(int val) {
-                            Hijri.setAdjust(PhoneActivity.this, val);
-                            Reminders.scheduleNext(PhoneActivity.this);
-                            occDay = "";
-                            build();
-                        }
-                    });
-                }
-            });
     }
 
     private void prayerDialog(final int idx) {
