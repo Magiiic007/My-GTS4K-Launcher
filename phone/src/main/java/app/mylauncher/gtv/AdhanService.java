@@ -144,7 +144,7 @@ public class AdhanService extends Service {
         nm.createNotificationChannel(new NotificationChannel(
             CHANNEL, getString(R.string.notif_channel), NotificationManager.IMPORTANCE_LOW));
         Notification n = new Notification.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_note)
+            .setSmallIcon(R.drawable.ic_launcher_phone)
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)
@@ -363,7 +363,7 @@ public class AdhanService extends Service {
                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             Notification n = new Notification.Builder(this, "dua")
-                .setSmallIcon(R.drawable.ic_note)
+                .setSmallIcon(R.drawable.ic_launcher_phone)
                 .setContentTitle("دعاء بعد الأذان")
                 .setContentText("اللهم رب هذه الدعوة التامة…")
                 .setStyle(new Notification.BigTextStyle().bigText(text))

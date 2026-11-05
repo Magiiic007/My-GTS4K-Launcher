@@ -34,7 +34,7 @@ public class ReminderService extends Service {
         if (titles != null) {
             for (int i = 0; i < titles.size(); i++) {
                 Notification.Builder b = new Notification.Builder(this, CHANNEL)
-                    .setSmallIcon(R.drawable.ic_note)
+                    .setSmallIcon(R.drawable.ic_launcher_phone)
                     .setContentTitle(titles.get(i))
                     .setContentText(texts != null && i < texts.size() ? texts.get(i) : "")
                     .setStyle(new Notification.BigTextStyle().bigText(texts != null && i < texts.size() ? texts.get(i) : ""))
@@ -56,7 +56,7 @@ public class ReminderService extends Service {
         }
         if (first) {
             // Nothing to show, but a foreground service was started: put up something and let go at once.
-            Notification n = new Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_note).build();
+            Notification n = new Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_launcher_phone).build();
             startForeground(base, n);
             stopForeground(true);
         } else {
