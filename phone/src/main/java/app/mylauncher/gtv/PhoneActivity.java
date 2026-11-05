@@ -551,11 +551,12 @@ public class PhoneActivity extends Activity {
     }
 
     private void add(View v, int topDp) {
-        (accBox != null ? accBox : body).addView(v, lp(-1, -2, topDp));
+        (accBox != null ? accBox : accRoot != null ? accRoot : body).addView(v, lp(-1, -2, topDp));
     }
 
     // ---- collapsible groups: every group starts closed and only one is open at a time
     private LinearLayout accBox;
+    private LinearLayout accRoot;
     private String accOpen;
     private int accTab = -1;
     private final ArrayList<Object[]> accs = new ArrayList<>();
@@ -593,7 +594,11 @@ public class PhoneActivity extends Activity {
                     scroll.post(new Runnable() {
                         @Override
                         public void run() {
-                            scroll.smoothScrollTo(0, Math.max(0, target.getTop() - dp(6)));
+                            int[] a = new int[2];
+                            int[] b = new int[2];
+                            target.getLocationOnScreen(a);
+                            scroll.getLocationOnScreen(b);
+                            scroll.smoothScrollTo(0, Math.max(0, scroll.getScrollY() + a[1] - b[1] - dp(6)));
                         }
                     });
                 }
@@ -685,7 +690,7 @@ public class PhoneActivity extends Activity {
     private int verseIdx = -1;
 
     private void endTasbihRound() {
-        for (int i = 0; i < Adhkar.TASBIH.length; i++) Adhkar.reset(this, i);
+        for (int i = 0; i < Adhkar.tasbih(this).length; i++) Adhkar.reset(this, i);
     }
 
     // ---------------------------------------------------------------- back: one step at a time, on every screen
@@ -2363,29 +2368,77 @@ public class PhoneActivity extends Activity {
 
     private void fillCategories(List<Adhkar.Category> all, String q) {
         catList.removeAllViews();
+        accs.clear();
+        accRoot = catList;
+        accBox = null;
         q = q.trim();
-        for (final Adhkar.Category c : all) {
-            if (!q.isEmpty() && !c.name.contains(q)) continue;
-            LinearLayout r = hbox();
-            r.setBackground(shape(card, line, 14));
-            r.setPadding(dp(14), dp(10), dp(14), dp(10));
-            r.setMinimumHeight(dp(48));
-            r.addView(tv(c.name, 16, cream, false), new LinearLayout.LayoutParams(0, -2, 1f));
-            r.addView(tv("›", 16, gold, true));
-            r.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    clearDone(c.id);
-                    editCat = false;
-                    sub = "cat:" + c.id;
-                    build();
+        if (!q.isEmpty()) {
+            // searching: one flat list of the matching chapters, each with the group it is in
+            for (Adhkar.Category c : all) {
+                if (c.name.contains(q)) chapterRow(c, true);
+            }
+            if (catList.getChildCount() == 0) catList.addView(tv("لا توجد نتائج", 14, dim, false));
+        } else {
+            for (int g = 0; g < Adhkar.GROUPS.length; g++) {
+                int n = 0;
+                for (Adhkar.Category c : all) if (Adhkar.groupOf(this, c.id) == g) n++;
+                if (n == 0) continue;
+                acc("ak:" + g, Adhkar.GROUPS[g], n + " باب");
+                for (Adhkar.Category c : all) {
+                    if (Adhkar.groupOf(this, c.id) == g) chapterRow(c, false);
                 }
-            });
-            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
-            rp.topMargin = dp(6);
-            catList.addView(r, rp);
+            }
         }
-        if (catList.getChildCount() == 0) catList.addView(tv("لا توجد نتائج", 14, dim, false));
+        accBox = null;
+        accRoot = null;
+    }
+
+    /** A chapter in the list: tap to open it, the arrows button moves it to another group. */
+    private void chapterRow(final Adhkar.Category c, boolean showGroup) {
+        LinearLayout r = hbox();
+        r.setBackground(shape(card, line, 14));
+        r.setPadding(dp(14), dp(10), dp(8), dp(10));
+        r.setMinimumHeight(dp(48));
+        LinearLayout names = vbox();
+        names.addView(tv(c.name, 16, cream, false));
+        if (showGroup) names.addView(tv(Adhkar.GROUPS[Adhkar.groupOf(this, c.id)], 11, dim, false));
+        r.addView(names, new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(dp(38), dp(38));
+        bp.setMarginEnd(dp(2));
+        r.addView(smallBtn("⇄", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                moveChapter(c);
+            }
+        }), bp);
+        r.addView(tv("›", 16, gold, true));
+        r.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                clearDone(c.id);
+                editCat = false;
+                sub = "cat:" + c.id;
+                build();
+            }
+        });
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
+        rp.topMargin = dp(6);
+        (accBox != null ? accBox : catList).addView(r, rp);
+    }
+
+    private void moveChapter(final Adhkar.Category c) {
+        final int n = Adhkar.GROUPS.length;
+        String[] names = new String[n + 1];
+        System.arraycopy(Adhkar.GROUPS, 0, names, 0, n);
+        names[n] = "المجموعة الأصلية";
+        new Pop(this).title("نقل «" + c.name + "» إلى").single(names, Adhkar.groupOf(this, c.id), new Pop.Pick() {
+            @Override
+            public void on(int which) {
+                Adhkar.setGroup(PhoneActivity.this, c.id, which >= n ? -1 : which);
+                accOpen = "ak:" + Adhkar.groupOf(PhoneActivity.this, c.id);
+                build();
+            }
+        }).show();
     }
 
     private void adhkarPage() {
@@ -2522,9 +2575,16 @@ public class PhoneActivity extends Activity {
         search.setTextColor(cream);
         search.setSingleLine(true);
         search.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        search.setBackground(shape(card, line, 14));
-        search.setPadding(dp(14), dp(10), dp(14), dp(10));
-        add(search, 8);
+        search.setBackground(null);
+        search.setPadding(dp(8), dp(10), dp(8), dp(10));
+        LinearLayout searchBar = hbox();
+        searchBar.setBackground(shape(card, line, 14));
+        searchBar.setPadding(dp(14), 0, dp(10), 0);
+        searchBar.setGravity(Gravity.CENTER_VERTICAL);
+        TextView mag = tv("🔍", 18, gold, false);
+        searchBar.addView(mag);
+        searchBar.addView(search, new LinearLayout.LayoutParams(0, -2, 1f));
+        add(searchBar, 8);
         catList = vbox();
         add(catList, 2);
         fillCategories(all, "");
@@ -2665,7 +2725,9 @@ public class PhoneActivity extends Activity {
     private void tasbihPage() {
         title("السبحة والاستغفار", false);
         totalLine();
-        TextView sel = tv(Adhkar.TASBIH[tk], tsz(1, 20), tcl(1, cream), true);
+        final String[] names = Adhkar.tasbih(this);
+        if (tk >= names.length || names[tk].isEmpty()) tk = 0;
+        TextView sel = tv(names[tk], tsz(1, 20), tcl(1, cream), true);
         sel.setGravity(Gravity.CENTER);
         add(sel, 10);
         tcBig = tv("", 64, gold, true);
@@ -2693,15 +2755,31 @@ public class PhoneActivity extends Activity {
         hint.setGravity(Gravity.CENTER);
         add(hint, 6);
         section("الأذكار");
-        tcRows = new TextView[Adhkar.TASBIH.length];
-        for (int i = 0; i < Adhkar.TASBIH.length; i++) {
+        tcRows = new TextView[names.length];
+        for (int i = 0; i < names.length; i++) {
+            if (names[i].isEmpty()) continue;
             final int idx = i;
-            LinearLayout c = vbox();
+            LinearLayout c = hbox();
             c.setBackground(shape(i == tk ? hl : card, i == tk ? gold : line, 14));
-            c.setPadding(dp(14), dp(9), dp(14), dp(9));
-            c.addView(tv(Adhkar.TASBIH[i], tsz(1, 16), tcl(1, cream), true));
+            c.setPadding(dp(14), dp(9), dp(10), dp(9));
+            c.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout col = vbox();
+            col.addView(tv(names[i], tsz(1, 16), tcl(1, cream), true));
             tcRows[i] = tv("", 13, dim, false);
-            c.addView(tcRows[i]);
+            col.addView(tcRows[i]);
+            c.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+            if (i >= Adhkar.TASBIH.length) {
+                LinearLayout.LayoutParams xp = new LinearLayout.LayoutParams(dp(38), dp(38));
+                c.addView(smallBtn("✕", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Adhkar.removeTasbih(PhoneActivity.this, idx);
+                        if (tk == idx) tk = 0;
+                        build();
+                        Widgets.refresh(PhoneActivity.this);
+                    }
+                }), xp);
+            }
             c.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -2711,6 +2789,16 @@ public class PhoneActivity extends Activity {
             });
             add(c, 6);
         }
+        row("إضافة ذكر للسبحة", "اكتب الذكر الذي تريد عدّه", "+", typeText("ذكر جديد للسبحة", "", new Setter() {
+            @Override
+            public void set(String v) {
+                if (v.trim().isEmpty()) return;
+                Adhkar.addTasbih(PhoneActivity.this, v);
+                tk = Adhkar.tasbih(PhoneActivity.this).length - 1;
+                build();
+                Widgets.refresh(PhoneActivity.this);
+            }
+        }));
         refreshTasbih();
     }
 
@@ -2719,6 +2807,7 @@ public class PhoneActivity extends Activity {
         if (tcBig != null) tcBig.setText(String.valueOf(Adhkar.cur(this, tk)));
         if (tcRows != null) {
             for (int i = 0; i < tcRows.length; i++) {
+                if (tcRows[i] == null) continue;
                 tcRows[i].setText("آخر عدد: " + Adhkar.last(this, i) + "  ·  اليوم: " + Adhkar.count(this, i));
             }
         }
@@ -3701,6 +3790,7 @@ public class PhoneActivity extends Activity {
         title("الأذكار فوق التطبيقات", false);
         add(tv("يظهر ذكر قصير فوق أي تطبيق تستخدمه، بدون فتح التطبيق. يختفي وحده بعد 5 ثوانٍ أو بالضغط عليه. لا علاقة له بالأذان، فالأذان يعمل بإشعار صغير فقط.", 13, dim, false), 4);
         final boolean can = Settings.canDrawOverlays(this);
+        acc("ov:set", "الإظهار والتوقيت", "التفعيل والأيقونات ومعدل الظهور");
         switchRow("عرض الأذكار فوق التطبيقات", can ? null : "يحتاج إذن العرض فوق التطبيقات", sp.getBoolean("ov_on", false),
             new CompoundListener() {
                 @Override
@@ -3758,53 +3848,66 @@ public class PhoneActivity extends Activity {
                 });
             }
         });
-        section("الأذكار التي تظهر");
         final List<String[]> ovs = Adhkar.overlay(this);
-        for (int i = 0; i < ovs.size(); i++) {
-            final int idx = i;
-            final String[] o = ovs.get(i);
-            LinearLayout r = hbox();
-            r.setBackground(shape(card, line, 14));
-            r.setPadding(dp(12), dp(6), dp(8), dp(6));
-            Switch sw = new Switch(this);
-            sw.setChecked(o[1].equals("1"));
-            sw.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
-                @Override
-                public void onCheckedChanged(android.widget.CompoundButton b, boolean on) {
-                    o[1] = on ? "1" : "0";
-                    Adhkar.saveOverlay(PhoneActivity.this, ovs);
-                }
-            });
-            r.addView(sw);
-            TextView t = tv(o[0], 15, cream, false);
-            t.setPadding(dp(10), 0, dp(6), 0);
-            r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
-            LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(dp(34), dp(34));
-            r.addView(smallBtn("✎", typeText("تعديل الذكر", o[0], new Setter() {
-                @Override
-                public void set(String v) {
-                    if (!v.isEmpty()) o[0] = v;
-                    Adhkar.saveOverlay(PhoneActivity.this, ovs);
-                }
-            })), bp);
-            r.addView(smallBtn("✕", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    ovs.remove(idx);
-                    Adhkar.saveOverlay(PhoneActivity.this, ovs);
-                    build();
-                }
-            }), bp);
-            add(r, 6);
-        }
-        row("إضافة ذكر", null, "+", typeText("ذكر يظهر فوق التطبيقات", "", new Setter() {
-            @Override
-            public void set(String v) {
-                if (v.isEmpty()) return;
-                ovs.add(new String[] {v, "1"});
-                Adhkar.saveOverlay(PhoneActivity.this, ovs);
+        int nOn = 0;
+        for (String[] o : ovs) if (o[1].equals("1")) nOn++;
+        for (int pass = 0; pass < 2; pass++) {
+            boolean wantOn = pass == 0;
+            acc(wantOn ? "ov:on" : "ov:off", wantOn ? "الأذكار المفعّلة" : "الأذكار غير المفعّلة",
+                (wantOn ? nOn : ovs.size() - nOn) + " ذكر");
+            for (int i = 0; i < ovs.size(); i++) {
+                final int idx = i;
+                final String[] o = ovs.get(i);
+                if (o[1].equals("1") != wantOn) continue;
+                LinearLayout r = hbox();
+                r.setBackground(shape(card, line, 14));
+                r.setPadding(dp(12), dp(6), dp(8), dp(6));
+                Switch sw = new Switch(this);
+                sw.setChecked(o[1].equals("1"));
+                sw.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(android.widget.CompoundButton b, boolean on) {
+                        o[1] = on ? "1" : "0";
+                        Adhkar.saveOverlay(PhoneActivity.this, ovs);
+                        build(); // the dhikr moves to the other group
+                    }
+                });
+                r.addView(sw);
+                TextView t = tv(o[0], 15, cream, false);
+                t.setPadding(dp(10), 0, dp(6), 0);
+                r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+                LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(dp(34), dp(34));
+                r.addView(smallBtn("✎", typeText("تعديل الذكر", o[0], new Setter() {
+                    @Override
+                    public void set(String v) {
+                        if (!v.isEmpty()) o[0] = v;
+                        Adhkar.saveOverlay(PhoneActivity.this, ovs);
+                        build();
+                    }
+                })), bp);
+                r.addView(smallBtn("✕", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        ovs.remove(idx);
+                        Adhkar.saveOverlay(PhoneActivity.this, ovs);
+                        build();
+                    }
+                }), bp);
+                add(r, 6);
             }
-        }));
+            if (wantOn) {
+                row("إضافة ذكر", null, "+", typeText("ذكر يظهر فوق التطبيقات", "", new Setter() {
+                    @Override
+                    public void set(String v) {
+                        if (v.isEmpty()) return;
+                        ovs.add(new String[] {v, "1"});
+                        Adhkar.saveOverlay(PhoneActivity.this, ovs);
+                        build();
+                    }
+                }));
+            }
+        }
+        accEnd();
     }
 
     private void openOverlayPermission() {

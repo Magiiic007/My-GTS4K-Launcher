@@ -36,6 +36,50 @@ final class Adhkar {
         }
     }
 
+    // ------------------------------------------------------------ groups of chapters
+    /** The groups the chapters are sorted into on the adhkar page (the user can move a chapter to another group). */
+    static final String[] GROUPS = {
+        "الصباح والمساء والنوم", "الصلاة والمسجد", "الطهارة والبيت واللباس", "الطعام والصيام",
+        "الهموم والحاجات", "الحفظ من الشيطان والذنوب", "الأعداء والسلطان", "المريض والموت والجنائز",
+        "السفر والحج", "الأسرة والمناسبات", "الأخلاق والمعاملات والمجلس", "الطقس والمواسم",
+        "التسبيح والاستغفار والخير", "أخرى"
+    };
+    private static final int[][] GROUP_IDS = {
+        {1, 133, 2, 3, 29, 30, 31},
+        {10, 11, 12, 13, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 134, 28, 32, 33},
+        {4, 5, 6, 7, 8, 9, 14, 15, 16, 17},
+        {68, 69, 70, 71, 72, 73, 74, 75, 76, 127},
+        {34, 35, 41, 43, 46, 106, 122, 123},
+        {40, 42, 44, 45, 88, 92, 94, 110, 111, 125, 126, 128},
+        {36, 37, 38, 39},
+        {49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 124},
+        {95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 115, 116, 117, 118, 119, 120, 121},
+        {47, 48, 77, 78, 79, 80, 81},
+        {82, 83, 84, 85, 86, 87, 89, 90, 91, 93, 107, 108, 109, 112, 113, 114},
+        {61, 62, 63, 64, 65, 66, 67},
+        {129, 130, 131, 132},
+    };
+
+    /** The group a chapter was made for. */
+    static int defaultGroup(int id) {
+        for (int g = 0; g < GROUP_IDS.length; g++) {
+            for (int x : GROUP_IDS[g]) if (x == id) return g;
+        }
+        return GROUPS.length - 1;
+    }
+
+    /** The group a chapter is in now: the one the user moved it to, or its own. */
+    static int groupOf(Context c, int id) {
+        int g = p(c).getInt("ag_" + id, -1);
+        return g >= 0 && g < GROUPS.length ? g : defaultGroup(id);
+    }
+
+    /** Moves a chapter to a group; -1 puts it back in its own group. */
+    static void setGroup(Context c, int id, int g) {
+        if (g < 0 || g == defaultGroup(id)) p(c).edit().remove("ag_" + id).apply();
+        else p(c).edit().putInt("ag_" + id, g).apply();
+    }
+
     private static List<Category> cache;
 
     /**
@@ -140,6 +184,55 @@ final class Adhkar {
 
     // ---------------------------------------------------------------- tasbih
     static final String[] TASBIH = {"سبحان الله", "الحمد لله", "الله أكبر", "أستغفر الله", "اللهم صل على محمد"};
+
+    /** The tasbih list: the five built in, then the ones the user added (a deleted one stays as an empty name). */
+    static String[] tasbih(Context c) {
+        java.util.ArrayList<String> l = new java.util.ArrayList<>(java.util.Arrays.asList(TASBIH));
+        try {
+            org.json.JSONArray a = new org.json.JSONArray(p(c).getString("tas_extra", "[]"));
+            for (int i = 0; i < a.length(); i++) l.add(a.getString(i));
+        } catch (org.json.JSONException ignored) {
+            // an unreadable list: only the built-in ones
+        }
+        return l.toArray(new String[0]);
+    }
+
+    static boolean tasbihAlive(Context c, int i) {
+        String[] t = tasbih(c);
+        return i >= 0 && i < t.length && !t[i].isEmpty();
+    }
+
+    static void addTasbih(Context c, String text) {
+        try {
+            org.json.JSONArray a = new org.json.JSONArray(p(c).getString("tas_extra", "[]"));
+            a.put(text.trim());
+            p(c).edit().putString("tas_extra", a.toString()).apply();
+        } catch (org.json.JSONException ignored) {
+            // nothing added
+        }
+    }
+
+    /** Removes an added tasbih (the built-in five stay). Its place is kept so the counts of the others do not move. */
+    static void removeTasbih(Context c, int i) {
+        if (i < TASBIH.length) return;
+        try {
+            org.json.JSONArray a = new org.json.JSONArray(p(c).getString("tas_extra", "[]"));
+            if (i - TASBIH.length < a.length()) a.put(i - TASBIH.length, "");
+            p(c).edit().putString("tas_extra", a.toString()).apply();
+        } catch (org.json.JSONException ignored) {
+            // nothing removed
+        }
+    }
+
+    /** The next tasbih after i that is still there. */
+    static int nextTasbih(Context c, int i) {
+        String[] t = tasbih(c);
+        for (int k = 1; k <= t.length; k++) {
+            int j = (i + k) % t.length;
+            if (!t[j].isEmpty()) return j;
+        }
+        return i;
+    }
 
     // ---------------------------------------------------------------- text size and colour (per place)
     /** The places with their own size and colour: 0 the adhkar chapters, 1 the tasbih page, 2 the card over other apps. */
