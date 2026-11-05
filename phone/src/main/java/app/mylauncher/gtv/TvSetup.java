@@ -370,24 +370,39 @@ final class TvSetup {
         }
     }
 
-    /** Switches on the launcher's remote-buttons service; writes, reads back and retries. Best effort. */
+    private static final String KEYS_REPORT = "/data/local/tmp/salah_keys.txt";
+
+    /**
+     * Switches on the launcher's remote-buttons service. The work runs on the TV itself and writes a report file,
+     * because the TV may stop answering for a few seconds while the system starts the service. Best effort.
+     */
     static void enableKeys(Context c, Say say) {
         try {
+            String old = sh(c, "cat " + KEYS_REPORT + " 2>/dev/null").trim();
+            if (!old.isEmpty()) say.say("تقرير المحاولة السابقة:\n" + old);
             String svc = PKG + "/" + PKG + ".RemoteKeys";
-            boolean ok = false;
-            String err = "";
-            for (int i = 0; i < 3 && !ok; i++) {
-                String cur = sh(c, "settings get secure enabled_accessibility_services").trim();
-                if (cur.equals("null")) cur = "";
-                if (!cur.contains(svc)) {
-                    err = sh(c, "settings put secure enabled_accessibility_services " + (cur.isEmpty() ? svc : cur + ":" + svc) + " 2>&1").trim();
-                }
-                sh(c, "settings put secure accessibility_enabled 1 2>&1");
-                sleep(1500);
-                ok = sh(c, "settings get secure enabled_accessibility_services").contains(svc);
+            String script = "rm -f " + KEYS_REPORT + "; "
+                + "appops set " + PKG + " ACCESS_RESTRICTED_SETTINGS allow; "
+                + "cur=$(settings get secure enabled_accessibility_services); "
+                + "case \"$cur\" in *RemoteKeys*) ;; null|'') settings put secure enabled_accessibility_services " + svc + ";; "
+                + "*) settings put secure enabled_accessibility_services \"$cur:" + svc + "\";; esac; "
+                + "settings put secure accessibility_enabled 1; sleep 5; "
+                + "{ echo \"enabled=$(settings get secure enabled_accessibility_services)\"; "
+                + "echo \"general=$(settings get secure accessibility_enabled)\"; "
+                + "dumpsys accessibility > /data/local/tmp/salah_acc.txt 2>&1; "
+                + "echo \"in_system=$(grep -c RemoteKeys /data/local/tmp/salah_acc.txt)\"; "
+                + "logcat -d -b crash,main,system -t 600 | grep -E 'RemoteKeys|FATAL|AndroidRuntime' | tail -8 | cut -c1-200; "
+                + "echo done; } > " + KEYS_REPORT + " 2>&1";
+            sh(c, "nohup sh -c '" + script.replace("'", "'\\''") + "' >/dev/null 2>&1 &");
+            say.say("بدأ التفعيل على التلفزيون… انتظر ثوانٍ ثم اضغط الزر مرة أخرى لقراءة التقرير.");
+            sleep(8000);
+            String rep = "";
+            try {
+                rep = sh(c, "cat " + KEYS_REPORT + " 2>/dev/null").trim();
+            } catch (Exception ignored) {
+                // The TV may still be busy; the next press reads the report.
             }
-            say.say((ok ? "تم تفعيل خدمة أزرار الريموت (يوتيوب والنجمة)" : "لم يثبت تفعيل الخدمة" + (err.isEmpty() ? "" : " — رد النظام: " + cut(err)))
-                + "\n" + keysStatus(c));
+            if (!rep.isEmpty()) say.say("تقرير التفعيل:\n" + rep);
         } catch (Exception e) {
             say.say("تعذّر تفعيل خدمة أزرار الريموت: " + e.getMessage());
         }
