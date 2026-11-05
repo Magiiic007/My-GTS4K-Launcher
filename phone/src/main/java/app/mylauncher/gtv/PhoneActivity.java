@@ -379,9 +379,18 @@ public class PhoneActivity extends Activity {
             backNav = true;
             build();
         } else {
-            super.onBackPressed();
+            // on the main screen: a second Back within two seconds leaves the app
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - lastBackAt < 2000L) {
+                super.onBackPressed();
+            } else {
+                lastBackAt = now;
+                Toast.makeText(this, "اضغط رجوع مرة أخرى للخروج من التطبيق", Toast.LENGTH_SHORT).show();
+            }
         }
     }
+
+    private long lastBackAt;
 
     private String backTarget(String s) {
         if (s.equals("up")) return "occ";
