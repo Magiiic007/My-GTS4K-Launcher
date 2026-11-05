@@ -1842,13 +1842,13 @@ public class PhoneActivity extends Activity {
         TextView ver = tv("النسخة " + PhoneUpdater.installedName(this), 13, dim, false);
         ver.setGravity(Gravity.CENTER);
         add(ver, 2);
-        section("المصادر");
+        acc("ab:src", "المصادر", "مكتبات وبيانات التطبيق");
         add(tv("أوقات الصلاة: مكتبة adhan-java (رخصة MIT).\n"
             + "الأذكار: حصن المسلم، من ملف rn0x/Adhkar-json.\n"
             + "الطقس: Open-Meteo. أسماء الأحياء: OpenStreetMap. الدول والمحافظات: dr5hn (ODbL). البحث عن مكان: Open-Meteo Geocoding.\n"
             + "الإذاعات والقرّاء: بثّ مواقعهم العامة، والتطبيق غير تابع لأي منها.\n"
             + "تسجيلات الأذان والإقامة من اختيار صاحب التطبيق للاستعمال الشخصي.", 12, dim, false), 4);
-        section("التشخيص");
+        acc("ab:dbg", "التشخيص", "آخر منبّه وآخر خطأ وآخر انهيار");
         long rx = sp.getLong("dbg_rx", 0L);
         row("آخر وصول لمنبّه الأذان", rx == 0 ? "لم يصل أي منبّه بعد" : new SimpleDateFormat("dd/MM HH:mm:ss", Locale.US).format(new Date(rx)), null, null);
         String err = sp.getString("dbg_err", "");
