@@ -363,36 +363,34 @@ final class TvSetup {
             String v = sh(c, "dumpsys package " + PKG + " | grep -m1 versionName").trim();
             String en = sh(c, "settings get secure enabled_accessibility_services").trim();
             String on = sh(c, "settings get secure accessibility_enabled").trim();
-            String run = sh(c, "dumpsys accessibility | grep -c RemoteKeys").trim();
+            String run = sh(c, "dumpsys accessibility > /data/local/tmp/salah_acc.txt 2>&1; grep -c RemoteKeys /data/local/tmp/salah_acc.txt").trim();
             return "اللانشر: " + v + " | الخدمات المفعّلة: " + cut(en) + " | التفعيل العام: " + on + " | ظهور الخدمة في النظام: " + run;
         } catch (Exception e) {
             return "تعذّر فحص الخدمة: " + e.getMessage();
         }
     }
 
-    /** Switches on the launcher's remote-buttons service (YouTube and star buttons). Best effort. */
+    /** Switches on the launcher's remote-buttons service; writes, reads back and retries. Best effort. */
     static void enableKeys(Context c, Say say) {
         try {
             String svc = PKG + "/" + PKG + ".RemoteKeys";
-            String cur = sh(c, "settings get secure enabled_accessibility_services").trim();
-            if (cur.equals("null")) cur = "";
-            if (!cur.contains(svc)) {
-                sh(c, "settings put secure enabled_accessibility_services " + (cur.isEmpty() ? svc : cur + ":" + svc));
+            boolean ok = false;
+            String err = "";
+            for (int i = 0; i < 3 && !ok; i++) {
+                String cur = sh(c, "settings get secure enabled_accessibility_services").trim();
+                if (cur.equals("null")) cur = "";
+                if (!cur.contains(svc)) {
+                    err = sh(c, "settings put secure enabled_accessibility_services " + (cur.isEmpty() ? svc : cur + ":" + svc) + " 2>&1").trim();
+                }
+                sh(c, "settings put secure accessibility_enabled 1 2>&1");
+                sleep(1500);
+                ok = sh(c, "settings get secure enabled_accessibility_services").contains(svc);
             }
-            sh(c, "settings put secure accessibility_enabled 1");
-            say.say("تم تفعيل خدمة أزرار الريموت (يوتيوب والنجمة)\n" + keysStatus(c));
+            say.say((ok ? "تم تفعيل خدمة أزرار الريموت (يوتيوب والنجمة)" : "لم يثبت تفعيل الخدمة" + (err.isEmpty() ? "" : " — رد النظام: " + cut(err)))
+                + "\n" + keysStatus(c));
         } catch (Exception e) {
             say.say("تعذّر تفعيل خدمة أزرار الريموت: " + e.getMessage());
         }
-    }
-
-    // ------------------------------------------------------------ the home screen
-    private static SharedPreferences p(Context c) {
-        return c.getSharedPreferences("magiic", Context.MODE_PRIVATE);
-    }
-
-    static boolean homeSet(Context c) {
-        return p(c).getBoolean("tv_home", false);
     }
 
     /** What the TV says is its home screen, and what is on the screen now. */
