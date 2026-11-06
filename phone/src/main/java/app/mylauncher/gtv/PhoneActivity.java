@@ -2239,7 +2239,7 @@ public class PhoneActivity extends Activity {
                     sp.edit().putBoolean("ad_dua", on).apply();
                 }
             });
-        switchRow("أقم الصلاة", "كل فترة تحددها، لو فيه صلوات جاء وقتها ولم تعلّمها ✓ تظهر نافذة فوق التطبيقات لا تختفي إلا بزر OK، وتوقف الفيديو أو الصوت الشغّال. لا تظهر بعد منتصف الليل", PrayerNote.missedOn(this),
+        switchRow("أقم الصلاة", "لو فيه صلوات جاء وقتها ولم تعلّمها ✓ تظهر نافذة فوق التطبيقات لا تختفي إلا بزر OK، وتوقف الفيديو أو الصوت الشغّال. أول مرة بعد الإقامة بـ 5 دقائق، ثم كل فترة تحددها. لا تظهر بين الأذان وهذا الوقت، ولا بعد منتصف الليل", PrayerNote.missedOn(this),
             new CompoundListener() {
                 @Override
                 public void changed(boolean on) {

@@ -173,6 +173,10 @@ final class PrayerNote {
         if (missedOn(c)) {
             long qn = p(c).getLong("qm_next", 0L);
             if (qn > now && qn < next) next = qn;
+            int[] adj2 = PrayerPrefs.adjust(c);
+            for (int off = 0; off <= 1; off++) {
+                for (long x : askFrom(c, PrayerCalc.day(city, now, off, adj2))) if (x > now && x < next) next = x;
+            }
         }
         PendingIntent pi = PendingIntent.getBroadcast(c, REQ,
             new Intent(c, NoteReceiver.class).setAction(ACTION), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -345,31 +349,54 @@ final class PrayerNote {
         }
     }
 
-    /** A prayer counts as missed once this long has passed since its adhan. */
-    private static final long GRACE_MS = 10 * 60_000L;
+    /** A prayer is asked about once its iqama time and this long have passed (nothing is asked while it is being prayed). */
+    private static final long GRACE_MS = 5 * 60_000L;
+
+    /** When each of today's prayers starts being asked about: its adhan + the iqama wait + 5 minutes. */
+    private static long[] askFrom(Context c, long[] t) {
+        int[] iq = PrayerPrefs.iqama(c);
+        long[] el = new long[5];
+        for (int i = 0; i < 5; i++) el[i] = t[i] + Math.max(0, iq[i]) * 60_000L + GRACE_MS;
+        return el;
+    }
 
     /**
-     * "Establish the prayer": every {@link #missedMin} minutes, if today has prayers that are due and not yet marked,
-     * lists them over the open app. It does not ask after the middle of the night, and not while it is still showing.
+     * "Establish the prayer": a list of the day's unmarked prayers over the open app. The first one comes 5 minutes
+     * after the iqama, then every {@link #missedMin} minutes. Nothing shows between the adhan and that moment, and
+     * not after the middle of the night, and not while it is still showing.
      */
     private static void missed(Context c, NotificationManager nm, Cities.City city, List<Slot> slots, long now) {
         if (!missedOn(c)) return;
-        long every = missedMin(c) * 60_000L;
-        long due = p(c).getLong("qm_next", 0L);
-        if (due == 0L || due > now + every) {
-            p(c).edit().putLong("qm_next", now + every).apply();
-            return;
-        }
-        if (now < due) return;
-        p(c).edit().putLong("qm_next", now + every).apply();
-        if (MissedPopup.isShown()) return;
         int[] adj = PrayerPrefs.adjust(c);
         long[] t = PrayerCalc.day(city, now, 0, adj);
         long[] nx = PrayerCalc.day(city, now, 1, adj);
+        long[] el = askFrom(c, t);
+        long lastEl = 0L;
+        for (int i = 0; i < 5; i++) {
+            if (t[i] <= now && now < el[i]) return; // a prayer is being awaited or prayed: no list now
+            if (el[i] <= now) lastEl = Math.max(lastEl, el[i]);
+        }
+        long every = missedMin(c) * 60_000L;
+        long due = p(c).getLong("qm_next", 0L);
+        boolean fresh = lastEl > p(c).getLong("qm_el", 0L);
+        if (fresh) {
+            p(c).edit().putLong("qm_el", lastEl).apply();
+            // a moment that passed long ago (the app was just opened) is not "fresh": it waits for its turn
+            if (now - lastEl > 10 * 60_000L) fresh = false;
+        }
+        if (!fresh) {
+            if (due == 0L || due > now + every) {
+                p(c).edit().putLong("qm_next", now + every).apply();
+                return;
+            }
+            if (now < due) return;
+        }
+        p(c).edit().putLong("qm_next", now + every).apply();
+        if (MissedPopup.isShown()) return;
         if (now >= t[3] + (nx[0] - t[3]) / 2L) return;
         boolean fri = PrayerCalc.isFriday(city, now);
         List<Integer> list = new ArrayList<>();
-        for (int i = 0; i < 5; i++) if (t[i] + GRACE_MS <= now && !Track.done(c, t[i], i)) list.add(i);
+        for (int i = 0; i < 5; i++) if (el[i] <= now && !Track.done(c, t[i], i)) list.add(i);
         if (list.isEmpty()) return;
         int n = list.size();
         int[] idx = new int[n];
