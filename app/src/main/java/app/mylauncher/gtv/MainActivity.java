@@ -72,6 +72,7 @@ public class MainActivity extends Activity {
     private TextView radioBtn;
     /** The radio controls at the top of the settings list: previous, play or stop, next. */
     private TextView[] radioKeys;
+    private TextView radioName;
     private TextView permRow;
     private TextView noticeChip;
     private TextView noticesRow;
@@ -320,7 +321,7 @@ public class MainActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.addView(buildSettingsList(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 46);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 90);
         lp.topMargin = 4;
         col.addView(buildRadioBar(), lp);
         return col;
@@ -355,9 +356,19 @@ public class MainActivity extends Activity {
 
     /** Previous, play or stop, next: one row of three buttons, so the radio starts and stops at once. */
     private View buildRadioBar() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(Theme.tile(this, 16));
+        card.setPadding(4, 6, 4, 2);
+        radioName = Stage.text(this, "", 16, Theme.cardText(this), true);
+        radioName.setGravity(Gravity.CENTER);
+        radioName.setMaxLines(1);
+        Stage.fitOneLine(radioName, 10, 16);
+        card.addView(radioName, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 26));
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        card.addView(bar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 46));
         radioKeys = new TextView[3];
         String[] glyph = {"\u25C0\u25C0", "\u25B6", "\u25B6\u25B6"};
         for (int i = 0; i < 3; i++) {
@@ -389,7 +400,7 @@ public class MainActivity extends Activity {
             radioKeys[i] = b;
         }
         updateRadioButton();
-        return bar;
+        return card;
     }
 
     /** 0 = previous station, 1 = play or stop, 2 = next station. */
@@ -765,6 +776,14 @@ public class MainActivity extends Activity {
 
     private void updateRadioButton() {
         if (radioKeys != null && radioKeys[1] != null) radioKeys[1].setText(RadioService.on() ? "\u25A0" : "\u25B6");
+        if (radioName != null) {
+            int idx = RadioService.on() ? RadioService.station() : RadioService.lastStation(this);
+            String nm = RadioService.STATIONS[idx].name(isArabic());
+            int st0 = RadioService.state();
+            radioName.setText(st0 == RadioService.PLAYING ? "\u25CF " + nm
+                : st0 == RadioService.OFF ? nm : nm + " \u2026");
+            radioName.setAlpha(st0 == RadioService.OFF ? 0.65f : 1f);
+        }
         if (radioBtn == null) return;
         int st = RadioService.state();
         if (st == RadioService.OFF) {
