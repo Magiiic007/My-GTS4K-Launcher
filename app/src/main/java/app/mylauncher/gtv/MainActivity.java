@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.Typeface;
@@ -73,6 +74,9 @@ public class MainActivity extends Activity {
     /** The radio controls at the top of the settings list: previous, play or stop, next. */
     private TextView[] radioKeys;
     private TextView radioName;
+    private ImageView radioDisc, radioBg;
+    private android.animation.ObjectAnimator radioSpin;
+    private int radioBgIdx = -1;
     private TextView permRow;
     private TextView noticeChip;
     private TextView noticesRow;
@@ -246,6 +250,7 @@ public class MainActivity extends Activity {
         empty.setGravity(Gravity.CENTER);
         empty.setVisibility(View.GONE);
         Stage.add(stage, empty, g.bar[0], g.bar[1], g.bar[2], g.bar[3]);
+        addRadioBg(stage);
 
         setContentView(root);
     }
@@ -321,7 +326,7 @@ public class MainActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.addView(buildSettingsList(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 90);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 104);
         lp.topMargin = 4;
         col.addView(buildRadioBar(false), lp);
         return col;
@@ -372,7 +377,17 @@ public class MainActivity extends Activity {
         radioName.setGravity(Gravity.CENTER);
         radioName.setMaxLines(1);
         Stage.fitOneLine(radioName, 10, 16);
-        card.addView(radioName, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 26));
+        LinearLayout top = new LinearLayout(this);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        radioDisc = new ImageView(this);
+        radioDisc.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        top.addView(radioDisc, new LinearLayout.LayoutParams(36, 36));
+        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+        nlp.leftMargin = 6;
+        top.addView(radioName, nlp);
+        card.addView(top, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 40));
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
@@ -409,6 +424,17 @@ public class MainActivity extends Activity {
         }
         updateRadioButton();
         return card;
+    }
+
+    /** A big, faint picture of the station that is playing, behind everything (it never takes a click or the focus). */
+    private void addRadioBg(FrameLayout stage) {
+        radioBg = new ImageView(this);
+        radioBg.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        radioBg.setAlpha(0f);
+        radioBg.setFocusable(false);
+        radioBgIdx = -1;
+        Stage.add(stage, radioBg, 299, 0, 1067, 768);
+        updateRadioButton();
     }
 
     /** 0 = previous station, 1 = play or stop, 2 = next station. */
@@ -460,7 +486,8 @@ public class MainActivity extends Activity {
         });
         status.view.setFocusable(false);
         Stage.add(stage, status.view, 128, 40, 248, 92);
-        Stage.add(stage, buildRadioBar(true), 68, 386, 290, 470);
+        Stage.add(stage, buildRadioBar(true), 68, 386, 290, 494);
+        addRadioBg(stage);
         updateRadioButton();
         setContentView(root);
     }
@@ -792,6 +819,35 @@ public class MainActivity extends Activity {
             radioName.setText(st0 == RadioService.PLAYING ? "\u25CF " + nm
                 : st0 == RadioService.OFF ? nm : nm + " \u2026");
             radioName.setAlpha(st0 == RadioService.OFF ? 0.8f : 1f);
+            if (radioDisc != null) {
+                android.graphics.drawable.Drawable dd = RadioArt.discDrawable(this, idx, 96);
+                radioDisc.setImageDrawable(dd);
+                radioDisc.setVisibility(dd == null ? View.GONE : View.VISIBLE);
+                if (radioSpin == null || radioSpin.getTarget() != radioDisc) {
+                    radioSpin = android.animation.ObjectAnimator.ofFloat(radioDisc, "rotation", 0f, 360f);
+                    radioSpin.setDuration(8000L);
+                    radioSpin.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+                    radioSpin.setInterpolator(new android.view.animation.LinearInterpolator());
+                }
+                if (st0 == RadioService.PLAYING) {
+                    if (!radioSpin.isStarted()) radioSpin.start();
+                    else if (radioSpin.isPaused()) radioSpin.resume();
+                } else if (radioSpin.isRunning()) {
+                    radioSpin.pause();
+                }
+            }
+            if (radioBg != null) {
+                if (st0 == RadioService.PLAYING) {
+                    if (radioBgIdx != idx) {
+                        Bitmap pb = RadioArt.photo(this, idx, 512);
+                        if (pb != null) radioBg.setImageBitmap(pb);
+                        radioBgIdx = idx;
+                    }
+                    radioBg.animate().alpha(0.16f).setDuration(600L).start();
+                } else {
+                    radioBg.animate().alpha(0f).setDuration(400L).start();
+                }
+            }
         }
         if (radioBtn == null) return;
         int st = RadioService.state();
@@ -812,6 +868,7 @@ public class MainActivity extends Activity {
         // Radio stations first, then the reciters, each under its own title.
         final List<String> items = new ArrayList<>();
         final List<Integer> station = new ArrayList<>();
+        final List<android.graphics.drawable.Drawable> pics = new ArrayList<>();
         items.add(getString(on ? R.string.radio_stop : R.string.radio_play));
         station.add(-2);
         items.add(getString(R.string.radio_next));
@@ -826,14 +883,20 @@ public class MainActivity extends Activity {
                 if (!titled) {
                     items.add(Menu.HEADER + getString(reciters ? R.string.radio_group_reciters : R.string.radio_group_stations));
                     station.add(-1);
+                    pics.add(null);
                     titled = true;
                 }
                 items.add((on && i == RadioService.station() ? "\u25CF " : "") + RadioService.STATIONS[i].name(arabic));
                 station.add(i);
+                pics.add(RadioArt.discDrawable(this, i, 96));
             }
         }
+        pics.add(0, null);
+        pics.add(0, null);
+        pics.add(0, null);
         new Menu.Builder(this)
             .setTitle(R.string.radio_title)
+            .setIcons(pics)
             .setItems(items.toArray(new String[0]), new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int which) {

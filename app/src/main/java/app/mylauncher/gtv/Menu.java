@@ -196,6 +196,7 @@ final class Menu {
         private CharSequence posText, negText, neuText;
         private DialogInterface.OnClickListener posClick, negClick, neuClick;
         private boolean cancelable = true;
+        private List<Drawable> icons;
 
         Builder(Context context) {
             c = context;
@@ -207,6 +208,8 @@ final class Menu {
         Builder setMessage(CharSequence m) { message = m; return this; }
         Builder setView(View v) { view = v; return this; }
         Builder setCancelable(boolean b) { cancelable = b; return this; }
+        /** A picture for each row (null = none), in the order of the items. */
+        Builder setIcons(List<Drawable> list) { icons = list; return this; }
 
         Builder setItems(CharSequence[] it, DialogInterface.OnClickListener l) {
             items = it; itemClick = l; kind = 1; return this;
@@ -364,7 +367,15 @@ final class Menu {
                     label.setTextSize(TypedValue.COMPLEX_UNIT_PX, 23 * k);
                     label.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
                     row.addView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-                    int ico = kind == 1 ? iconFor(text) : 0;
+                    Drawable pic = icons != null && i < icons.size() ? icons.get(i) : null;
+                    int ico = kind == 1 && pic == null ? iconFor(text) : 0;
+                    if (pic != null) {
+                        ImageView pv = new ImageView(c);
+                        pv.setImageDrawable(pic);
+                        LinearLayout.LayoutParams plp2 = new LinearLayout.LayoutParams(Math.round(52 * k), Math.round(52 * k));
+                        plp2.leftMargin = Math.round(12 * k);
+                        row.addView(pv, plp2);
+                    }
                     if (ico != 0) {
                         ImageView iv = new ImageView(c);
                         iv.setImageResource(ico);

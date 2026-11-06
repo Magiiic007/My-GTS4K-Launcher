@@ -75,7 +75,9 @@ public class AutoBrowser extends MediaBrowserService implements RadioService.Lis
         int idx = RadioService.lastStation(this);
         session.setMetadata(new android.media.MediaMetadata.Builder()
             .putString(android.media.MediaMetadata.METADATA_KEY_TITLE, RadioService.STATIONS[idx].name(true))
-            .putString(android.media.MediaMetadata.METADATA_KEY_ARTIST, "الصلاة خير").build());
+            .putString(android.media.MediaMetadata.METADATA_KEY_ARTIST, "الصلاة خير")
+            .putBitmap(android.media.MediaMetadata.METADATA_KEY_ART, RadioArt.photo(this, idx, 512))
+            .putBitmap(android.media.MediaMetadata.METADATA_KEY_ALBUM_ART, RadioArt.photo(this, idx, 512)).build());
         int st = s == RadioService.PLAYING ? PlaybackState.STATE_PLAYING
             : on ? PlaybackState.STATE_BUFFERING : PlaybackState.STATE_STOPPED;
         session.setPlaybackState(new PlaybackState.Builder()
@@ -108,7 +110,8 @@ public class AutoBrowser extends MediaBrowserService implements RadioService.Lis
                 MediaDescription d = new MediaDescription.Builder()
                     .setMediaId(String.valueOf(i))
                     .setTitle(RadioService.STATIONS[i].name(true))
-                    .setSubtitle(i < 3 ? "إذاعة" : "قارئ").build();
+                    .setSubtitle(i < 3 ? "إذاعة" : "قارئ")
+                    .setIconBitmap(RadioArt.disc(this, i, 192)).build();
                 out.add(new MediaBrowser.MediaItem(d, MediaBrowser.MediaItem.FLAG_PLAYABLE));
             }
         }

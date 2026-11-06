@@ -324,6 +324,12 @@ public class RadioService extends Service {
             .setActions(android.media.session.PlaybackState.ACTION_STOP | android.media.session.PlaybackState.ACTION_PAUSE
                 | android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT | android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
             .setState(android.media.session.PlaybackState.STATE_PLAYING, 0, 1f).build());
+        android.graphics.Bitmap art = RadioArt.photo(this, stationIndex, 512);
+        session.setMetadata(new android.media.MediaMetadata.Builder()
+            .putString(android.media.MediaMetadata.METADATA_KEY_TITLE, STATIONS[stationIndex].name(true))
+            .putString(android.media.MediaMetadata.METADATA_KEY_ARTIST, getString(R.string.radio_btn))
+            .putBitmap(android.media.MediaMetadata.METADATA_KEY_ART, art)
+            .putBitmap(android.media.MediaMetadata.METADATA_KEY_ALBUM_ART, art).build());
         session.setActive(true);
         boolean arabic = true; // the phone is Arabic only
         android.app.PendingIntent stop = android.app.PendingIntent.getService(this, 41,
@@ -344,6 +350,7 @@ public class RadioService extends Service {
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE)).build();
         Notification n = new Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_phone)
+            .setLargeIcon(RadioArt.disc(this, stationIndex, 256))
             .setContentTitle(STATIONS[stationIndex].name(arabic))
             .setContentText(getString(R.string.radio_btn))
             .setOngoing(true)
