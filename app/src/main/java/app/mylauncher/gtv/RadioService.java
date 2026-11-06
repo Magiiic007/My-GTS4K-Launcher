@@ -11,6 +11,8 @@ import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
@@ -29,7 +31,7 @@ import java.util.Locale;
  * <li>It holds the audio focus. Another app starting sound (a video) stops the radio for good.</li>
  * <li>The call to prayer takes the focus for a while. A live stream can't be paused, so the radio is dropped and
  *     reconnects by itself when the adhan ends.</li>
- * <li>A stream that drops is reconnected, waiting a little longer each time (3 s, 6 s ... up to 30 s).</li>
+ * <li>A stream that drops is reconnected, waiting a little longer each time (2 s, 4 s ... up to 8 s).</li>
  * </ul>
  * The screen talks to it through the static methods below and hears about changes through a {@link Listener}.
  */
@@ -200,6 +202,48 @@ public class RadioService extends Service {
     private boolean wanted;
     private int failures;
     private android.media.session.MediaSession session;
+    private ConnectivityManager.NetworkCallback netCb;
+
+    /** A stream that has not become ready after this long is dropped and tried again, instead of hanging. */
+    private final Runnable watchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (wanted && state != PLAYING) retry();
+        }
+    };
+
+    /**
+     * The moment the network (re)appears, a radio that is waiting for it reconnects at once instead of
+     * sleeping out the rest of its back-off.
+     */
+    private void watchNetwork(boolean on) {
+        try {
+            ConnectivityManager cm = getSystemService(ConnectivityManager.class);
+            if (cm == null) return;
+            if (on && netCb == null) {
+                netCb = new ConnectivityManager.NetworkCallback() {
+                    @Override
+                    public void onAvailable(Network n) {
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (wanted && state != PLAYING && failures > 0) {
+                                    log(RadioService.this, "network back: reconnect now");
+                                    connect();
+                                }
+                            }
+                        });
+                    }
+                };
+                cm.registerDefaultNetworkCallback(netCb);
+            } else if (!on && netCb != null) {
+                cm.unregisterNetworkCallback(netCb);
+                netCb = null;
+            }
+        } catch (RuntimeException ignored) {
+            // no network-state permission: the timed retry still works
+        }
+    }
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -224,6 +268,7 @@ public class RadioService extends Service {
         audio = getSystemService(AudioManager.class);
         takeFocus();
         wifi(true);
+        watchNetwork(true);
         connect();
         return START_NOT_STICKY;
     }
@@ -346,6 +391,7 @@ public class RadioService extends Service {
             @Override
             public void onPrepared(MediaPlayer p) {
                 if (p != player) return;
+                handler.removeCallbacks(watchdog);
                 failures = 0;
                 p.start();
                 set(PLAYING);
@@ -368,18 +414,21 @@ public class RadioService extends Service {
         try {
             mp.setDataSource(STATIONS[stationIndex].url);
             mp.prepareAsync();
+            handler.removeCallbacks(watchdog);
+            handler.postDelayed(watchdog, 12000L);
         } catch (Exception e) {
             retry();
         }
     }
 
-    /** Waits a little longer each time (3 s, 6 s ... up to 30 s) and tries again, for as long as it is wanted. */
+    /** Waits a little longer each time (2 s, 4 s ... up to 8 s) and tries again, for as long as it is wanted. */
     private void retry() {
+        handler.removeCallbacks(watchdog);
         release();
         if (!wanted) return;
         failures++;
         set(RETRYING);
-        handler.postDelayed(reconnect, Math.min(30000L, 3000L * failures));
+        handler.postDelayed(reconnect, Math.min(8000L, 2000L * failures));
     }
 
     private void release() {
@@ -430,6 +479,7 @@ public class RadioService extends Service {
         if (onPurpose) getSharedPreferences("magiic", MODE_PRIVATE).edit().putBoolean("radio_resume", false).apply();
         wanted = false;
         handler.removeCallbacksAndMessages(null);
+        watchNetwork(false);
         release();
         if (audio != null && focus != null) audio.abandonAudioFocusRequest(focus);
         focus = null;
@@ -451,6 +501,7 @@ public class RadioService extends Service {
             log(this, "service destroyed while playing");
             wanted = false;
             handler.removeCallbacksAndMessages(null);
+            watchNetwork(false);
             release();
             if (audio != null && focus != null) audio.abandonAudioFocusRequest(focus);
             wifi(false);

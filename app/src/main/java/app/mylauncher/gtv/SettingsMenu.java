@@ -102,17 +102,17 @@ final class SettingsMenu {
     // ---------------------------------------------------------------- the device's own settings
 
     private static final String[][] DEVICE = {
+        {String.valueOf(R.string.set_all), Settings.ACTION_SETTINGS},
         {String.valueOf(R.string.menu_account), Settings.ACTION_SYNC_SETTINGS},
         {String.valueOf(R.string.set_network), Settings.ACTION_WIFI_SETTINGS},
         {String.valueOf(R.string.set_bluetooth), Settings.ACTION_BLUETOOTH_SETTINGS},
         {String.valueOf(R.string.set_sound), Settings.ACTION_SOUND_SETTINGS},
         {String.valueOf(R.string.set_display), Settings.ACTION_DISPLAY_SETTINGS},
-        {String.valueOf(R.string.set_date), Settings.ACTION_DATE_SETTINGS},
-        {String.valueOf(R.string.set_language), Settings.ACTION_LOCALE_SETTINGS},
         {String.valueOf(R.string.set_apps), Settings.ACTION_APPLICATION_SETTINGS},
         {String.valueOf(R.string.set_storage), Settings.ACTION_INTERNAL_STORAGE_SETTINGS},
+        {String.valueOf(R.string.set_date), Settings.ACTION_DATE_SETTINGS},
+        {String.valueOf(R.string.set_language), Settings.ACTION_LOCALE_SETTINGS},
         {String.valueOf(R.string.set_about), Settings.ACTION_DEVICE_INFO_SETTINGS},
-        {String.valueOf(R.string.set_all), Settings.ACTION_SETTINGS},
     };
 
     /** The device and account settings: each opens that screen, or the main settings if this device has no such screen. */
@@ -136,7 +136,7 @@ final class SettingsMenu {
                     else if (which == DEVICE.length + 1) screensaver(c);
                     else if (which == DEVICE.length + 2) Cleaner.open((android.app.Activity) c);
                     else if (which == DEVICE.length + 3) StockHome.menu(c);
-                    else launch(c, DEVICE[which][1], which == 0 ? R.string.account_hint : 0);
+                    else launch(c, DEVICE[which][1], which == 1 ? R.string.account_hint : 0);
                 }
             })
             .show();

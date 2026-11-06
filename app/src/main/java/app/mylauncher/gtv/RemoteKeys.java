@@ -13,7 +13,8 @@ import android.view.accessibility.AccessibilityEvent;
  * react to them; with it switched off nothing did. The service only watches key presses (nothing on screen is read)
  * and is switched on by the phone app's TV setup. Scan codes: 240 = YouTube button, 423 = star (long press picks an app, short press opens it).
  */
-public class RemoteKeys extends AccessibilityService {
+public // Note: the Google Assistant button never reaches the TV as a key event (it is handled below the system), so it cannot be remapped here.
+class RemoteKeys extends AccessibilityService {
     private static final String TAG = "SalahKeys";
     private static final String[] YT = {"com.google.android.youtube.tv", "com.google.android.youtube.tvunplugged"};
 

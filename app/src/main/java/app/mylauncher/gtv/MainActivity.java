@@ -19,6 +19,7 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
@@ -310,6 +311,39 @@ public class MainActivity extends Activity {
             }
         });
         return scroll;
+    }
+
+    /**
+     * Remote movement of the settings list: up from the apps lands on the LAST setting (the nearest one to the
+     * apps), and the list wraps round at both ends, so the far end is one press away.
+     */
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent e) {
+        if (e.getAction() == KeyEvent.ACTION_DOWN && settingsList != null && appRow != null) {
+            int k = e.getKeyCode();
+            View f = getCurrentFocus();
+            if (f != null && (k == KeyEvent.KEYCODE_DPAD_UP || k == KeyEvent.KEYCODE_DPAD_DOWN)) {
+                View first = null, last = null;
+                for (int i = 0; i < settingsList.getChildCount(); i++) {
+                    View r = settingsList.getChildAt(i);
+                    if (r.getVisibility() == View.VISIBLE && r.isFocusable()) {
+                        if (first == null) first = r;
+                        last = r;
+                    }
+                }
+                if (first != null) {
+                    if (k == KeyEvent.KEYCODE_DPAD_UP && f.getParent() == appRow && last != null) {
+                        last.requestFocus();
+                        return true;
+                    }
+                    if (k == KeyEvent.KEYCODE_DPAD_UP && f == first && first != last) {
+                        last.requestFocus();
+                        return true;
+                    }
+                }
+            }
+        }
+        return super.dispatchKeyEvent(e);
     }
 
     /** Redraws the prayer numbers of whichever look is on. */
