@@ -223,7 +223,7 @@ public class MainActivity extends Activity {
             prayerChanged);
 
         // ---------------------------------------------------------------- the settings list
-        Stage.add(stage, buildSettingsList(), g.settings[0], g.settings[1], g.settings[2], g.settings[3]);
+        Stage.add(stage, buildSettingsColumn(), g.settings[0], g.settings[1], g.settings[2], g.settings[3]);
 
         // ---------------------------------------------------------------- the apps row
         HorizontalScrollView scroll = new HorizontalScrollView(this);
@@ -263,7 +263,6 @@ public class MainActivity extends Activity {
 
         // Ordered by how often each is used: the most common first.
         // First while there is something that needs the person (see refreshNotices); hidden otherwise.
-        list.addView(buildRadioBar(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 46));
         noticesRow = addRow(list, R.drawable.ic_warning, R.string.menu_notices, new Runnable() {
             @Override
             public void run() {
@@ -316,6 +315,17 @@ public class MainActivity extends Activity {
         return scroll;
     }
 
+    /** The settings list with the radio keys fixed under it (they do not scroll with the list). */
+    private View buildSettingsColumn() {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.addView(buildSettingsList(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 46);
+        lp.topMargin = 4;
+        col.addView(buildRadioBar(), lp);
+        return col;
+    }
+
     /**
      * Remote movement of the settings list: up from the apps lands on the LAST setting (the nearest one to the
      * apps), and the list wraps round at both ends, so the far end is one press away.
@@ -334,16 +344,9 @@ public class MainActivity extends Activity {
                         last = r;
                     }
                 }
-                if (radioKeys != null) first = radioKeys[1];
-                if (first != null) {
-                    if (k == KeyEvent.KEYCODE_DPAD_UP && f.getParent() == appRow && last != null) {
-                        last.requestFocus();
-                        return true;
-                    }
-                    if (k == KeyEvent.KEYCODE_DPAD_UP && (f == first || (radioKeys != null && f.getParent() == radioKeys[0].getParent())) && first != last) {
-                        last.requestFocus();
-                        return true;
-                    }
+                if (first != null && last != null && first != last && k == KeyEvent.KEYCODE_DPAD_UP && f == first) {
+                    last.requestFocus();
+                    return true;
                 }
             }
         }
@@ -1078,7 +1081,6 @@ public class MainActivity extends Activity {
     private void wireFocus() {
         if (settingsList == null || appRow == null || weatherView == null || status == null || radioBtn == null) return;
         java.util.ArrayList<View> rows = new java.util.ArrayList<>();
-        if (radioKeys != null) rows.add(radioKeys[1]);
         for (int i = 0; i < settingsList.getChildCount(); i++) {
             View r = settingsList.getChildAt(i);
             if (r.getVisibility() == View.VISIBLE && r.isFocusable()) rows.add(r);
@@ -1093,20 +1095,20 @@ public class MainActivity extends Activity {
         View lastTile = tiles.isEmpty() ? null : tiles.get(tiles.size() - 1);
 
         if (radioKeys != null) {
-            // The radio keys: left and right between the three, up stays, down goes to the first setting.
-            View below = rows.size() > 1 ? rows.get(1) : radioKeys[1];
-            link(radioKeys[0], radioKeys[0], radioKeys[1], radioKeys[0], below);
-            link(radioKeys[1], radioKeys[0], radioKeys[2], radioKeys[1], below);
-            link(radioKeys[2], radioKeys[1], radioKeys[2], radioKeys[2], below);
-            if (rows.size() > 1) rows.get(1).setNextFocusUpId(idOf(radioKeys[1]));
+            // The radio keys (fixed under the list): left and right between the three, up to the last setting,
+            // down to the apps.
+            View up = lastRow != null ? lastRow : radioKeys[1];
+            View down = firstTile != null ? firstTile : radioKeys[1];
+            link(radioKeys[0], radioKeys[0], radioKeys[1], up, down);
+            link(radioKeys[1], radioKeys[0], radioKeys[2], up, down);
+            link(radioKeys[2], radioKeys[1], radioKeys[2], up, down);
         }
         for (View r : rows) {
-            if (radioKeys != null && r == radioKeys[1]) continue;
             // Left, right: stay. Up, down: the neighbouring row; the first row stays, the last goes to the apps.
-            link(r, r, r, r == firstRow ? r : null, r == lastRow ? (firstTile != null ? firstTile : r) : null);
+            link(r, r, r, r == firstRow ? r : null, r == lastRow ? (radioKeys != null ? radioKeys[1] : firstTile != null ? firstTile : r) : null);
         }
         for (View t : tiles) {
-            link(t, t == lastTile ? t : null, t == firstTile ? t : null, firstRow != null ? firstRow : t, t);
+            link(t, t == lastTile ? t : null, t == firstTile ? t : null, radioKeys != null ? radioKeys[1] : firstRow != null ? firstRow : t, t);
         }
     }
 
