@@ -3519,29 +3519,21 @@ public class PhoneActivity extends Activity {
             return;
         }
         section("الشاشة الرئيسية");
-        add(tv(TvSetup.homeSet(this) ? "الحالة: اللانشر هو الشاشة الرئيسية ✓" : "الحالة: لم يُعيَّن بعد", 15, gold, true), 4);
-        add(tv("عند التعيين يُعطَّل لانشر Google TV الأصلي ويصير هذا اللانشر هو الشاشة الرئيسية. يتأكد التطبيق من ظهوره، وإن لم يظهر يتراجع كل شيء تلقائياً. وبإمكانك الرجوع للأصلية في أي وقت من هنا. وبعد التعيين يبقى على التلفزيون حارس: لو حُذف اللانشر يرجع لانشر Google تلقائياً خلال نصف دقيقة تقريباً. الحارس يتوقف إذا أُعيد تشغيل التلفزيون، ويعود عندما يتصل الهاتف بالتلفزيون مرة أخرى. فالأفضل الرجوع للأصلية من هنا قبل حذف اللانشر.", 13, dim, false), 6);
-        row("تعيين اللانشر كشاشة رئيسية", null, "›", new View.OnClickListener() {
+        add(tv("التطبيق صار تطبيقاً عادياً: يُفتح من قائمة التطبيقات، وشاشة Google TV الأصلية تبقى هي الرئيسية. إن كانت الأصلية معطّلة من إعداد قديم فاضغط «رجوع إلى الشاشة الأصلية».", 13, dim, false), 6);
+        row("إصلاح المساعد الصوتي", "يفحص تطبيق Google على التلفزيون ويصلحه (الميكروفون، البيانات، الأزرار)", "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                new Pop(PhoneActivity.this).title("تعيين الشاشة الرئيسية")
-                    .message("سيُعطَّل لانشر Google TV الأصلي مؤقتاً ويظهر هذا اللانشر على التلفزيون. تابع شاشة التلفزيون. أكمل؟")
-                    .ok("تعيين", new Runnable() {
-                        @Override
-                        public void run() {
-                            tvRun("بدء التعيين…", new TvTask() {
-                                @Override
-                                public void run() throws Exception {
-                                    TvSetup.setHome(PhoneActivity.this, new TvSetup.Say() {
-                                        @Override
-                                        public void say(String s) {
-                                            tvSay(s);
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    }).cancel("إلغاء").show();
+                tvRun("إصلاح المساعد الصوتي…", new TvTask() {
+                    @Override
+                    public void run() throws Exception {
+                        TvSetup.fixAssistant(PhoneActivity.this, new TvSetup.Say() {
+                            @Override
+                            public void say(String s) {
+                                tvSay(s);
+                            }
+                        });
+                    }
+                });
             }
         });
         row("رجوع إلى الشاشة الأصلية للتلفزيون", "يعيد لانشر Google TV كما كان", "›", new View.OnClickListener() {
@@ -3560,7 +3552,6 @@ public class PhoneActivity extends Activity {
                 });
             }
         });
-        row("اختبار أزرار الريموت", "اختر زرّاً من الهاتف واضغطه على الريموت لنعرف ماذا يحدث", "›", go("tvkeys"));
         row("العودة إلى خطوة التثبيت", null, "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
