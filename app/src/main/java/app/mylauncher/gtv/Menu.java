@@ -12,6 +12,7 @@ import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
+import android.widget.ImageView;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -78,6 +79,56 @@ final class Menu {
         void setMessage(CharSequence text) {
             if (message != null) message.setText(text);
         }
+    }
+
+    /** The icon that goes with a menu row, chosen by what the row says (0 = none). */
+    private static int iconFor(String t) {
+        String[][] k = {
+            {"الشبكة", "واي", "wifi", "network"}, {"ic_wifi"},
+            {"بلوتوث", "bluetooth"}, {"ic_bluetooth"},
+            {"الصوت", "صوت", "sound"}, {"ic_volume"},
+            {"الشاشة الرئيسية", "home screen"}, {"ic_home"},
+            {"شاشة التوقف", "screen saver", "الشاشة", "display"}, {"ic_display"},
+            {"التاريخ والوقت", "الساعة", "الدقيقة", "وقت الظهور", "مدة", "date and time", "duration"}, {"ic_clock"},
+            {"التقويم", "الهجري", "المناسبات", "الأيام", "أيام", "calendar", "days"}, {"ic_calendar"},
+            {"اللغة", "language"}, {"ic_language"},
+            {"التخزين", "storage"}, {"ic_storage"},
+            {"التنظيف", "clean"}, {"ic_clean"},
+            {"عن الجهاز", "عن التطبيق", "about"}, {"ic_info"},
+            {"كل إعدادات", "إعدادات الجهاز", "all device", "device settings"}, {"ic_settings"},
+            {"الحساب", "account"}, {"ic_account"},
+            {"الأذان", "الإقامة", "adhan", "iqama"}, {"ic_bell"},
+            {"الراديو", "radio"}, {"ic_radio"},
+            {"شكل", "ثيم", "look", "theme"}, {"ic_palette"},
+            {"الكهف"}, {"ic_book"},
+            {"أذكار الصباح"}, {"ic_sunrise"},
+            {"أذكار المساء"}, {"ic_sunset"},
+            {"الأذكار", "أذكار"}, {"ic_mosque"},
+            {"الصيام", "صيام"}, {"ic_crescent"},
+            {"التذكير", "تذكير", "reminder"}, {"ic_star"},
+            {"حذف", "delete"}, {"ic_trash"},
+            {"إضافة", "add "}, {"ic_plus"},
+            {"العنوان", "النص", "title:", "text:"}, {"ic_edit"},
+            {"المدينة", "city"}, {"ic_location"},
+            {"تحديث", "update"}, {"ic_update"},
+            {"التنبيهات", "تنبيه", "notices"}, {"ic_warning"},
+            {"التطبيقات", "تطبيقات", "إخفاء", "apps", "hide"}, {"ic_apps"},
+            {"الطقس", "weather"}, {"ic_cloud_sun"},
+            {"التفعيل", "enabled"}, {"ic_shield"},
+        };
+        String low = t.toLowerCase(java.util.Locale.ROOT);
+        for (int i = 0; i < k.length; i += 2) {
+            for (String w : k[i]) {
+                if (low.contains(w)) {
+                    try {
+                        return R.drawable.class.getField(k[i + 1][0]).getInt(null);
+                    } catch (ReflectiveOperationException e) {
+                        return 0;
+                    }
+                }
+            }
+        }
+        return 0;
     }
 
     /** Colours of the active look (the same ones as on the design page). */
@@ -313,6 +364,15 @@ final class Menu {
                     label.setTextSize(TypedValue.COMPLEX_UNIT_PX, 23 * k);
                     label.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
                     row.addView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                    int ico = kind == 1 ? iconFor(text) : 0;
+                    if (ico != 0) {
+                        ImageView iv = new ImageView(c);
+                        iv.setImageResource(ico);
+                        iv.setColorFilter(p.accent);
+                        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(Math.round(30 * k), Math.round(30 * k));
+                        ilp.leftMargin = Math.round(12 * k);
+                        row.addView(iv, ilp);
+                    }
                     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                     lp.bottomMargin = Math.round(9 * k);

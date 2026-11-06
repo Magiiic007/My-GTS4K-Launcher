@@ -10,8 +10,8 @@ android {
         applicationId 'app.mylauncher.gtv'
         minSdk 26
         targetSdk 34
-        versionCode 56
-        versionName '0.56'
+        versionCode 57
+        versionName '0.57'
     }
 
     // A fixed signing key, so every new build installs over the old one (a fresh key each time would
