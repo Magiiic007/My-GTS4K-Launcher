@@ -13,15 +13,20 @@
 • مواقيت الصلاة بدقة لمدينتك مع اختيار طريقة الحساب والمذهب وتعديل الدقائق، وتحديد المدينة تلقائيًا أو يدويًا.
 • أذان في وقته وإقامة، مع اختيار لكل صلاة: صوت أو اهتزاز أو إشعار فقط، وقلب الهاتف لإيقاف الأذان.
 • كتم الهاتف وقت الصلاة ثم إعادته بعد الإقامة تلقائيًا.
-• أذكار الصباح والمساء وأذكار ما بعد الصلاة، مفصولة بين الفجر والمغرب وباقي الصلوات، مع عدّاد لكل ذكر، وإمكانية إضافة أذكارك وترتيبها.
+• حصن المسلم كاملًا: أذكار وأدعية مجمّعة في أبواب مرتّبة، مع بحث عن ذكر أو دعاء، وعدّاد لكل ذكر، وإمكانية إضافة أذكارك ونقل الأبواب بين المجموعات.
+• أذكار الصباح والمساء وأذكار ما بعد الصلاة، مفصولة بين الفجر والمغرب وباقي الصلوات.
 • أيقونة عائمة تذكّرك بالأذكار في أوقاتها، وبطاقات أذكار خفيفة فوق التطبيقات (اختيارية).
 • دعاء ما بعد الأذان، وتذكير «أقم الصلاة» بالصلوات التي لم تعلّمها.
-• متابعة الصلوات اليومية، وتسبيح بعدّاد.
+• متابعة الصلوات اليومية مع قضاء ما فاتك بالترتيب (الأقدم أولًا) وعلامة ↺ على اليوم الذي قضيته فيه.
+• سبحة بعدّاد مع إمكانية إضافة أذكارك.
+• اختر صوت الأذان والإقامة: تسجيل التطبيق، أو نغمة المنبّه، أو ملف صوت من هاتفك.
+• اختصارات على أيقونة التطبيق: القبلة، السبحة، أذكار الصباح، أذكار المساء.
+• نسخة احتياطية: ملف تحفظه بنفسك، وكذلك نسخ تلقائي لإعداداتك في حساب جوجل لتعود عند تغيير الهاتف.
 • ويدجت للشاشة الرئيسية: الصلاة القادمة، متابعة الصلوات، السبحة، أذكار الصباح والمساء، والتاريخ الهجري والأيام البيض.
 • راديو القرآن الكريم مباشر.
 • تذكير بالصيام والمناسبات الهجرية، واتجاه القبلة، والطقس.
 • «وضع الخلاء»: بضغطة واحدة يوقف كل التنبيهات والأذكار وبضغطة ثانية يعيدها.
-• واجهة عربية بالكامل بشكلين: ملكي ومحراب.
+• واجهة عربية بالكامل بشكلين: ملكي ومحراب، وخيارات لإخفاء آية اليوم والطقس والاهتزاز.
 
 ## Full description (English)
 Salat Khair is a calm, ad-free daily companion for prayer and remembrance: accurate prayer times, an adhan and iqama per prayer (sound, vibration or notification only), silencing during prayer, morning/evening and post-prayer adhkar with counters, home-screen widgets, a floating adhkar icon, prayer tracking, live Quran radio, Hijri dates, fasting reminders, qibla and weather. Arabic interface.
@@ -40,6 +45,7 @@ Salat Khair is a calm, ad-free daily companion for prayer and remembrance: accur
 - Does the app collect or share user data? Collects: none stored by the developer. Location is processed on the device; approximate coordinates are sent to Open-Meteo and OpenStreetMap Nominatim only to show weather and a place name (third-party processing for app functionality, not stored by us). Answer: "Yes, collects" is NOT required for data processed only on device, but data sent off-device to a service for app functionality should be declared as "Approximate/Precise location, shared, for app functionality, optional".
 - Data encrypted in transit: yes (HTTPS). Users can request deletion: the app keeps nothing on a server; uninstalling removes all data.
 - No ads, no analytics, no advertising ID.
+- Android Auto Backup is on for the settings file only (shared preferences "magiic"): the system may back it up to the user's own Google account and restore it on a new phone. The developer never receives it. In the form this is not "collected by the developer"; mention it in the privacy policy (done).
 
 ## Other forms
 - Content rating (IARF) questionnaire: no violence, no sexual content, no gambling, no user-generated sharing. Expect "Everyone".
@@ -49,4 +55,4 @@ Salat Khair is a calm, ad-free daily companion for prayer and remembrance: accur
 - Ads: no.
 
 ## Graphics to prepare
-- Icon 512×512 PNG; feature graphic 1024×500; at least 2 phone screenshots (use 4 to 8): main screen, prayer tracking, adhkar with counter, widgets, side menu, settings.
+- Icon 512×512 PNG and feature graphic 1024×500: ready (supplied by the owner, resized to 512×512 and 1024×500); at least 2 phone screenshots (use 4 to 8): main screen, prayer tracking, adhkar with counter, widgets, side menu, settings.
