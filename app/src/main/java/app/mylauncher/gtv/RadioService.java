@@ -10,7 +10,6 @@ import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.wifi.WifiManager;
@@ -18,6 +17,14 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import androidx.media3.common.C;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import android.os.PowerManager;
 
 import java.util.ArrayList;
@@ -196,7 +203,7 @@ public class RadioService extends Service {
         }
     };
 
-    private MediaPlayer player;
+    private ExoPlayer player;
     private AudioManager audio;
     private AudioFocusRequest focus;
     private WifiManager.WifiLock wifiLock;
@@ -381,45 +388,68 @@ public class RadioService extends Service {
         }
     }
 
+    /** A stream that stalls while it plays (not only while it starts) is dropped and tried again after this long. */
+    private final Runnable stall = new Runnable() {
+        @Override
+        public void run() {
+            log(RadioService.this, "stalled, reconnecting");
+            retry();
+        }
+    };
+
     private void connect() {
         handler.removeCallbacks(reconnect);
         if (!wanted) return;
         release();
         set(failures == 0 ? CONNECTING : RETRYING);
-        final MediaPlayer mp = new MediaPlayer();
-        player = mp;
-        mp.setAudioAttributes(attrs());
-        mp.setWakeMode(this, PowerManager.PARTIAL_WAKE_LOCK);
-        mp.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+        // ExoPlayer starts a live stream much sooner than the platform player (HLS above all), and follows the
+        // redirects of the reciters' addresses.
+        DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(8000)
+            .setReadTimeoutMs(10000)
+            .setUserAgent("Mozilla/5.0 (Linux; Android) AlSalatKhair");
+        final ExoPlayer ex = new ExoPlayer.Builder(this)
+            .setMediaSourceFactory(new DefaultMediaSourceFactory(http))
+            .setLoadControl(new DefaultLoadControl.Builder()
+                .setBufferDurationsMs(15000, 40000, 1500, 3000).build())
+            .build();
+        player = ex;
+        ex.setAudioAttributes(new androidx.media3.common.AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_SPEECH).build(), false);
+        ex.setWakeMode(C.WAKE_MODE_NETWORK);
+        ex.addListener(new Player.Listener() {
             @Override
-            public void onPrepared(MediaPlayer p) {
-                if (p != player) return;
-                handler.removeCallbacks(watchdog);
-                failures = 0;
-                p.start();
-                set(PLAYING);
+            public void onPlaybackStateChanged(int st) {
+                if (ex != player) return;
+                if (st == Player.STATE_READY) {
+                    handler.removeCallbacks(watchdog);
+                    handler.removeCallbacks(stall);
+                    failures = 0;
+                    set(PLAYING);
+                } else if (st == Player.STATE_BUFFERING) {
+                    handler.removeCallbacks(stall);
+                    handler.postDelayed(stall, 15000L);
+                } else if (st == Player.STATE_ENDED) {
+                    // A live stream never ends; if it does, the connection dropped.
+                    retry();
+                }
             }
-        });
-        mp.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+
             @Override
-            public boolean onError(MediaPlayer p, int what, int extra) {
-                if (p == player) retry();
-                return true;
-            }
-        });
-        // A live stream never completes; if it does, the connection dropped.
-        mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-            @Override
-            public void onCompletion(MediaPlayer p) {
-                if (p == player) retry();
+            public void onPlayerError(PlaybackException e) {
+                if (ex != player) return;
+                log(RadioService.this, "error " + e.getErrorCodeName());
+                retry();
             }
         });
         try {
-            mp.setDataSource(STATIONS[stationIndex].url);
-            mp.prepareAsync();
+            ex.setMediaItem(MediaItem.fromUri(STATIONS[stationIndex].url));
+            ex.setPlayWhenReady(true);
+            ex.prepare();
             handler.removeCallbacks(watchdog);
             handler.postDelayed(watchdog, 12000L);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             retry();
         }
     }
@@ -427,6 +457,7 @@ public class RadioService extends Service {
     /** Waits a little longer each time (2 s, 4 s ... up to 8 s) and tries again, for as long as it is wanted. */
     private void retry() {
         handler.removeCallbacks(watchdog);
+        handler.removeCallbacks(stall);
         release();
         if (!wanted) return;
         failures++;
@@ -436,22 +467,15 @@ public class RadioService extends Service {
 
     private void release() {
         handler.removeCallbacks(reconnect);
+        handler.removeCallbacks(stall);
         if (player != null) {
-            final MediaPlayer p = player;
+            ExoPlayer p = player;
             player = null;
-            // reset() waits for a stream that is still connecting, up to several seconds, so it runs off the main
-            // thread. The callbacks of the old player are ignored: they check p == player.
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        p.reset();
-                        p.release();
-                    } catch (RuntimeException ignored) {
-                        // Already gone.
-                    }
-                }
-            }, "radio-release").start();
+            try {
+                p.release();
+            } catch (RuntimeException ignored) {
+                // Already gone.
+            }
         }
     }
 
