@@ -231,6 +231,7 @@ public class PhoneActivity extends Activity {
         LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(pw, dp(60));
         wp.topMargin = dp(8);
         col.addView(word, wp);
+        col.setPadding(0, 0, 0, dp(80)); // lifts the group about 40dp: the eye sees the middle higher than the true middle
         v.addView(col, new FrameLayout.LayoutParams(-1, -1));
         rootFrame.addView(v, new FrameLayout.LayoutParams(-1, -1));
         splashView = v;
