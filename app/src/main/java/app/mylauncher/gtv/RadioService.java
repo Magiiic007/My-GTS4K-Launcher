@@ -10,12 +10,21 @@ import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import androidx.media3.common.C;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import android.os.PowerManager;
 
 import java.util.ArrayList;
@@ -29,7 +38,7 @@ import java.util.Locale;
  * <li>It holds the audio focus. Another app starting sound (a video) stops the radio for good.</li>
  * <li>The call to prayer takes the focus for a while. A live stream can't be paused, so the radio is dropped and
  *     reconnects by itself when the adhan ends.</li>
- * <li>A stream that drops is reconnected, waiting a little longer each time (3 s, 6 s ... up to 30 s).</li>
+ * <li>A stream that drops is reconnected, waiting a little longer each time (2 s, 4 s ... up to 8 s).</li>
  * </ul>
  * The screen talks to it through the static methods below and hears about changes through a {@link Listener}.
  */
@@ -77,7 +86,13 @@ public class RadioService extends Service {
         reciter("عبد الرحمن السديس", "Abdul Rahman Al-Sudais", "abdulrahman_alsudaes"),
         reciter("ياسر الدوسري", "Yasser Al-Dosari", "yasser_aldosari"),
         reciter("ناصر القطامي", "Nasser Al-Qatami", "nasser_alqatami"),
-        reciter("محمد رشاد الشريف", "Mohammad Rashad Al-Shareef", "mohammad_rashad_alshareef"),
+        reciter("أحمد العجمي", "Ahmad Al-Ajmi", "ahmad_alajmy"),
+        reciter("محمد الطبلاوي", "Mohammad Al-Tablawi", "mohammad_altablaway"),
+        reciter("محمد جبريل", "Mohammed Jibreel", "mohammed_jibreel"),
+        reciter("محمود علي البنا", "Mahmoud Ali Al-Banna", "mahmoud_ali__albanna"),
+        reciter("مصطفى إسماعيل", "Mustafa Ismail", "mustafa_ismail"),
+        reciter("حاتم فريد الواعر", "Hatem Fareed Al-Waer", "hatem_fareed_alwaer"),
+        reciter("بندر بليلة", "Bandar Balilah", "bandar_balilah"),
     };
 
     /** A reciter's own channel, around the clock (mp3quran.net, through qurango.net). */
@@ -100,6 +115,7 @@ public class RadioService extends Service {
     private static final List<Listener> listeners = new ArrayList<>();
     private static int state = OFF;
     private static int stationIndex = 0;
+    private static Context appCtx;
 
     static int state() {
         return state;
@@ -123,6 +139,8 @@ public class RadioService extends Service {
     }
 
     private static void set(int s) {
+        if (state == PLAYING && s != PLAYING) RadioStats.stop();
+        if (s == PLAYING && state != PLAYING && appCtx != null) RadioStats.start(appCtx, stationIndex);
         state = s;
         for (Listener l : new ArrayList<>(listeners)) l.onRadio(s);
     }
@@ -192,7 +210,7 @@ public class RadioService extends Service {
         }
     };
 
-    private MediaPlayer player;
+    private ExoPlayer player;
     private AudioManager audio;
     private AudioFocusRequest focus;
     private WifiManager.WifiLock wifiLock;
@@ -200,6 +218,48 @@ public class RadioService extends Service {
     private boolean wanted;
     private int failures;
     private android.media.session.MediaSession session;
+    private ConnectivityManager.NetworkCallback netCb;
+
+    /** A stream that has not become ready after this long is dropped and tried again, instead of hanging. */
+    private final Runnable watchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (wanted && state != PLAYING) retry();
+        }
+    };
+
+    /**
+     * The moment the network (re)appears, a radio that is waiting for it reconnects at once instead of
+     * sleeping out the rest of its back-off.
+     */
+    private void watchNetwork(boolean on) {
+        try {
+            ConnectivityManager cm = getSystemService(ConnectivityManager.class);
+            if (cm == null) return;
+            if (on && netCb == null) {
+                netCb = new ConnectivityManager.NetworkCallback() {
+                    @Override
+                    public void onAvailable(Network n) {
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (wanted && state != PLAYING && failures > 0) {
+                                    log(RadioService.this, "network back: reconnect now");
+                                    connect();
+                                }
+                            }
+                        });
+                    }
+                };
+                cm.registerDefaultNetworkCallback(netCb);
+            } else if (!on && netCb != null) {
+                cm.unregisterNetworkCallback(netCb);
+                netCb = null;
+            }
+        } catch (RuntimeException ignored) {
+            // no network-state permission: the timed retry still works
+        }
+    }
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -208,6 +268,7 @@ public class RadioService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        appCtx = getApplicationContext();
         if (intent == null || ACTION_STOP.equals(intent.getAction())) {
             log(this, "stop button" + (intent == null ? " (no intent)" : ""));
             shutdown();
@@ -224,6 +285,7 @@ public class RadioService extends Service {
         audio = getSystemService(AudioManager.class);
         takeFocus();
         wifi(true);
+        watchNetwork(true);
         connect();
         return START_NOT_STICKY;
     }
@@ -333,73 +395,94 @@ public class RadioService extends Service {
         }
     }
 
+    /** A stream that stalls while it plays (not only while it starts) is dropped and tried again after this long. */
+    private final Runnable stall = new Runnable() {
+        @Override
+        public void run() {
+            log(RadioService.this, "stalled, reconnecting");
+            retry();
+        }
+    };
+
     private void connect() {
         handler.removeCallbacks(reconnect);
         if (!wanted) return;
         release();
         set(failures == 0 ? CONNECTING : RETRYING);
-        final MediaPlayer mp = new MediaPlayer();
-        player = mp;
-        mp.setAudioAttributes(attrs());
-        mp.setWakeMode(this, PowerManager.PARTIAL_WAKE_LOCK);
-        mp.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+        // ExoPlayer starts a live stream much sooner than the platform player (HLS above all), and follows the
+        // redirects of the reciters' addresses.
+        DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(8000)
+            .setReadTimeoutMs(10000)
+            .setUserAgent("Mozilla/5.0 (Linux; Android) AlSalatKhair");
+        final ExoPlayer ex = new ExoPlayer.Builder(this)
+            .setMediaSourceFactory(new DefaultMediaSourceFactory(http))
+            .setLoadControl(new DefaultLoadControl.Builder()
+                .setBufferDurationsMs(15000, 40000, 1500, 3000).build())
+            .build();
+        player = ex;
+        ex.setAudioAttributes(new androidx.media3.common.AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_SPEECH).build(), false);
+        ex.setWakeMode(C.WAKE_MODE_NETWORK);
+        ex.addListener(new Player.Listener() {
             @Override
-            public void onPrepared(MediaPlayer p) {
-                if (p != player) return;
-                failures = 0;
-                p.start();
-                set(PLAYING);
+            public void onPlaybackStateChanged(int st) {
+                if (ex != player) return;
+                if (st == Player.STATE_READY) {
+                    handler.removeCallbacks(watchdog);
+                    handler.removeCallbacks(stall);
+                    failures = 0;
+                    set(PLAYING);
+                } else if (st == Player.STATE_BUFFERING) {
+                    handler.removeCallbacks(stall);
+                    handler.postDelayed(stall, 15000L);
+                } else if (st == Player.STATE_ENDED) {
+                    // A live stream never ends; if it does, the connection dropped.
+                    retry();
+                }
             }
-        });
-        mp.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+
             @Override
-            public boolean onError(MediaPlayer p, int what, int extra) {
-                if (p == player) retry();
-                return true;
-            }
-        });
-        // A live stream never completes; if it does, the connection dropped.
-        mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-            @Override
-            public void onCompletion(MediaPlayer p) {
-                if (p == player) retry();
+            public void onPlayerError(PlaybackException e) {
+                if (ex != player) return;
+                log(RadioService.this, "error " + e.getErrorCodeName());
+                retry();
             }
         });
         try {
-            mp.setDataSource(STATIONS[stationIndex].url);
-            mp.prepareAsync();
-        } catch (Exception e) {
+            ex.setMediaItem(MediaItem.fromUri(STATIONS[stationIndex].url));
+            ex.setPlayWhenReady(true);
+            ex.prepare();
+            handler.removeCallbacks(watchdog);
+            handler.postDelayed(watchdog, 12000L);
+        } catch (RuntimeException e) {
             retry();
         }
     }
 
-    /** Waits a little longer each time (3 s, 6 s ... up to 30 s) and tries again, for as long as it is wanted. */
+    /** Waits a little longer each time (2 s, 4 s ... up to 8 s) and tries again, for as long as it is wanted. */
     private void retry() {
+        handler.removeCallbacks(watchdog);
+        handler.removeCallbacks(stall);
         release();
         if (!wanted) return;
         failures++;
         set(RETRYING);
-        handler.postDelayed(reconnect, Math.min(30000L, 3000L * failures));
+        handler.postDelayed(reconnect, Math.min(8000L, 2000L * failures));
     }
 
     private void release() {
         handler.removeCallbacks(reconnect);
+        handler.removeCallbacks(stall);
         if (player != null) {
-            final MediaPlayer p = player;
+            ExoPlayer p = player;
             player = null;
-            // reset() waits for a stream that is still connecting, up to several seconds, so it runs off the main
-            // thread. The callbacks of the old player are ignored: they check p == player.
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        p.reset();
-                        p.release();
-                    } catch (RuntimeException ignored) {
-                        // Already gone.
-                    }
-                }
-            }, "radio-release").start();
+            try {
+                p.release();
+            } catch (RuntimeException ignored) {
+                // Already gone.
+            }
         }
     }
 
@@ -430,6 +513,7 @@ public class RadioService extends Service {
         if (onPurpose) getSharedPreferences("magiic", MODE_PRIVATE).edit().putBoolean("radio_resume", false).apply();
         wanted = false;
         handler.removeCallbacksAndMessages(null);
+        watchNetwork(false);
         release();
         if (audio != null && focus != null) audio.abandonAudioFocusRequest(focus);
         focus = null;
@@ -451,6 +535,7 @@ public class RadioService extends Service {
             log(this, "service destroyed while playing");
             wanted = false;
             handler.removeCallbacksAndMessages(null);
+            watchNetwork(false);
             release();
             if (audio != null && focus != null) audio.abandonAudioFocusRequest(focus);
             wifi(false);

@@ -67,6 +67,9 @@
     <string name="radio_on">الراديو · %1$s</string>
     <string name="radio_connecting">الراديو · جارٍ الاتصال %1$s…</string>
     <string name="radio_paused">الراديو · متوقف أثناء الأذان</string>
+    <string name="radio_play">تشغيل الراديو</string>
+    <string name="radio_next">المحطة التالية</string>
+    <string name="radio_prev">المحطة السابقة</string>
     <string name="radio_stop">إيقاف الراديو</string>
     <string name="menu_title">الإعدادات</string>
     <string name="menu_hidden">إخفاء أو إظهار التطبيقات</string>

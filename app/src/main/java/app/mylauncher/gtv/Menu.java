@@ -12,6 +12,7 @@ import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
+import android.widget.ImageView;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -40,13 +41,30 @@ final class Menu {
     static final class Box extends Dialog {
         TextView message;
         View firstFocus;
+        /** The menu this one was opened from: Back (or Close) comes back to it, on the row that opened this one. */
+        Box parent;
+        static Box lastShown;
 
         Box(Context c) {
             super(c, R.style.MagiicMenu);
         }
 
+        /** Back goes one step: to the menu this one was opened from, if there is one. */
+        @Override
+        public void cancel() {
+            super.cancel();
+            reopenParent();
+        }
+
+        void reopenParent() {
+            Box p = parent;
+            parent = null;
+            if (p != null) p.show();
+        }
+
         @Override
         public void show() {
+            lastShown = this;
             super.show();
             Window w = getWindow();
             if (w != null) {
@@ -61,6 +79,56 @@ final class Menu {
         void setMessage(CharSequence text) {
             if (message != null) message.setText(text);
         }
+    }
+
+    /** The icon that goes with a menu row, chosen by what the row says (0 = none). */
+    private static int iconFor(String t) {
+        String[][] k = {
+            {"الشبكة", "واي", "wifi", "network"}, {"ic_wifi"},
+            {"بلوتوث", "bluetooth"}, {"ic_bluetooth"},
+            {"الصوت", "صوت", "sound"}, {"ic_volume"},
+            {"الشاشة الرئيسية", "home screen"}, {"ic_home"},
+            {"شاشة التوقف", "screen saver", "الشاشة", "display"}, {"ic_display"},
+            {"التاريخ والوقت", "الساعة", "الدقيقة", "وقت الظهور", "مدة", "date and time", "duration"}, {"ic_clock"},
+            {"التقويم", "الهجري", "المناسبات", "الأيام", "أيام", "calendar", "days"}, {"ic_calendar"},
+            {"اللغة", "language"}, {"ic_language"},
+            {"التخزين", "storage"}, {"ic_storage"},
+            {"التنظيف", "clean"}, {"ic_clean"},
+            {"عن الجهاز", "عن التطبيق", "about"}, {"ic_info"},
+            {"كل إعدادات", "إعدادات الجهاز", "all device", "device settings"}, {"ic_settings"},
+            {"الحساب", "account"}, {"ic_account"},
+            {"الأذان", "الإقامة", "adhan", "iqama"}, {"ic_bell"},
+            {"الراديو", "radio"}, {"ic_radio"},
+            {"شكل", "ثيم", "look", "theme"}, {"ic_palette"},
+            {"الكهف"}, {"ic_book"},
+            {"أذكار الصباح"}, {"ic_sunrise"},
+            {"أذكار المساء"}, {"ic_sunset"},
+            {"الأذكار", "أذكار"}, {"ic_mosque"},
+            {"الصيام", "صيام"}, {"ic_crescent"},
+            {"التذكير", "تذكير", "reminder"}, {"ic_star"},
+            {"حذف", "delete"}, {"ic_trash"},
+            {"إضافة", "add "}, {"ic_plus"},
+            {"العنوان", "النص", "title:", "text:"}, {"ic_edit"},
+            {"المدينة", "city"}, {"ic_location"},
+            {"تحديث", "update"}, {"ic_update"},
+            {"التنبيهات", "تنبيه", "notices"}, {"ic_warning"},
+            {"التطبيقات", "تطبيقات", "إخفاء", "apps", "hide"}, {"ic_apps"},
+            {"الطقس", "weather"}, {"ic_cloud_sun"},
+            {"التفعيل", "enabled"}, {"ic_shield"},
+        };
+        String low = t.toLowerCase(java.util.Locale.ROOT);
+        for (int i = 0; i < k.length; i += 2) {
+            for (String w : k[i]) {
+                if (low.contains(w)) {
+                    try {
+                        return R.drawable.class.getField(k[i + 1][0]).getInt(null);
+                    } catch (ReflectiveOperationException e) {
+                        return 0;
+                    }
+                }
+            }
+        }
+        return 0;
     }
 
     /** Colours of the active look (the same ones as on the design page). */
@@ -128,6 +196,7 @@ final class Menu {
         private CharSequence posText, negText, neuText;
         private DialogInterface.OnClickListener posClick, negClick, neuClick;
         private boolean cancelable = true;
+        private List<Drawable> icons;
 
         Builder(Context context) {
             c = context;
@@ -139,6 +208,8 @@ final class Menu {
         Builder setMessage(CharSequence m) { message = m; return this; }
         Builder setView(View v) { view = v; return this; }
         Builder setCancelable(boolean b) { cancelable = b; return this; }
+        /** A picture for each row (null = none), in the order of the items. */
+        Builder setIcons(List<Drawable> list) { icons = list; return this; }
 
         Builder setItems(CharSequence[] it, DialogInterface.OnClickListener l) {
             items = it; itemClick = l; kind = 1; return this;
@@ -296,6 +367,23 @@ final class Menu {
                     label.setTextSize(TypedValue.COMPLEX_UNIT_PX, 23 * k);
                     label.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
                     row.addView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                    Drawable pic = icons != null && i < icons.size() ? icons.get(i) : null;
+                    int ico = kind == 1 && pic == null ? iconFor(text) : 0;
+                    if (pic != null) {
+                        ImageView pv = new ImageView(c);
+                        pv.setImageDrawable(pic);
+                        LinearLayout.LayoutParams plp2 = new LinearLayout.LayoutParams(Math.round(52 * k), Math.round(52 * k));
+                        plp2.leftMargin = Math.round(12 * k);
+                        row.addView(pv, plp2);
+                    }
+                    if (ico != 0) {
+                        ImageView iv = new ImageView(c);
+                        iv.setImageResource(ico);
+                        iv.setColorFilter(p.accent);
+                        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(Math.round(30 * k), Math.round(30 * k));
+                        ilp.leftMargin = Math.round(12 * k);
+                        row.addView(iv, ilp);
+                    }
                     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                     lp.bottomMargin = Math.round(9 * k);
@@ -304,7 +392,13 @@ final class Menu {
                         @Override
                         public void onClick(View v) {
                             if (kind == 1) {
+                                Box before = Box.lastShown;
                                 if (itemClick != null) itemClick.onClick(d, which);
+                                Box child = Box.lastShown;
+                                if (child != null && child != before && child != d) {
+                                    child.parent = d;
+                                    d.firstFocus = row;
+                                }
                                 d.dismiss();
                             } else if (kind == 2) {
                                 for (int j = 0; j < ticks.length; j++) if (ticks[j] != null) ticks[j].setText(j == which ? "✓" : "");
@@ -352,6 +446,7 @@ final class Menu {
                         public void onClick(View v) {
                             if (l != null) l.onClick(d, id);
                             d.dismiss();
+                            if (id == DialogInterface.BUTTON_NEGATIVE) d.reopenParent();
                         }
                     });
                     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,

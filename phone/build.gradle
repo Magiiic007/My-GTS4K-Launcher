@@ -12,8 +12,8 @@ android {
         applicationId 'app.magiic.phone'
         minSdk 26
         targetSdk 34
-        versionCode 125
-        versionName '1.25'
+        versionCode 134
+        versionName '1.34'
     }
 
     buildFeatures {
@@ -86,7 +86,7 @@ tasks.register('syncShared', Sync) {
     from('../app/src/main/java/app/mylauncher/gtv') {
         include 'PrayerCalc.java', 'Hijri.java', 'Cities.java', 'PrayerPrefs.java', 'Scheduler.java',
             'AdhanReceiver.java', 'Reminders.java', 'ReminderReceiver.java', 'AutoCity.java', 'Weather.java',
-            'InstallReceiver.java'
+            'InstallReceiver.java', 'RadioStats.java', 'RadioArt.java'
         into 'java/app/mylauncher/gtv'
     }
     // The phone is Arabic only: the Arabic strings are the default ones, whatever language the phone is set to.
@@ -108,6 +108,10 @@ tasks.register('syncShared', Sync) {
     from('../app/src/main/res/drawable') {
         include 'ic_crescent.xml'
         into 'res/drawable'
+    }
+    from('../app/src/main/res/drawable-nodpi') {
+        include 'art_*.jpg'
+        into 'res/drawable-nodpi'
     }
 }
 

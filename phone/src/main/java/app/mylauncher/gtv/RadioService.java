@@ -87,6 +87,13 @@ public class RadioService extends Service {
         reciter("عبد الرحمن السديس", "Abdul Rahman Al-Sudais", "abdulrahman_alsudaes"),
         reciter("ياسر الدوسري", "Yasser Al-Dosari", "yasser_aldosari"),
         reciter("ناصر القطامي", "Nasser Al-Qatami", "nasser_alqatami"),
+        reciter("أحمد العجمي", "Ahmad Al-Ajmi", "ahmad_alajmy"),
+        reciter("محمد الطبلاوي", "Mohammad Al-Tablawi", "mohammad_altablaway"),
+        reciter("محمد جبريل", "Mohammed Jibreel", "mohammed_jibreel"),
+        reciter("محمود علي البنا", "Mahmoud Ali Al-Banna", "mahmoud_ali__albanna"),
+        reciter("مصطفى إسماعيل", "Mustafa Ismail", "mustafa_ismail"),
+        reciter("حاتم فريد الواعر", "Hatem Fareed Al-Waer", "hatem_fareed_alwaer"),
+        reciter("بندر بليلة", "Bandar Balilah", "bandar_balilah"),
     };
 
     /** A reciter's own channel, around the clock (mp3quran.net, through qurango.net). */
@@ -134,6 +141,8 @@ public class RadioService extends Service {
     }
 
     private static void set(int s) {
+        if (state == PLAYING && s != PLAYING) RadioStats.stop();
+        if (s == PLAYING && state != PLAYING && cur != null) RadioStats.start(cur, stationIndex);
         state = s;
         for (Listener l : new ArrayList<>(listeners)) l.onRadio(s);
         // The home-screen widget shows the play/stop button and the station.
@@ -258,8 +267,8 @@ public class RadioService extends Service {
         yielded = false;
         int want = intent.getIntExtra("station", 0);
         int base = state != OFF ? stationIndex : lastStation(this);
-        if (ACTION_NEXT.equals(intent.getAction())) want = (base + 1) % STATIONS.length;
-        if (ACTION_PREV.equals(intent.getAction())) want = (base + STATIONS.length - 1) % STATIONS.length;
+        if (ACTION_NEXT.equals(intent.getAction())) want = RadioStats.step(this, base, 1);
+        if (ACTION_PREV.equals(intent.getAction())) want = RadioStats.step(this, base, -1);
         log(this, "start station " + want);
         stationIndex = Math.max(0, Math.min(STATIONS.length - 1, want));
         getSharedPreferences("magiic", MODE_PRIVATE).edit().putInt("radio_station", stationIndex)
@@ -315,6 +324,12 @@ public class RadioService extends Service {
             .setActions(android.media.session.PlaybackState.ACTION_STOP | android.media.session.PlaybackState.ACTION_PAUSE
                 | android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT | android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
             .setState(android.media.session.PlaybackState.STATE_PLAYING, 0, 1f).build());
+        android.graphics.Bitmap art = RadioArt.photo(this, stationIndex, 512);
+        session.setMetadata(new android.media.MediaMetadata.Builder()
+            .putString(android.media.MediaMetadata.METADATA_KEY_TITLE, STATIONS[stationIndex].name(true))
+            .putString(android.media.MediaMetadata.METADATA_KEY_ARTIST, getString(R.string.radio_btn))
+            .putBitmap(android.media.MediaMetadata.METADATA_KEY_ART, art)
+            .putBitmap(android.media.MediaMetadata.METADATA_KEY_ALBUM_ART, art).build());
         session.setActive(true);
         boolean arabic = true; // the phone is Arabic only
         android.app.PendingIntent stop = android.app.PendingIntent.getService(this, 41,
@@ -335,6 +350,7 @@ public class RadioService extends Service {
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE)).build();
         Notification n = new Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_phone)
+            .setLargeIcon(RadioArt.disc(this, stationIndex, 256))
             .setContentTitle(STATIONS[stationIndex].name(arabic))
             .setContentText(getString(R.string.radio_btn))
             .setOngoing(true)

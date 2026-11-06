@@ -10,8 +10,8 @@ android {
         applicationId 'app.mylauncher.gtv'
         minSdk 26
         targetSdk 34
-        versionCode 54
-        versionName '0.54'
+        versionCode 71
+        versionName '0.71'
     }
 
     // A fixed signing key, so every new build installs over the old one (a fresh key each time would
@@ -34,4 +34,7 @@ android {
 dependencies {
     // Prayer times, worked out on the TV with no internet (MIT licence, no other dependencies).
     implementation 'com.batoulapps.adhan:adhan:1.2.1'
+    // The radio player (live streams, HLS).
+    implementation 'androidx.media3:media3-exoplayer:1.4.1'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.4.1'
 }
