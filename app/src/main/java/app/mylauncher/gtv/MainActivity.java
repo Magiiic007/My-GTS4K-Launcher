@@ -323,7 +323,7 @@ public class MainActivity extends Activity {
         col.addView(buildSettingsList(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 90);
         lp.topMargin = 4;
-        col.addView(buildRadioBar(), lp);
+        col.addView(buildRadioBar(false), lp);
         return col;
     }
 
@@ -354,13 +354,21 @@ public class MainActivity extends Activity {
         return super.dispatchKeyEvent(e);
     }
 
+    private static android.graphics.drawable.GradientDrawable mihrabShape(int fill, float r, int line, int w) {
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+        g.setColor(fill);
+        g.setCornerRadius(r);
+        g.setStroke(w, line);
+        return g;
+    }
+
     /** Previous, play or stop, next: one row of three buttons, so the radio starts and stops at once. */
-    private View buildRadioBar() {
+    private View buildRadioBar(final boolean mihrab) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(Theme.tile(this, 16));
+        card.setBackground(mihrab ? mihrabShape(0x66000000, 18, 0x80E0B960, 2) : Theme.tile(this, 16));
         card.setPadding(4, 6, 4, 2);
-        radioName = Stage.text(this, "", 16, Theme.tileLabel(this), true);
+        radioName = Stage.text(this, "", 16, mihrab ? 0xFFF4EEDC : Theme.tileLabel(this), true);
         radioName.setGravity(Gravity.CENTER);
         radioName.setMaxLines(1);
         Stage.fitOneLine(radioName, 10, 16);
@@ -373,12 +381,12 @@ public class MainActivity extends Activity {
         String[] glyph = {"\u25C0\u25C0", "\u25B6", "\u25B6\u25B6"};
         for (int i = 0; i < 3; i++) {
             final int which = i;
-            final TextView b = Stage.text(this, glyph[i], 20, Theme.cardText(this), true);
+            final TextView b = Stage.text(this, glyph[i], 20, mihrab ? 0xFFE0B960 : Theme.cardText(this), true);
             b.setGravity(Gravity.CENTER);
-            b.setBackground(Theme.button(this, 22));
+            b.setBackground(mihrab ? mihrabShape(0x33FFFFFF, 22, 0x80E0B960, 2) : Theme.button(this, 22));
             b.setFocusable(true);
             b.setClickable(true);
-            final Drawable ring = Theme.ring(this, 22);
+            final Drawable ring = mihrab ? mihrabShape(0x00000000, 22, 0xFFF4EEDC, 4) : Theme.ring(this, 22);
             b.setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View v, boolean has) {
@@ -452,6 +460,7 @@ public class MainActivity extends Activity {
         });
         status.view.setFocusable(false);
         Stage.add(stage, status.view, 128, 40, 248, 92);
+        Stage.add(stage, buildRadioBar(true), 68, 386, 290, 470);
         updateRadioButton();
         setContentView(root);
     }
