@@ -254,7 +254,10 @@ public class AdhanService extends Service {
             player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                 @Override
                 public void onPrepared(MediaPlayer mp) {
+                    // The adhan and the iqama start quietly and rise to the TV's own volume.
+                    mp.setVolume(0f, 0f);
                     mp.start();
+                    rampUp(isIqama ? 5_000L : 15_000L);
                 }
             });
             player.prepareAsync();
@@ -267,6 +270,25 @@ public class AdhanService extends Service {
     }
 
     /** The last resort for the adhan when nothing can be played: three seconds of beeps. */
+    /** Raises the sound from silence to the TV's own volume level. */
+    private void rampUp(final long total) {
+        final long t0 = SystemClock.uptimeMillis();
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                MediaPlayer p = player;
+                if (p == null || finished) return;
+                float f = Math.min(1f, (SystemClock.uptimeMillis() - t0) / (float) total);
+                try {
+                    p.setVolume(f * f, f * f);
+                } catch (IllegalStateException ignored) {
+                    return;
+                }
+                if (f < 1f) handler.postDelayed(this, 200L);
+            }
+        });
+    }
+
     private void beep() {
         try {
             tone = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
