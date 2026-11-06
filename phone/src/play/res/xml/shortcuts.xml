@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="qibla" android:enabled="true" android:icon="@drawable/ic_sc_qibla" android:shortcutShortLabel="@string/sc_qibla" android:shortcutLongLabel="@string/sc_qibla_l">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="app.magiic.salatkhair" android:targetClass="app.mylauncher.gtv.PhoneActivity">
+            <extra android:name="open_tab" android:value="9" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="tasbih" android:enabled="true" android:icon="@drawable/ic_sc_tasbih" android:shortcutShortLabel="@string/sc_tasbih" android:shortcutLongLabel="@string/sc_tasbih_l">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="app.magiic.salatkhair" android:targetClass="app.mylauncher.gtv.PhoneActivity">
+            <extra android:name="open_tab" android:value="6" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="morning" android:enabled="true" android:icon="@drawable/ic_sc_morning" android:shortcutShortLabel="@string/sc_morning" android:shortcutLongLabel="@string/sc_morning_l">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="app.magiic.salatkhair" android:targetClass="app.mylauncher.gtv.PhoneActivity">
+            <extra android:name="open_cat" android:value="1" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="evening" android:enabled="true" android:icon="@drawable/ic_sc_evening" android:shortcutShortLabel="@string/sc_evening" android:shortcutLongLabel="@string/sc_evening_l">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="app.magiic.salatkhair" android:targetClass="app.mylauncher.gtv.PhoneActivity">
+            <extra android:name="open_cat" android:value="133" />
+        </intent>
+    </shortcut>
+</shortcuts>
