@@ -188,6 +188,9 @@ public class AdhanService extends Service {
         am.dispatchMediaKeyEvent(new KeyEvent(t, t, KeyEvent.ACTION_UP, code, 0));
     }
 
+    /** The chosen sound is in use / it failed to play (a deleted file, say): then the default recording is played instead. */
+    private boolean customActive, customFailed;
+
     private void playSound() {
         int res = 0;
         if (isIqama) {
@@ -197,6 +200,24 @@ public class AdhanService extends Service {
             if (res == 0) res = rawId("adhan");
         }
         long cap = isIqama ? MAX_IQAMA_MS : MAX_ADHAN_MS;
+        // the sound the user chose for it (a file of their own, or the phone's alarm tone); the default recording otherwise
+        SharedPreferences sps = getSharedPreferences("magiic", MODE_PRIVATE);
+        String sk = isIqama ? "snd_iq" : "snd_ad";
+        int sm = customFailed ? 0 : sps.getInt(sk, 0);
+        customActive = false;
+        if (sm == 2) {
+            String u = sps.getString(sk + "_uri", "");
+            if (!u.isEmpty() && playMedia(Uri.parse(u), 0, cap)) {
+                customActive = true;
+                return;
+            }
+        } else if (sm == 1) {
+            Uri alarm = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+            if (alarm != null && playMedia(alarm, 0, isIqama ? MAX_IQAMA_MS : MAX_FALLBACK_MS)) {
+                customActive = true;
+                return;
+            }
+        }
         if (res != 0 && playMedia(null, res, cap)) return;
         if (isIqama) {
             beepsForIqama();
@@ -233,6 +254,13 @@ public class AdhanService extends Service {
             player.setOnErrorListener(new MediaPlayer.OnErrorListener() {
                 @Override
                 public boolean onError(MediaPlayer mp, int what, int extra) {
+                    if (customActive && !customFailed) {
+                        customFailed = true;
+                        handler.removeCallbacks(finisher);
+                        releasePlayer();
+                        playSound();
+                        return true;
+                    }
                     finishAdhan();
                     return true;
                 }
