@@ -117,10 +117,16 @@ final class SettingsMenu {
 
     /** The device and account settings: each opens that screen, or the main settings if this device has no such screen. */
     static void device(final Context c) {
-        final int n = DEVICE.length;
+        // Only the settings screens this device really has are listed (a Google TV leaves out some of them).
+        final List<String[]> have = new ArrayList<>();
+        for (String[] e : DEVICE) {
+            boolean all = Settings.ACTION_SETTINGS.equals(e[1]);
+            if (all || c.getPackageManager().resolveActivity(new Intent(e[1]), 0) != null) have.add(e);
+        }
+        final int n = have.size();
         final boolean tools = c instanceof android.app.Activity;
         String[] items = new String[n + (tools ? 4 : 1)];
-        for (int i = 0; i < n; i++) items[i] = c.getString(Integer.parseInt(DEVICE[i][0]));
+        for (int i = 0; i < n; i++) items[i] = c.getString(Integer.parseInt(have.get(i)[0]));
         items[n] = c.getString(R.string.menu_about);
         if (tools) {
             items[n + 1] = c.getString(R.string.menu_saver);
@@ -132,11 +138,11 @@ final class SettingsMenu {
             .setItems(items, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int which) {
-                    if (which == DEVICE.length) about(c);
-                    else if (which == DEVICE.length + 1) screensaver(c);
-                    else if (which == DEVICE.length + 2) Cleaner.open((android.app.Activity) c);
-                    else if (which == DEVICE.length + 3) StockHome.menu(c);
-                    else launch(c, DEVICE[which][1], which == 1 ? R.string.account_hint : 0);
+                    if (which == n) about(c);
+                    else if (which == n + 1) screensaver(c);
+                    else if (which == n + 2) Cleaner.open((android.app.Activity) c);
+                    else if (which == n + 3) StockHome.menu(c);
+                    else launch(c, have.get(which)[1], Settings.ACTION_SYNC_SETTINGS.equals(have.get(which)[1]) ? R.string.account_hint : 0);
                 }
             })
             .show();
