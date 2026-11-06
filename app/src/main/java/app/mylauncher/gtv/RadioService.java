@@ -101,6 +101,7 @@ public class RadioService extends Service {
     private static final List<Listener> listeners = new ArrayList<>();
     private static int state = OFF;
     private static int stationIndex = 0;
+    private static Context appCtx;
 
     static int state() {
         return state;
@@ -124,6 +125,8 @@ public class RadioService extends Service {
     }
 
     private static void set(int s) {
+        if (state == PLAYING && s != PLAYING) RadioStats.stop();
+        if (s == PLAYING && state != PLAYING && appCtx != null) RadioStats.start(appCtx, stationIndex);
         state = s;
         for (Listener l : new ArrayList<>(listeners)) l.onRadio(s);
     }
@@ -251,6 +254,7 @@ public class RadioService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        appCtx = getApplicationContext();
         if (intent == null || ACTION_STOP.equals(intent.getAction())) {
             log(this, "stop button" + (intent == null ? " (no intent)" : ""));
             shutdown();

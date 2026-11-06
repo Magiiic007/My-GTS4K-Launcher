@@ -729,7 +729,7 @@ public class MainActivity extends Activity {
         for (int pass = 0; pass < 2; pass++) {
             boolean reciters = pass == 1;
             boolean titled = false;
-            for (int i = 0; i < RadioService.STATIONS.length; i++) {
+            for (int i : RadioStats.order(this)) {
                 if (RadioService.STATIONS[i].url.contains("qurango") != reciters) continue;
                 if (!titled) {
                     items.add(Menu.HEADER + getString(reciters ? R.string.radio_group_reciters : R.string.radio_group_stations));

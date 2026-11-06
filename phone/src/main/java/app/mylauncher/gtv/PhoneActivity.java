@@ -1211,13 +1211,13 @@ public class PhoneActivity extends Activity {
         }
         for (int pass = 0; pass < 2; pass++) {
             acc(pass == 0 ? "rd:st" : "rd:rc", pass == 0 ? "المحطات" : "القرّاء", (pass == 0 ? stN : rcN) + (pass == 0 ? " محطة" : " قارئ"));
-            for (int i = 0; i < RadioService.STATIONS.length; i++) {
+            for (int i : RadioStats.order(this)) {
                 final int idx = i;
                 RadioService.Station st = RadioService.STATIONS[i];
                 boolean reciter = st.url.contains("qurango");
                 if (reciter != (pass == 1)) continue;
                 boolean now = RadioService.on() && RadioService.station() == i;
-                row(st.name(true), now ? "يعمل الآن" : null, now ? "إيقاف" : "تشغيل", new View.OnClickListener() {
+                row(st.name(true), now ? "يعمل الآن" : RadioStats.label(this, i), now ? "إيقاف" : "تشغيل", new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         if (RadioService.on() && RadioService.station() == idx) {

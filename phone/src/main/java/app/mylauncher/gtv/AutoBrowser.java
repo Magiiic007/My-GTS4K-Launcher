@@ -65,8 +65,7 @@ public class AutoBrowser extends MediaBrowserService implements RadioService.Lis
     }
 
     private void step(int d) {
-        int n = RadioService.STATIONS.length;
-        RadioService.play(this, (RadioService.lastStation(this) + n + d) % n);
+        RadioService.play(this, RadioStats.step(this, RadioService.lastStation(this), d));
     }
 
     @Override
@@ -105,7 +104,7 @@ public class AutoBrowser extends MediaBrowserService implements RadioService.Lis
     public void onLoadChildren(String parent, Result<List<MediaBrowser.MediaItem>> result) {
         List<MediaBrowser.MediaItem> out = new ArrayList<>();
         if (ROOT.equals(parent)) {
-            for (int i = 0; i < RadioService.STATIONS.length; i++) {
+            for (int i : RadioStats.order(this)) {
                 MediaDescription d = new MediaDescription.Builder()
                     .setMediaId(String.valueOf(i))
                     .setTitle(RadioService.STATIONS[i].name(true))

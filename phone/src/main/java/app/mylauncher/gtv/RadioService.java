@@ -134,6 +134,8 @@ public class RadioService extends Service {
     }
 
     private static void set(int s) {
+        if (state == PLAYING && s != PLAYING) RadioStats.stop();
+        if (s == PLAYING && state != PLAYING && cur != null) RadioStats.start(cur, stationIndex);
         state = s;
         for (Listener l : new ArrayList<>(listeners)) l.onRadio(s);
         // The home-screen widget shows the play/stop button and the station.
@@ -258,8 +260,8 @@ public class RadioService extends Service {
         yielded = false;
         int want = intent.getIntExtra("station", 0);
         int base = state != OFF ? stationIndex : lastStation(this);
-        if (ACTION_NEXT.equals(intent.getAction())) want = (base + 1) % STATIONS.length;
-        if (ACTION_PREV.equals(intent.getAction())) want = (base + STATIONS.length - 1) % STATIONS.length;
+        if (ACTION_NEXT.equals(intent.getAction())) want = RadioStats.step(this, base, 1);
+        if (ACTION_PREV.equals(intent.getAction())) want = RadioStats.step(this, base, -1);
         log(this, "start station " + want);
         stationIndex = Math.max(0, Math.min(STATIONS.length - 1, want));
         getSharedPreferences("magiic", MODE_PRIVATE).edit().putInt("radio_station", stationIndex)
