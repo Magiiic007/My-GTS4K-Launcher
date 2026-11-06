@@ -40,13 +40,30 @@ final class Menu {
     static final class Box extends Dialog {
         TextView message;
         View firstFocus;
+        /** The menu this one was opened from: Back (or Close) comes back to it, on the row that opened this one. */
+        Box parent;
+        static Box lastShown;
 
         Box(Context c) {
             super(c, R.style.MagiicMenu);
         }
 
+        /** Back goes one step: to the menu this one was opened from, if there is one. */
+        @Override
+        public void cancel() {
+            super.cancel();
+            reopenParent();
+        }
+
+        void reopenParent() {
+            Box p = parent;
+            parent = null;
+            if (p != null) p.show();
+        }
+
         @Override
         public void show() {
+            lastShown = this;
             super.show();
             Window w = getWindow();
             if (w != null) {
@@ -304,7 +321,13 @@ final class Menu {
                         @Override
                         public void onClick(View v) {
                             if (kind == 1) {
+                                Box before = Box.lastShown;
                                 if (itemClick != null) itemClick.onClick(d, which);
+                                Box child = Box.lastShown;
+                                if (child != null && child != before && child != d) {
+                                    child.parent = d;
+                                    d.firstFocus = row;
+                                }
                                 d.dismiss();
                             } else if (kind == 2) {
                                 for (int j = 0; j < ticks.length; j++) if (ticks[j] != null) ticks[j].setText(j == which ? "✓" : "");
@@ -352,6 +375,7 @@ final class Menu {
                         public void onClick(View v) {
                             if (l != null) l.onClick(d, id);
                             d.dismiss();
+                            if (id == DialogInterface.BUTTON_NEGATIVE) d.reopenParent();
                         }
                     });
                     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
