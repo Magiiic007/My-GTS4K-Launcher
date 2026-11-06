@@ -3304,14 +3304,14 @@ public class PhoneActivity extends Activity {
         if (TvSetup.connected(this)) {
             section("متصل");
             add(tv("الهاتف متصل بالتلفزيون ✓", 15, gold, true), 4);
-            row("التالي: تثبيت اللانشر", null, "›", new View.OnClickListener() {
+            row("التالي: تثبيت التطبيق على التلفزيون", null, "›", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     tvStage = 2;
                     build();
                 }
             });
-            row("رجوع إلى الشاشة الأصلية للتلفزيون", "يعيد لانشر Google ويفعّل أزرار الريموت", "›", new View.OnClickListener() {
+            row("رجوع إلى الشاشة الأصلية للتلفزيون", "يعيد لانشر Google ويفعّل التطبيقات المعطّلة", "›", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     tvRun("إرجاع الشاشة الأصلية…", new TvTask() {
@@ -3327,11 +3327,20 @@ public class PhoneActivity extends Activity {
                     });
                 }
             });
-            row("إعداد الشاشة الرئيسية", null, "›", new View.OnClickListener() {
+            row("إصلاح المساعد الصوتي", "يفحص تطبيق Google على التلفزيون ويصلحه (الميكروفون، البيانات، الأزرار)", "›", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    tvStage = 3;
-                    build();
+                    tvRun("إصلاح المساعد الصوتي…", new TvTask() {
+                        @Override
+                        public void run() throws Exception {
+                            TvSetup.fixAssistant(PhoneActivity.this, new TvSetup.Say() {
+                                @Override
+                                public void say(String s) {
+                                    tvSay(s);
+                                }
+                            });
+                        }
+                    });
                 }
             });
             row("قطع الاتصال", null, "›", new View.OnClickListener() {

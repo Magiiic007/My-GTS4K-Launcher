@@ -563,6 +563,38 @@ final class TvSetup {
     }
 
     /** Back to the TV's own home screen. */
+
+    /**
+     * Brings the voice assistant back to a normal state: our old remote-keys service is taken out of the accessibility list,
+     * Google's own app is enabled, the microphone allowed and its data cleared. The result is listed for the person to see.
+     */
+    static void fixAssistant(Context c, Say say) throws Exception {
+        String g = "com.google.android.katniss";
+        String pk = sh(c, "pm list packages");
+        say.say(has(pk, g) ? "تطبيق Google (المساعد) موجود على التلفزيون" : "تطبيق Google (المساعد) غير موجود على التلفزيون!");
+        String off = sh(c, "pm list packages -d").trim();
+        say.say("التطبيقات المعطّلة على التلفزيون:\n" + (off.isEmpty() ? "(لا شيء)" : off.replace("package:", "")));
+        // our old accessibility service must not stay in the list: it intercepted the remote's keys
+        String cur = sh(c, "settings get secure enabled_accessibility_services").trim();
+        say.say("خدمات إمكانية الوصول: " + (cur.isEmpty() ? "(لا شيء)" : cur));
+        if (cur.contains("RemoteKeys")) {
+            sh(c, "n=$(settings get secure enabled_accessibility_services | sed 's#" + PKG + "/" + PKG + ".RemoteKeys##g; s#::*#:#g; s#^:##; s#:$##'); "
+                + "if [ -z \"$n\" ] || [ \"$n\" = null ]; then settings delete secure enabled_accessibility_services; settings put secure accessibility_enabled 0; "
+                + "else settings put secure enabled_accessibility_services \"$n\"; fi");
+            say.say("أُزيلت خدمة الأزرار القديمة من قائمة إمكانية الوصول");
+        }
+        if (has(pk, g)) {
+            sh(c, "pm enable " + g);
+            sh(c, "pm grant " + g + " android.permission.RECORD_AUDIO 2>&1");
+            sh(c, "pm clear " + g + " 2>&1");
+            sh(c, "pm grant " + g + " android.permission.RECORD_AUDIO 2>&1");
+            say.say("فُعّل تطبيق Google، وسُمح له بالميكروفون، ومُسحت بياناته");
+        }
+        String role = sh(c, "cmd role get-role-holders --user 0 android.app.role.ASSISTANT 2>&1").trim();
+        say.say("مساعد النظام: " + (role.isEmpty() ? "(غير محدد)" : role));
+        say.say("الآن أعد تشغيل التلفزيون من القائمة، ثم جرّب زر المساعد.");
+    }
+
     static void restore(Context c, Say say) throws Exception {
         stopGuard(c);
         String pk = sh(c, "pm list packages");
