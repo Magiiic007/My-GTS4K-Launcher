@@ -41,6 +41,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.NumberPicker;
 import android.widget.CheckBox;
@@ -1188,6 +1189,42 @@ public class PhoneActivity extends Activity {
         }
     }
 
+    /** The station on (or the last one): its picture as a record that turns while it plays, over a faint big photo. */
+    private void radioHero() {
+        boolean on = RadioService.on();
+        int hi = on ? RadioService.station() : RadioService.lastStation(this);
+        android.graphics.Bitmap photo = RadioArt.photo(this, hi, 512);
+        android.graphics.Bitmap disc = RadioArt.disc(this, hi, 320);
+        if (photo == null || disc == null) return;
+        FrameLayout hero = new FrameLayout(this);
+        hero.setBackground(shape(card, line, 18));
+        hero.setClipToOutline(true);
+        hero.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);
+        ImageView bgv = new ImageView(this);
+        bgv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        bgv.setImageBitmap(photo);
+        bgv.setAlpha(on ? 0.24f : 0.1f);
+        hero.addView(bgv, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout col = vbox();
+        col.setGravity(Gravity.CENTER_HORIZONTAL);
+        col.setPadding(dp(16), dp(18), dp(16), dp(14));
+        ImageView dv = new ImageView(this);
+        dv.setImageBitmap(disc);
+        col.addView(dv, new LinearLayout.LayoutParams(dp(150), dp(150)));
+        if (on) {
+            android.animation.ObjectAnimator sp2 = android.animation.ObjectAnimator.ofFloat(dv, "rotation", 0f, 360f);
+            sp2.setDuration(8000L);
+            sp2.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+            sp2.setInterpolator(new android.view.animation.LinearInterpolator());
+            sp2.start();
+        }
+        TextView nm = tv(RadioService.STATIONS[hi].name(true), 18, cream, true);
+        nm.setGravity(Gravity.CENTER);
+        col.addView(nm, lp(-1, -2, 10));
+        hero.addView(col, new FrameLayout.LayoutParams(-1, -2));
+        add(hero, 8);
+    }
+
     // ---------------------------------------------------------------- radio
     private void radio() {
         title("الراديو", false);
@@ -1204,6 +1241,7 @@ public class PhoneActivity extends Activity {
                 }
             });
         }
+        radioHero();
         int stN = 0, rcN = 0;
         for (RadioService.Station q : RadioService.STATIONS) {
             if (q.url.contains("qurango")) rcN++;
@@ -1217,7 +1255,7 @@ public class PhoneActivity extends Activity {
                 boolean reciter = st.url.contains("qurango");
                 if (reciter != (pass == 1)) continue;
                 boolean now = RadioService.on() && RadioService.station() == i;
-                row(st.name(true), now ? "يعمل الآن" : RadioStats.label(this, i), now ? "إيقاف" : "تشغيل", new View.OnClickListener() {
+                LinearLayout rr = row(st.name(true), now ? "يعمل الآن" : RadioStats.label(this, i), now ? "إيقاف" : "تشغيل", new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         if (RadioService.on() && RadioService.station() == idx) {
@@ -1228,6 +1266,14 @@ public class PhoneActivity extends Activity {
                         }
                     }
                 });
+                android.graphics.Bitmap dbm = RadioArt.disc(this, i, 160);
+                if (dbm != null) {
+                    ImageView div = new ImageView(this);
+                    div.setImageBitmap(dbm);
+                    LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(46), dp(46));
+                    dlp.setMarginEnd(dp(12));
+                    rr.addView(div, 0, dlp);
+                }
             }
         }
         acc("rd:vol", "الصوت", "رفع صوت الإذاعات");

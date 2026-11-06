@@ -267,6 +267,7 @@ final class PrayerNote {
             boolean radio = RadioService.on();
             int st = radio ? RadioService.station() : RadioService.lastStation(c);
             rv.setTextViewText(R.id.w_station, RadioService.STATIONS[st].shortName(true));
+            rv.setImageViewBitmap(R.id.w_disc, RadioArt.disc(c, st, 96));
             rv.setImageViewResource(R.id.w_play, radio ? R.drawable.ic_w_stop : R.drawable.ic_w_play);
             rv.setOnClickPendingIntent(R.id.w_play, radio ? radioIntent(c, 51, "app.mylauncher.gtv.RADIO_STOP", false)
                 : radioIntent(c, 51, "app.mylauncher.gtv.RADIO_PLAY", true));

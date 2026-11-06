@@ -428,6 +428,7 @@ public class MainActivity extends Activity {
 
     /** A big, faint picture of the station that is playing, behind everything (it never takes a click or the focus). */
     private void addRadioBg(FrameLayout stage) {
+        if (true) { radioBg = null; return; } // no big faint picture: only the turning disc
         radioBg = new ImageView(this);
         radioBg.setScaleType(ImageView.ScaleType.CENTER_CROP);
         radioBg.setAlpha(0f);
