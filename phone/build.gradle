@@ -32,7 +32,7 @@ android {
             dimension 'dist'
             targetSdk 36
             // The store name of the app: «Salat Khair». (The sideload build keeps app.magiic.phone so it updates from GitHub.)
-            applicationId 'app.magiic.salatkhair'
+            applicationId 'app.alsalatu.khair'
             // A test copy of the Play build that installs next to the real app (CI passes -PplayTest).
             if (project.hasProperty('playTest')) applicationIdSuffix '.test'
             buildConfigField 'boolean', 'PLAY', 'true'

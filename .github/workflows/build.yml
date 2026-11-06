@@ -132,4 +132,4 @@ jobs:
           cp phone/build/outputs/apk/play/debug/phone-play-debug.apk my-phone-play-test.apk
           gh release delete play-test --yes --cleanup-tag || true
           gh release create play-test my-phone-play-test.apk --prerelease --target "$GITHUB_SHA" \
-            --title "Play build, test copy" --notes "Test copy of the Google Play build (package app.magiic.salatkhair.test). commit=${GITHUB_SHA::7}"
+            --title "Play build, test copy" --notes "Test copy of the Google Play build (package app.alsalatu.khair.test). commit=${GITHUB_SHA::7}"
