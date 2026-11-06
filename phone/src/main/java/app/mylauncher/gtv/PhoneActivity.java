@@ -188,7 +188,7 @@ public class PhoneActivity extends Activity {
         if (b == null && !direct && sp.getBoolean("splash_on", true)) splash();
     }
 
-    private static final String[] SPLASH_WORDS = {"النوم", "اللهو", "التجارة", "العمل", "الدنيا", "السهر", "الراحة", "الفرجة", "التصفّح", "المال", "الكسل", "التسويف"};
+    private static final String[] SPLASH_WORDS = {"النوم", "الغفلة", "اللهو", "اللعب", "اللغو", "الكسل", "التأجيل", "المال", "التجارة", "العمل", "الدنيا وما فيها", "الراحة", "السهر"};
     private View splashView;
     private int splashStep;
 
@@ -208,7 +208,7 @@ public class PhoneActivity extends Activity {
         android.widget.ImageView icon = new android.widget.ImageView(this);
         icon.setImageResource(R.drawable.ic_launcher_phone);
         col.addView(icon, new LinearLayout.LayoutParams(dp(150), dp(150)));
-        // one centred line: "الصلاة خير من" in white and the changing word in yellow
+        // the fixed phrase in the middle, and under it the changing word: bigger, but never wider than the phrase
         final TextView phrase = new TextView(this);
         phrase.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
         phrase.setTypeface(Typeface.DEFAULT_BOLD);
@@ -216,9 +216,21 @@ public class PhoneActivity extends Activity {
         phrase.setTextColor(0xFFFFFFFF);
         phrase.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
         phrase.setText("الصلاة خير من");
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
         rp.topMargin = dp(26);
         col.addView(phrase, rp);
+        final TextView word = new TextView(this);
+        word.setTypeface(Typeface.DEFAULT_BOLD);
+        word.setGravity(Gravity.CENTER);
+        word.setMaxLines(1);
+        word.setTextColor(0x00FFD54A);
+        word.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
+        word.setAutoSizeTextTypeUniformWithConfiguration(16, 44, 1, TypedValue.COMPLEX_UNIT_SP);
+        android.text.TextPaint tp = new android.text.TextPaint(phrase.getPaint());
+        int pw = Math.round(tp.measureText("الصلاة خير من")) + dp(4);
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(pw, dp(60));
+        wp.topMargin = dp(8);
+        col.addView(word, wp);
         v.addView(col, new FrameLayout.LayoutParams(-1, -1));
         rootFrame.addView(v, new FrameLayout.LayoutParams(-1, -1));
         splashView = v;
@@ -240,12 +252,8 @@ public class PhoneActivity extends Activity {
                         @Override
                         public void onAnimationUpdate(android.animation.ValueAnimator x) {
                             int al = (Integer) x.getAnimatedValue();
-                            android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder("الصلاة خير من ");
-                            int st = sb.length();
-                            sb.append(w);
-                            sb.setSpan(new android.text.style.ForegroundColorSpan((al << 24) | 0x00FFD54A), st, sb.length(),
-                                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                            phrase.setText(sb);
+                            word.setText(w);
+                            word.setTextColor((al << 24) | 0x00FFD54A);
                         }
                     });
                     an.start();
