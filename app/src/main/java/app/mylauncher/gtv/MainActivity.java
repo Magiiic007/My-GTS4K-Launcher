@@ -264,11 +264,14 @@ public class MainActivity extends Activity {
     private void splash(FrameLayout host) {
         final FrameLayout v = new FrameLayout(this);
         v.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        v.setBackgroundColor(Theme.edgeColour(this));
-        ImageView bgArt = new ImageView(this);
-        bgArt.setImageResource(Theme.kids(this) ? R.drawable.bg_kids : R.drawable.bg_royal);
-        bgArt.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        v.addView(bgArt, new FrameLayout.LayoutParams(-1, -1));
+        // A calm, plain background of its own (a soft gradient and a thin gold frame), so nothing of the screen behind it shows.
+        boolean kidsLook = Theme.kids(this);
+        android.graphics.drawable.GradientDrawable calm = new android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+            kidsLook ? new int[] {0xFFFBD3DE, 0xFFEFA6BB} : new int[] {0xFF0D4220, 0xFF062711});
+        calm.setStroke(dp(2), kidsLook ? 0x99FFF0CC : 0x99D9A93A);
+        v.setBackground(calm);
+        v.setClickable(true);
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER);
