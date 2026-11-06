@@ -70,6 +70,8 @@ public class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView weatherView;
     private TextView radioBtn;
+    /** The radio controls at the top of the settings list: previous, play or stop, next. */
+    private TextView[] radioKeys;
     private TextView permRow;
     private TextView noticeChip;
     private TextView noticesRow;
@@ -261,6 +263,7 @@ public class MainActivity extends Activity {
 
         // Ordered by how often each is used: the most common first.
         // First while there is something that needs the person (see refreshNotices); hidden otherwise.
+        list.addView(buildRadioBar(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 46));
         noticesRow = addRow(list, R.drawable.ic_warning, R.string.menu_notices, new Runnable() {
             @Override
             public void run() {
@@ -331,12 +334,13 @@ public class MainActivity extends Activity {
                         last = r;
                     }
                 }
+                if (radioKeys != null) first = radioKeys[1];
                 if (first != null) {
                     if (k == KeyEvent.KEYCODE_DPAD_UP && f.getParent() == appRow && last != null) {
                         last.requestFocus();
                         return true;
                     }
-                    if (k == KeyEvent.KEYCODE_DPAD_UP && f == first && first != last) {
+                    if (k == KeyEvent.KEYCODE_DPAD_UP && (f == first || (radioKeys != null && f.getParent() == radioKeys[0].getParent())) && first != last) {
                         last.requestFocus();
                         return true;
                     }
@@ -344,6 +348,56 @@ public class MainActivity extends Activity {
             }
         }
         return super.dispatchKeyEvent(e);
+    }
+
+    /** Previous, play or stop, next: one row of three buttons, so the radio starts and stops at once. */
+    private View buildRadioBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        radioKeys = new TextView[3];
+        String[] glyph = {"\u25C0\u25C0", "\u25B6", "\u25B6\u25B6"};
+        for (int i = 0; i < 3; i++) {
+            final int which = i;
+            final TextView b = Stage.text(this, glyph[i], 20, Theme.cardText(this), true);
+            b.setGravity(Gravity.CENTER);
+            b.setBackground(Theme.button(this, 22));
+            b.setFocusable(true);
+            b.setClickable(true);
+            final Drawable ring = Theme.ring(this, 22);
+            b.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override
+                public void onFocusChange(View v, boolean has) {
+                    v.setForeground(has ? ring : null);
+                    Motion.pop(v, has, 1.05f);
+                }
+            });
+            b.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    radioKey(which);
+                }
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, which == 1 ? 1.4f : 1f);
+            lp.leftMargin = 2;
+            lp.rightMargin = 2;
+            lp.bottomMargin = 5;
+            bar.addView(b, lp);
+            radioKeys[i] = b;
+        }
+        updateRadioButton();
+        return bar;
+    }
+
+    /** 0 = previous station, 1 = play or stop, 2 = next station. */
+    void radioKey(int which) {
+        if (which == 1) {
+            if (RadioService.on()) RadioService.stop(this);
+            else RadioService.play(this, RadioService.lastStation(this));
+        } else {
+            int from = RadioService.on() ? RadioService.station() : RadioService.lastStation(this);
+            RadioService.play(this, RadioStats.step(this, from, which == 2 ? 1 : -1));
+        }
     }
 
     /** Redraws the prayer numbers of whichever look is on. */
@@ -707,6 +761,7 @@ public class MainActivity extends Activity {
     // ---------------------------------------------------------------- radio
 
     private void updateRadioButton() {
+        if (radioKeys != null && radioKeys[1] != null) radioKeys[1].setText(RadioService.on() ? "\u25A0" : "\u25B6");
         if (radioBtn == null) return;
         int st = RadioService.state();
         if (st == RadioService.OFF) {
@@ -726,6 +781,12 @@ public class MainActivity extends Activity {
         // Radio stations first, then the reciters, each under its own title.
         final List<String> items = new ArrayList<>();
         final List<Integer> station = new ArrayList<>();
+        items.add(getString(on ? R.string.radio_stop : R.string.radio_play));
+        station.add(-2);
+        items.add(getString(R.string.radio_next));
+        station.add(-3);
+        items.add(getString(R.string.radio_prev));
+        station.add(-4);
         for (int pass = 0; pass < 2; pass++) {
             boolean reciters = pass == 1;
             boolean titled = false;
@@ -740,12 +801,6 @@ public class MainActivity extends Activity {
                 station.add(i);
             }
         }
-        if (on) {
-            items.add(Menu.HEADER);
-            station.add(-1);
-            items.add(getString(R.string.radio_stop));
-            station.add(-2);
-        }
         new Menu.Builder(this)
             .setTitle(R.string.radio_title)
             .setItems(items.toArray(new String[0]), new DialogInterface.OnClickListener() {
@@ -753,7 +808,9 @@ public class MainActivity extends Activity {
                 public void onClick(DialogInterface d, int which) {
                     int st = station.get(which);
                     if (st >= 0) RadioService.play(MainActivity.this, st);
-                    else if (st == -2) RadioService.stop(MainActivity.this);
+                    else if (st == -2) radioKey(1);
+                    else if (st == -3) radioKey(2);
+                    else if (st == -4) radioKey(0);
                 }
             })
             .setNegativeButton(R.string.close, null)
@@ -1021,6 +1078,7 @@ public class MainActivity extends Activity {
     private void wireFocus() {
         if (settingsList == null || appRow == null || weatherView == null || status == null || radioBtn == null) return;
         java.util.ArrayList<View> rows = new java.util.ArrayList<>();
+        if (radioKeys != null) rows.add(radioKeys[1]);
         for (int i = 0; i < settingsList.getChildCount(); i++) {
             View r = settingsList.getChildAt(i);
             if (r.getVisibility() == View.VISIBLE && r.isFocusable()) rows.add(r);
@@ -1034,7 +1092,16 @@ public class MainActivity extends Activity {
         View firstTile = tiles.isEmpty() ? null : tiles.get(0);
         View lastTile = tiles.isEmpty() ? null : tiles.get(tiles.size() - 1);
 
+        if (radioKeys != null) {
+            // The radio keys: left and right between the three, up stays, down goes to the first setting.
+            View below = rows.size() > 1 ? rows.get(1) : radioKeys[1];
+            link(radioKeys[0], radioKeys[0], radioKeys[1], radioKeys[0], below);
+            link(radioKeys[1], radioKeys[0], radioKeys[2], radioKeys[1], below);
+            link(radioKeys[2], radioKeys[1], radioKeys[2], radioKeys[2], below);
+            if (rows.size() > 1) rows.get(1).setNextFocusUpId(idOf(radioKeys[1]));
+        }
         for (View r : rows) {
+            if (radioKeys != null && r == radioKeys[1]) continue;
             // Left, right: stay. Up, down: the neighbouring row; the first row stays, the last goes to the apps.
             link(r, r, r, r == firstRow ? r : null, r == lastRow ? (firstTile != null ? firstTile : r) : null);
         }

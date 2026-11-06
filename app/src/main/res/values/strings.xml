@@ -67,6 +67,9 @@
     <string name="radio_on">Radio · %1$s</string>
     <string name="radio_connecting">Radio · connecting %1$s…</string>
     <string name="radio_paused">Radio · paused for the adhan</string>
+    <string name="radio_play">Play the radio</string>
+    <string name="radio_next">Next station</string>
+    <string name="radio_prev">Previous station</string>
     <string name="radio_stop">Stop the radio</string>
     <string name="menu_title">Settings</string>
     <string name="menu_hidden">Hide or show apps</string>
