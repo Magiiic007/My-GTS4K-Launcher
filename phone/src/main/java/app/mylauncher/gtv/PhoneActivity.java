@@ -181,9 +181,11 @@ public class PhoneActivity extends Activity {
         }
         Scheduler.scheduleNext(this);
         Reminders.scheduleNext(this);
+        boolean direct = getIntent() != null && getIntent().getIntExtra("open_cat", 0) != 0;
         openFromBubble(getIntent());
         build();
-        if (b == null && sp.getBoolean("splash_on", true)) splash();
+        // opened straight to a chapter from the round icon: no opening screen
+        if (b == null && !direct && sp.getBoolean("splash_on", true)) splash();
     }
 
     private static final String[] SPLASH_WORDS = {"النوم", "اللهو", "التجارة", "العمل", "الدنيا", "السهر", "الراحة", "الفرجة", "التصفّح", "المال", "الكسل", "التسويف"};
@@ -290,8 +292,9 @@ public class PhoneActivity extends Activity {
         super.onNewIntent(in);
         setIntent(in);
         // opened again from a notification, the widget or the adhkar icon: the opening screen shows then too
-        if (sp.getBoolean("splash_on", true)) splash();
-        if (in != null && in.getIntExtra("open_cat", 0) != 0) {
+        boolean direct = in != null && in.getIntExtra("open_cat", 0) != 0;
+        if (!direct && sp.getBoolean("splash_on", true)) splash();
+        if (direct) {
             openFromBubble(in);
             build();
         }
@@ -2569,13 +2572,6 @@ public class PhoneActivity extends Activity {
                     catEdit(cat, es);
                     return;
                 }
-                row("إضافة ذكر أو ترتيب الأذكار", null, "✎", new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        editCat = true;
-                        build();
-                    }
-                });
                 int shown = 0;
                 for (int i = 0; i < es.size(); i++) {
                     final Adhkar.Entry e = es.get(i);
@@ -2634,6 +2630,14 @@ public class PhoneActivity extends Activity {
                 } else {
                     add(tv("اضغط على الذكر لتعدّه. المصدر: حصن المسلم.", 12, dim, false), 10);
                 }
+                // the button that edits and orders the adhkar is at the end of the page, not in the way at the start
+                row("إضافة ذكر أو ترتيب الأذكار", null, "✎", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        editCat = true;
+                        build();
+                    }
+                });
                 return;
             }
         }
