@@ -663,7 +663,7 @@ public class PhoneActivity extends Activity {
         ICONS.put("اختر الدولة", "🌍");
         ICONS.put("ابحث عن مدينتك", "🔍");
         ICONS.put("أحاديث بشرحها", "📜");
-        ICONS.put("اللانشر على التلفزيون", "📺");
+        ICONS.put("التطبيق على التلفزيون", "📺");
         ICONS.put("اختبار أزرار الريموت", "🎮");
         ICONS.put("تأكد أن الأذان يعمل", "🔔");
         ICONS.put("الشكل والعرض", "🎨");
@@ -1816,7 +1816,7 @@ public class PhoneActivity extends Activity {
                 PhoneUpdater.check(PhoneActivity.this);
             }
         });
-        row("اللانشر على التلفزيون", "تثبيته وتعيينه شاشة رئيسية من هذا الهاتف", "›", go("tv"));
+        row("التطبيق على التلفزيون", "تثبيته وإصلاح المساعد الصوتي من هذا الهاتف", "›", go("tv"));
         row("نسخة احتياطية", "احفظ إعداداتك وأذكارك في ملف، واستعدها بعد أي حذف", "›", go("backup"));
         row("عن التطبيق", "المصادر والتشخيص", "›", go("about"));
         accEnd();
@@ -3161,7 +3161,7 @@ public class PhoneActivity extends Activity {
     }
 
     private void tvPage() {
-        title("اللانشر على التلفزيون", true);
+        title("التطبيق على التلفزيون", true);
         String[] names = {"تحضير", "اتصال", "تثبيت", "إعداد"};
         LinearLayout st = hbox();
         for (int i = 0; i < 4; i++) {
@@ -3170,6 +3170,14 @@ public class PhoneActivity extends Activity {
             t.setGravity(Gravity.CENTER);
             t.setBackground(shape(on ? hl : 0, on ? gold : 0, 12));
             t.setPadding(0, dp(7), 0, dp(7));
+            final int goTo = i;
+            t.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    tvStage = goTo;
+                    build();
+                }
+            });
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
             p.setMargins(dp(2), 0, dp(2), 0);
             st.addView(t, p);
@@ -3233,7 +3241,7 @@ public class PhoneActivity extends Activity {
                 }
             });
         }
-        row("تفعيل أزرار اليوتيوب والنجمة", "يعمل بعد تحديث اللانشر على التلفزيون (الخطوة 3)", "›", new View.OnClickListener() {
+        row("تفعيل أزرار اليوتيوب والنجمة", "يعمل بعد تحديث التطبيق على التلفزيون (الخطوة 3)", "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 tvRun("تفعيل أزرار الريموت", new TvTask() {
@@ -3290,7 +3298,7 @@ public class PhoneActivity extends Activity {
             r.addView(tv(steps[i], 14, cream, false), new LinearLayout.LayoutParams(0, -2, 1f));
             add(r, 5);
         }
-        add(tv("ما سيحدث بعد ذلك: تثبّت التطبيق اللانشر على التلفزيون من هذا الهاتف، ثم تجعله الشاشة الرئيسية. لا حاجة لكمبيوتر.", 12, dim, false), 10);
+        add(tv("ما سيحدث بعد ذلك: تثبّت التطبيق التطبيق على التلفزيون من هذا الهاتف، ثم تجعله الشاشة الرئيسية. لا حاجة لكمبيوتر.", 12, dim, false), 10);
         row("جاهز، ابحث عن التلفزيون", null, "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -3486,7 +3494,7 @@ public class PhoneActivity extends Activity {
         }
         section("تثبيت اللانشر");
         add(tv("ينزّل التطبيق آخر نسخة من اللانشر من GitHub ويثبّتها على التلفزيون، ويعطيه الأذونات التي يحتاجها.", 13, dim, false), 4);
-        row("تثبيت اللانشر على التلفزيون", "يحتاج الإنترنت على الهاتف", "›", new View.OnClickListener() {
+        row("تثبيت التطبيق على التلفزيون", "يحتاج الإنترنت على الهاتف", "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 tvRun("بدء التثبيت…", new TvTask() {
