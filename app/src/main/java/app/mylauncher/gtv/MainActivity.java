@@ -92,7 +92,6 @@ public class MainActivity extends Activity {
         }
     };
     private LinearLayout settingsList;
-    private MihrabHome mih;
     private boolean cityTried;
     private ImageView art;
     private long weatherAt;
@@ -126,11 +125,6 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         final boolean kids = Theme.kids(this);
         Geo g = Geo.of(this);
-        if (Theme.mihrab(this)) {
-            createMihrab();
-            return;
-        }
-
         final FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Theme.edgeColour(this));
         art = new ImageView(this);
@@ -328,7 +322,7 @@ public class MainActivity extends Activity {
         col.addView(buildSettingsList(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 104);
         lp.topMargin = 4;
-        col.addView(buildRadioBar(false), lp);
+        col.addView(buildRadioBar(), lp);
         return col;
     }
 
@@ -359,21 +353,13 @@ public class MainActivity extends Activity {
         return super.dispatchKeyEvent(e);
     }
 
-    private static android.graphics.drawable.GradientDrawable mihrabShape(int fill, float r, int line, int w) {
-        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
-        g.setColor(fill);
-        g.setCornerRadius(r);
-        g.setStroke(w, line);
-        return g;
-    }
-
     /** Previous, play or stop, next: one row of three buttons, so the radio starts and stops at once. */
-    private View buildRadioBar(final boolean mihrab) {
+    private View buildRadioBar() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(mihrab ? mihrabShape(0x66000000, 18, 0x80E0B960, 2) : Theme.tile(this, 16));
+        card.setBackground(Theme.tile(this, 16));
         card.setPadding(4, 6, 4, 2);
-        radioName = Stage.text(this, "", 16, mihrab ? 0xFFF4EEDC : Theme.tileLabel(this), true);
+        radioName = Stage.text(this, "", 16, Theme.tileLabel(this), true);
         radioName.setGravity(Gravity.CENTER);
         radioName.setMaxLines(1);
         Stage.fitOneLine(radioName, 10, 16);
@@ -396,12 +382,12 @@ public class MainActivity extends Activity {
         String[] glyph = {"\u25C0\u25C0", "\u25B6", "\u25B6\u25B6"};
         for (int i = 0; i < 3; i++) {
             final int which = i;
-            final TextView b = Stage.text(this, glyph[i], 20, mihrab ? 0xFFE0B960 : Theme.cardText(this), true);
+            final TextView b = Stage.text(this, glyph[i], 20, Theme.cardText(this), true);
             b.setGravity(Gravity.CENTER);
-            b.setBackground(mihrab ? mihrabShape(0x33FFFFFF, 22, 0x80E0B960, 2) : Theme.button(this, 22));
+            b.setBackground(Theme.button(this, 22));
             b.setFocusable(true);
             b.setClickable(true);
-            final Drawable ring = mihrab ? mihrabShape(0x00000000, 22, 0xFFF4EEDC, 4) : Theme.ring(this, 22);
+            final Drawable ring = Theme.ring(this, 22);
             b.setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View v, boolean has) {
@@ -451,115 +437,20 @@ public class MainActivity extends Activity {
 
     /** Redraws the prayer numbers of whichever look is on. */
     private void refreshBoard() {
-        if (mih != null) mih.refresh();
-        else if (board != null) board.refresh();
+        if (board != null) board.refresh();
     }
 
     private void refreshBoardDates() {
-        if (mih != null) mih.refreshDates();
-        else if (board != null) board.refreshDates();
-    }
-
-    /** The third look (see MihrabHome): its own canvas, with the same dialogs and services behind it. */
-    private void createMihrab() {
-        final FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Theme.edgeColour(this));
-        rootView = root;
-        final FrameLayout stage = new FrameLayout(this);
-        stage.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
-        Motion.fadeIn(root, 350L);
-        root.addView(stage, new FrameLayout.LayoutParams(Stage.W, Stage.H, Gravity.TOP | Gravity.LEFT));
-        root.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
-            @Override
-            public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
-                Stage.fit(root, stage);
-            }
-        });
-        mih = new MihrabHome(this, stage);
-        weatherView = mih.weather;
-        radioBtn = mih.radio;
-        noticeChip = mih.notice;
-        status = new StatusIcons(this, new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                SettingsMenu.launch(MainActivity.this, Settings.ACTION_WIFI_SETTINGS);
-            }
-        });
-        status.view.setFocusable(false);
-        Stage.add(stage, status.view, 128, 40, 248, 92);
-        Stage.add(stage, buildRadioBar(true), 68, 386, 290, 494);
-        addRadioBg(stage);
-        updateRadioButton();
-        setContentView(root);
+        if (board != null) board.refreshDates();
     }
 
     void openTiming() {
         TimingDialogs.open(this, prayerChanged);
     }
 
-    /** The gear of the third look: every setting of the left-hand list, in one dialog. */
-    void showMihrabSettings() {
-        final List<String> names = new ArrayList<>();
-        final List<Runnable> acts = new ArrayList<>();
-        if (!lastIssues.isEmpty()) {
-            names.add(getString(R.string.menu_notices));
-            acts.add(new Runnable() { public void run() { Health.show(MainActivity.this, lastIssues); } });
-        }
-        names.add(getString(R.string.menu_adhan));
-        acts.add(new Runnable() { public void run() { openTiming(); } });
-        names.add(getString(R.string.menu_radio));
-        acts.add(new Runnable() { public void run() { chooseRadio(); } });
-        names.add(getString(R.string.menu_theme));
-        acts.add(new Runnable() { public void run() { chooseLook(); } });
-        names.add(getString(R.string.menu_reminders));
-        acts.add(new Runnable() { public void run() { ReminderDialogs.open(MainActivity.this); } });
-        names.add(getString(R.string.menu_device));
-        acts.add(new Runnable() { public void run() { SettingsMenu.device(MainActivity.this); } });
-        names.add(getString(R.string.menu_update));
-        acts.add(new Runnable() { public void run() { Updater.menu(MainActivity.this); } });
-        if (!Settings.canDrawOverlays(this)) {
-            names.add(getString(R.string.perm_btn));
-            acts.add(new Runnable() { public void run() { askOverlayPermission(); } });
-        }
-        new Menu.Builder(this)
-            .setTitle(R.string.mih_settings)
-            .setItems(names.toArray(new String[0]), new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int which) {
-                    acts.get(which).run();
-                }
-            })
-            .setNegativeButton(R.string.close, null)
-            .show();
-    }
-
-    /** Hold OK on a favourite or a "more" tile: take it off the favourites, see its info, uninstall it. */
-    void favMenu(final AppItem item) {
-        final String pkg = item.component.getPackageName();
-        String[] items = {getString(R.string.fav_remove), getString(R.string.app_info), getString(R.string.app_uninstall)};
-        new Menu.Builder(this)
-            .setTitle(item.label)
-            .setItems(items, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int which) {
-                    if (which == 0) {
-                        if (MihrabHome.isFav(MainActivity.this, pkg)) MihrabHome.toggleFav(MainActivity.this, pkg);
-                        Toast.makeText(MainActivity.this, R.string.fav_removed, Toast.LENGTH_SHORT).show();
-                        applyHidden();
-                    } else if (which == 1) {
-                        SettingsMenu.appInfo(MainActivity.this, pkg);
-                    } else {
-                        SettingsMenu.uninstall(MainActivity.this, pkg);
-                    }
-                }
-            })
-            .setNegativeButton(R.string.close, null)
-            .show();
-    }
-
     /** The two looks, in a list; picking the other one restarts the screen in it. */
     private void chooseLook() {
-        String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids), getString(R.string.theme_mihrab)};
+        String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids)};
         new Menu.Builder(this)
             .setTitle(R.string.menu_theme)
             .setSingleChoiceItems(names, Theme.id(this), new DialogInterface.OnClickListener() {
@@ -658,19 +549,9 @@ public class MainActivity extends Activity {
 
     // ---------------------------------------------------------------- lifecycle
 
-    /** As the home screen, Back does nothing: leaving it would just bring it straight back. */
-    @Override
-    public void onBackPressed() {
-        // Stay on the home screen.
-    }
-
     @Override
     protected void onResume() {
         super.onResume();
-        if (mih != null) {
-            resumeMihrab();
-            return;
-        }
         loadApps();
         RadioService.resumeIfCutOff(this);
         if (selectedCity() == null && !cityTried) {
@@ -701,37 +582,6 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(ambienceTick);
         handler.postDelayed(ambienceTick, 60000L);
         sparkle.start();
-        refreshNotices();
-        Updater.checkIfDue(this, new Runnable() {
-            @Override
-            public void run() {
-                refreshNotices();
-            }
-        });
-    }
-
-    private void resumeMihrab() {
-        loadApps();
-        RadioService.resumeIfCutOff(this);
-        if (selectedCity() == null && !cityTried) {
-            cityTried = true;
-            autoCity(false);
-        }
-        handler.removeCallbacks(weatherTick);
-        long age = System.currentTimeMillis() - weatherAt;
-        handler.postDelayed(weatherTick, weatherAt == 0L || age >= WEATHER_EVERY_MS ? 0L : WEATHER_EVERY_MS - age);
-        mih.start();
-        status.start();
-        RadioService.listen(radioListener);
-        updateRadioButton();
-        final android.content.Context app = getApplicationContext();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Scheduler.scheduleNext(app);
-                Reminders.scheduleNext(app);
-            }
-        }).start();
         refreshNotices();
         Updater.checkIfDue(this, new Runnable() {
             @Override
@@ -794,13 +644,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         handler.removeCallbacks(weatherTick);
-        if (mih != null) {
-            mih.stop();
-            status.stop();
-            RadioService.unlisten(radioListener);
-            super.onPause();
-            return;
-        }
         handler.removeCallbacks(ambienceTick);
         sparkle.stop();
         board.stop();
@@ -1135,10 +978,6 @@ public class MainActivity extends Activity {
                 return ia < ib ? -1 : ia > ib ? 1 : 0;
             }
         });
-        if (mih != null) {
-            mih.setApps(apps, allApps.size());
-            return;
-        }
         rebuildRow();
         empty.setVisibility(apps.isEmpty() ? View.VISIBLE : View.GONE);
     }

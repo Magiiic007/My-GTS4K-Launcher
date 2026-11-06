@@ -125,13 +125,12 @@ final class SettingsMenu {
         }
         final int n = have.size();
         final boolean tools = c instanceof android.app.Activity;
-        String[] items = new String[n + (tools ? 4 : 1)];
+        String[] items = new String[n + (tools ? 3 : 1)];
         for (int i = 0; i < n; i++) items[i] = c.getString(Integer.parseInt(have.get(i)[0]));
         items[n] = c.getString(R.string.menu_about);
         if (tools) {
             items[n + 1] = c.getString(R.string.menu_saver);
             items[n + 2] = c.getString(R.string.menu_clean);
-            items[n + 3] = c.getString(R.string.menu_stock);
         }
         new Menu.Builder(c)
             .setTitle(R.string.menu_device)
@@ -141,7 +140,6 @@ final class SettingsMenu {
                     if (which == n) about(c);
                     else if (which == n + 1) screensaver(c);
                     else if (which == n + 2) Cleaner.open((android.app.Activity) c);
-                    else if (which == n + 3) StockHome.menu(c);
                     else launch(c, have.get(which)[1], Settings.ACTION_SYNC_SETTINGS.equals(have.get(which)[1]) ? R.string.account_hint : 0);
                 }
             })

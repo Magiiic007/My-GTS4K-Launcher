@@ -14,22 +14,17 @@ import android.graphics.drawable.StateListDrawable;
 final class Theme {
     private Theme() {}
 
-    static final int ROYAL = 0, KIDS = 1, MIHRAB = 2;
+    static final int ROYAL = 0, KIDS = 1;
     private static final String PREFS = "magiic";
     private static final String KEY = "theme";
 
     static int id(Context c) {
         int v = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY, ROYAL);
-        return v == KIDS ? KIDS : v == MIHRAB ? MIHRAB : ROYAL;
+        return v == KIDS ? KIDS : ROYAL;
     }
 
-    /** The third look: navy and gold, with the prayer cards and the mihrab arch (see MihrabHome). */
-    static boolean mihrab(Context c) {
-        return id(c) == MIHRAB;
-    }
-
-    private static int pick3(Context c, String royal, String kids, String mih) {
-        return Color.parseColor(mihrab(c) ? mih : kids(c) ? kids : royal);
+    private static int pick3(Context c, String royal, String kids, String ignored) {
+        return Color.parseColor(kids(c) ? kids : royal);
     }
 
     static void set(Context c, int id) {
@@ -247,7 +242,7 @@ final class Theme {
     }
 
     static int edgeColour(Context c) {
-        return Color.parseColor(mihrab(c) ? "#FF050D22" : kids(c) ? "#FFF4B4C6" : "#FF04251A");
+        return Color.parseColor(kids(c) ? "#FFF4B4C6" : "#FF04251A");
     }
 
     // ---------------------------------------------------------------- the dome popup
@@ -258,6 +253,6 @@ final class Theme {
 
     /** The dialog style of the chosen look: gold-framed dark green, or the soft pink one. */
     static int dialogStyle(Context c) {
-        return mihrab(c) ? R.style.MagiicDialogMihrab : kids(c) ? R.style.MagiicDialogKids : R.style.MagiicDialogRoyal;
+        return kids(c) ? R.style.MagiicDialogKids : R.style.MagiicDialogRoyal;
     }
 }

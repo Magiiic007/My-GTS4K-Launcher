@@ -139,12 +139,7 @@ final class Menu {
 
     private static Pal pal(Context c) {
         Pal p = new Pal();
-        if (Theme.mihrab(c)) {
-            p.top = 0xFF142A56; p.bottom = 0xFF0B1A3A; p.border = 0xFFE0B960; p.halo = 0xFF08122A; p.halo2 = 0xBFE0B960;
-            p.ink = 0xFFF4EEDC; p.accent = 0xFFE0B960; p.rowFill = 0x59000000; p.rowLine = 0x80E0B960;
-            p.plateTop = 0xFFEBCB7C; p.plateBottom = 0xFFC9A24A; p.plateLine = 0xFF8A6A22; p.plateText = 0xFF2A1F00;
-            p.closeFill = 0x14FFFFFF; p.scrim = 0xE0040A1A;
-        } else if (Theme.kids(c)) {
+        if (Theme.kids(c)) {
             p.top = 0xFFFBD3DE; p.bottom = 0xFFEFA6BB; p.border = 0xFFFFF0CC; p.halo = 0xFFE58FA3; p.halo2 = 0xFFFFF0CC;
             p.ink = 0xFF7A3347; p.accent = 0xFFB8566F; p.rowFill = 0x99FFFFFF; p.rowLine = 0xE6E58FA3;
             p.plateTop = 0xFFFFF8EC; p.plateBottom = 0xFFFBE3C6; p.plateLine = 0xFFE5A9B7; p.plateText = 0xFF7A3347;
