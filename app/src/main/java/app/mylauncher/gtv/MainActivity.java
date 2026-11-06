@@ -247,6 +247,101 @@ public class MainActivity extends Activity {
         addRadioBg(stage);
 
         setContentView(root);
+        if (state == null) splash(root);
+    }
+
+    // ---------------------------------------------------------------- the opening screen
+    private static final String[] SPLASH_WORDS = {"النوم", "الغفلة", "اللهو", "اللعب", "اللغو", "الكسل", "التأجيل", "المال", "التجارة", "العمل", "الدنيا وما فيها", "الراحة", "السهر"};
+    private View splashView;
+    private FrameLayout splashHost;
+    private int splashStep;
+
+    private int dp(int v) {
+        return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics()));
+    }
+
+    /** The opening screen, as on the phone: the background, the icon in the middle, and "الصلاة خير من" with a word that changes. OK or Back skips it. */
+    private void splash(FrameLayout host) {
+        final FrameLayout v = new FrameLayout(this);
+        v.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        v.setBackgroundColor(Theme.edgeColour(this));
+        ImageView bgArt = new ImageView(this);
+        bgArt.setImageResource(Theme.kids(this) ? R.drawable.bg_kids : R.drawable.bg_royal);
+        bgArt.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        v.addView(bgArt, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER);
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.drawable.ic_launcher);
+        col.addView(icon, new LinearLayout.LayoutParams(dp(150), dp(150)));
+        final TextView phrase = new TextView(this);
+        phrase.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+        phrase.setTypeface(Typeface.DEFAULT_BOLD);
+        phrase.setGravity(Gravity.CENTER);
+        phrase.setTextColor(0xFFFFFFFF);
+        phrase.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
+        phrase.setText("الصلاة خير من");
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
+        rp.topMargin = dp(20);
+        col.addView(phrase, rp);
+        final TextView word = new TextView(this);
+        word.setTypeface(Typeface.DEFAULT_BOLD);
+        word.setGravity(Gravity.CENTER);
+        word.setMaxLines(1);
+        word.setTextColor(0x00FFD54A);
+        word.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
+        word.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40);
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(-2, dp(64));
+        wp.topMargin = dp(8);
+        col.addView(word, wp);
+        v.addView(col, new FrameLayout.LayoutParams(-1, -1));
+        host.addView(v, new FrameLayout.LayoutParams(-1, -1));
+        splashView = v;
+        splashHost = host;
+        splashStep = 0;
+        final List<String> pool = new ArrayList<>(java.util.Arrays.asList(SPLASH_WORDS));
+        Collections.shuffle(pool);
+        final List<String> words = pool.subList(0, 3);
+        final Runnable next = new Runnable() {
+            @Override
+            public void run() {
+                if (splashView == null || isFinishing()) return;
+                if (splashStep < words.size()) {
+                    final String w = words.get(splashStep++);
+                    android.animation.ValueAnimator an = android.animation.ValueAnimator.ofInt(0, 255);
+                    an.setDuration(250);
+                    an.addUpdateListener(new android.animation.ValueAnimator.AnimatorUpdateListener() {
+                        @Override
+                        public void onAnimationUpdate(android.animation.ValueAnimator x) {
+                            word.setText(w);
+                            word.setTextColor(((Integer) x.getAnimatedValue() << 24) | 0x00FFD54A);
+                        }
+                    });
+                    an.start();
+                    handler.postDelayed(this, 1500L);
+                } else {
+                    endSplash();
+                }
+            }
+        };
+        handler.postDelayed(next, 200L);
+    }
+
+    private void endSplash() {
+        final View v = splashView;
+        if (v == null) return;
+        splashView = null;
+        v.animate().alpha(0f).setDuration(300).withEndAction(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    splashHost.removeView(v);
+                } catch (RuntimeException ignored) {
+                    // already gone
+                }
+            }
+        }).start();
     }
 
     // ---------------------------------------------------------------- the settings list (left)
@@ -332,6 +427,14 @@ public class MainActivity extends Activity {
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
+        if (splashView != null) {
+            // The opening screen: OK or Back skips it; every key is swallowed so nothing behind it is pressed.
+            if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                int k = e.getKeyCode();
+                if (k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER || k == KeyEvent.KEYCODE_BACK) endSplash();
+            }
+            return true;
+        }
         if (e.getAction() == KeyEvent.ACTION_DOWN && settingsList != null && appRow != null) {
             int k = e.getKeyCode();
             View f = getCurrentFocus();
