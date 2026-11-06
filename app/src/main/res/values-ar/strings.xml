@@ -77,9 +77,10 @@
     <string name="hidden_title">علّم التطبيقات اللي عايز تخفيها</string>
     <string name="hide_ask">إخفاء \"%1$s\" من الشاشة الرئيسية؟ تقدر ترجعه من الإعدادات.</string>
     <string name="hide_yes">إخفاء</string>
-    <string name="about_text">الصلاة خير، لانشر شخصي.\n\nالطقس: Open-Meteo.com (رخصة CC BY 4.0).\nمواقيت الصلاة: مكتبة adhan-java (رخصة MIT).\nالإذاعتان ملك لأصحابهما وغير تابعتين لهذا التطبيق.\nتسجيلات الأذان والإقامة: راجع ملف THIRD_PARTY.md في صفحة المشروع.</string>
+    <string name="about_text">الصلاة خير، تطبيق شخصي.\n\nالطقس: Open-Meteo.com (رخصة CC BY 4.0).\nمواقيت الصلاة: مكتبة adhan-java (رخصة MIT).\nالإذاعتان ملك لأصحابهما وغير تابعتين لهذا التطبيق.\nتسجيلات الأذان والإقامة: راجع ملف THIRD_PARTY.md في صفحة المشروع.</string>
     <string name="menu_device">إعدادات الجهاز</string>
-    <string name="menu_theme">شكل الشاشة الرئيسية</string>
+    <string name="menu_theme">شكل التطبيق</string>
+    <string name="theme_auto">تلقائي (أطفال نهاراً وملكي ليلاً)</string>
     <string name="settings_fallback">هذه الشاشة غير موجودة في الجهاز، فتحت الإعدادات الرئيسية بدلًا منها</string>
     <string name="settings_missing">تعذّر فتح الإعدادات</string>
     <string name="set_network">الشبكة والواي فاي</string>
@@ -199,7 +200,7 @@
     <string name="clean_deleted">تم الحذف</string>
     <string name="clean_delete_failed">تعذر حذف الملف</string>
     <string name="saver_tip">اختر «Google Photos» كشاشة توقف ثم الألبومات التي تريدها</string>
-    <string name="menu_update">تحديث اللانشر</string>
+    <string name="menu_update">تحديث التطبيق</string>
     <string name="upd_current">النسخة الحالية: %1$s. اضغط «فحص الآن» لمعرفة إن كانت هناك نسخة أحدث.</string>
     <string name="upd_check">فحص الآن</string>
     <string name="upd_checking">جارٍ الفحص...</string>
@@ -209,7 +210,7 @@
     <string name="upd_btn_install">تحميل وتثبيت</string>
     <string name="upd_downloading">جارٍ التحميل... %1$d%%</string>
     <string name="upd_installing">جارٍ التجهيز للتثبيت...</string>
-    <string name="upd_unknown_help">لتحديث اللانشر من داخله، اسمح له بتثبيت التطبيقات: افتح الإعداد، فعّل الخيار لـ الصلاة خير، ثم ارجع وجرّب مرة أخرى.</string>
+    <string name="upd_unknown_help">لتحديث التطبيق من داخله، اسمح له بتثبيت التطبيقات: افتح الإعداد، فعّل الخيار لـ الصلاة خير، ثم ارجع وجرّب مرة أخرى.</string>
     <string name="upd_allow">فتح الإعداد</string>
     <string name="upd_install_failed">تعذّر تثبيت التحديث</string>
     <string name="notice_chip">تنبيه %1$d</string>
@@ -219,7 +220,7 @@
     <string name="notice_city">لم تُختر مدينة بعد فلن يعمل الأذان. اضغط للاختيار</string>
     <string name="notice_home">كان اللانشر هو الشاشة الرئيسية وتوقف التفعيل. اضغط لإعادته</string>
     <string name="notice_space">المساحة الفارغة قليلة (%1$s). اضغط للتنظيف</string>
-    <string name="notice_update">نسخة جديدة من اللانشر جاهزة (رقم %1$d). اضغط للتحديث</string>
+    <string name="notice_update">نسخة جديدة من التطبيق جاهزة (رقم %1$d). اضغط للتحديث</string>
     <string name="rem_adhkar_am_title">أذكار الصباح</string>
     <string name="rem_adhkar_pm_title">أذكار المساء</string>
     <string name="rem_adhkar_am_msg">حان وقت أذكار الصباح، لا تنسَ وردك</string>

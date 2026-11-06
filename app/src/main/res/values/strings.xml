@@ -77,7 +77,7 @@
     <string name="hidden_title">Tick the apps to hide</string>
     <string name="hide_ask">Hide \"%1$s\" from the home screen? You can bring it back from Settings.</string>
     <string name="hide_yes">Hide</string>
-    <string name="about_text">Salat Khair, a personal launcher.\n\nWeather: Open-Meteo.com (CC BY 4.0).\nPrayer times: adhan-java (MIT).\nThe two radio stations belong to their owners and are not affiliated with this app.\nAdhan and iqama recordings: see THIRD_PARTY.md in the project page.</string>
+    <string name="about_text">Salat Khair, a personal app.\n\nWeather: Open-Meteo.com (CC BY 4.0).\nPrayer times: adhan-java (MIT).\nThe two radio stations belong to their owners and are not affiliated with this app.\nAdhan and iqama recordings: see THIRD_PARTY.md in the project page.</string>
     <string name="menu_device">Device settings</string>
     <string name="menu_theme">Look of the home screen</string>
     <string name="settings_fallback">This screen is not on this device; opened the main settings instead</string>
@@ -199,7 +199,7 @@
     <string name="clean_deleted">Deleted</string>
     <string name="clean_delete_failed">The file could not be deleted</string>
     <string name="saver_tip">Choose "Google Photos" as the screensaver, then the albums you want</string>
-    <string name="menu_update">Update the launcher</string>
+    <string name="menu_update">Update the app</string>
     <string name="upd_current">Current version: %1$s. Choose \"Check now\" to see if there is a newer one.</string>
     <string name="upd_check">Check now</string>
     <string name="upd_checking">Checking...</string>
@@ -209,7 +209,7 @@
     <string name="upd_btn_install">Download and install</string>
     <string name="upd_downloading">Downloading... %1$d%%</string>
     <string name="upd_installing">Getting ready to install...</string>
-    <string name="upd_unknown_help">To update the launcher from inside itself, allow it to install apps: open the setting, switch it on for Salat Khair, then come back and try again.</string>
+    <string name="upd_unknown_help">To update the app from inside itself, allow it to install apps: open the setting, switch it on for Salat Khair, then come back and try again.</string>
     <string name="upd_allow">Open the setting</string>
     <string name="upd_install_failed">The update could not be installed</string>
     <string name="notice_chip">Notice %1$d</string>
@@ -217,9 +217,10 @@
     <string name="notice_overlay">The adhan and reminder popups will not show over apps. Select to allow it</string>
     <string name="notice_notif">Notifications are off and the adhan may stop in the background. Select to allow</string>
     <string name="notice_city">No city is chosen yet, so the adhan will not work. Select to choose</string>
+    <string name="theme_auto">Automatic (kids by day, royal by night)</string>
     <string name="notice_home">The launcher was the home screen and it has stopped. Select to turn it back on</string>
     <string name="notice_space">Free space is low (%1$s). Select to clean up</string>
-    <string name="notice_update">A new launcher version is ready (number %1$d). Select to update</string>
+    <string name="notice_update">A new app version is ready (number %1$d). Select to update</string>
     <string name="rem_adhkar_am_title">Morning adhkar</string>
     <string name="rem_adhkar_pm_title">Evening adhkar</string>
     <string name="rem_adhkar_am_msg">It is time for the morning adhkar</string>

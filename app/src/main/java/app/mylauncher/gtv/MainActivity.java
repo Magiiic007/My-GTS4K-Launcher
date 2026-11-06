@@ -88,9 +88,15 @@ public class MainActivity extends Activity {
         @Override
         public void run() {
             ambience.update();
+            // Automatic look: when day turns to night (or back) the screen switches by itself.
+            if (Theme.id(MainActivity.this) != lookNow) {
+                recreate();
+                return;
+            }
             handler.postDelayed(this, 60000L);
         }
     };
+    private int lookNow;
     private LinearLayout settingsList;
     private boolean cityTried;
     private ImageView art;
@@ -123,6 +129,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        lookNow = Theme.id(this);
         final boolean kids = Theme.kids(this);
         Geo g = Geo.of(this);
         final FrameLayout root = new FrameLayout(this);
@@ -556,14 +563,14 @@ public class MainActivity extends Activity {
 
     /** The two looks, in a list; picking the other one restarts the screen in it. */
     private void chooseLook() {
-        String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids)};
+        String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids), getString(R.string.theme_auto)};
         new Menu.Builder(this)
             .setTitle(R.string.menu_theme)
-            .setSingleChoiceItems(names, Theme.id(this), new DialogInterface.OnClickListener() {
+            .setSingleChoiceItems(names, Theme.mode(this), new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int which) {
                     d.dismiss();
-                    if (which != Theme.id(MainActivity.this)) {
+                    if (which != Theme.mode(MainActivity.this)) {
                         Theme.set(MainActivity.this, which);
                         // Fade out, switch, and the new look fades in.
                         rootView.animate().alpha(0f).setDuration(220L).withEndAction(new Runnable() {
@@ -658,6 +665,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (Theme.id(this) != lookNow) {
+            recreate();
+            return;
+        }
         loadApps();
         RadioService.resumeIfCutOff(this);
         if (selectedCity() == null && !cityTried) {
