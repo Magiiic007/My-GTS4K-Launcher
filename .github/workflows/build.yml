@@ -107,6 +107,17 @@ jobs:
           grep -o 'android:name="android.permission[^"]*"' "$M"
           if grep -q REQUEST_INSTALL_PACKAGES "$M"; then echo "INSTALL PERMISSION STILL THERE"; exit 1; fi
 
+      # The signed bundle as a release, so it can be downloaded from a phone (the upload key stays secret; the bundle is not).
+      - name: Publish the Play bundle as release "play-bundle"
+        if: steps.play.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp phone/build/outputs/bundle/playRelease/*.aab salat-khair-play.aab
+          gh release delete play-bundle --yes --cleanup-tag || true
+          gh release create play-bundle salat-khair-play.aab --prerelease --target "$GITHUB_SHA" \
+            --title "Play bundle (AAB)" --notes "Signed bundle for Google Play upload. commit=${GITHUB_SHA::7}"
+
       # A test copy of the Play build (its own package name, so it installs next to the real app).
       - name: Build the Play test APK
         id: playtest
