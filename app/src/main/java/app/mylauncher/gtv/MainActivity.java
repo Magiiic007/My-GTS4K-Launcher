@@ -360,7 +360,7 @@ public class MainActivity extends Activity {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setBackground(Theme.tile(this, 16));
         card.setPadding(4, 6, 4, 2);
-        radioName = Stage.text(this, "", 16, Theme.cardText(this), true);
+        radioName = Stage.text(this, "", 16, Theme.tileLabel(this), true);
         radioName.setGravity(Gravity.CENTER);
         radioName.setMaxLines(1);
         Stage.fitOneLine(radioName, 10, 16);
@@ -782,7 +782,7 @@ public class MainActivity extends Activity {
             int st0 = RadioService.state();
             radioName.setText(st0 == RadioService.PLAYING ? "\u25CF " + nm
                 : st0 == RadioService.OFF ? nm : nm + " \u2026");
-            radioName.setAlpha(st0 == RadioService.OFF ? 0.65f : 1f);
+            radioName.setAlpha(st0 == RadioService.OFF ? 0.8f : 1f);
         }
         if (radioBtn == null) return;
         int st = RadioService.state();
