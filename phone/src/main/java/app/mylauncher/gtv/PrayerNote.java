@@ -168,6 +168,10 @@ final class PrayerNote {
             long[] ts = {s.a, s.q, s.s, s.e, s.w};
             for (long x : ts) if (x > now && x < next) next = x;
         }
+        if (p(c).getBoolean("sil_active", false)) {
+            long se = p(c).getLong("sil_end", 0L);
+            if (se > now && se < next) next = se;
+        }
         long we = Wc.endsAt(c);
         if (we > now && we < next) next = we;
         if (missedOn(c)) {
@@ -438,10 +442,11 @@ final class PrayerNote {
         if (nm == null || am == null) return;
         SharedPreferences sp = p(c);
         boolean inside = false;
+        long endAt = 0L;
         for (Slot s : slots) {
             if (now >= s.s && now < s.e) {
                 inside = true;
-                break;
+                endAt = Math.max(endAt, s.e);
             }
         }
         boolean want = silentOn(c) && policyGranted(c) && inside;
@@ -450,8 +455,10 @@ final class PrayerNote {
             if (want && !active) {
                 int f = nm.getCurrentInterruptionFilter();
                 if (f == NotificationManager.INTERRUPTION_FILTER_ALL || f == NotificationManager.INTERRUPTION_FILTER_UNKNOWN) {
-                    sp.edit().putInt("sil_prev_f", f).putBoolean("sil_dnd", true).putBoolean("sil_active", true).apply();
+                    sp.edit().putInt("sil_prev_f", f).putBoolean("sil_dnd", true).putBoolean("sil_active", true)
+                        .putLong("sil_end", endAt).apply();
                     nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY);
+                    dbgSil(c, "on until " + new java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(new java.util.Date(endAt)));
                     tell(c, nm, "الهاتف صامت أثناء الصلاة", "يرجع للوضع العادي بعد الصلاة");
                 }
             } else if (!want && active) {
@@ -459,9 +466,13 @@ final class PrayerNote {
                 sp.edit().putBoolean("sil_active", false).putBoolean("sil_dnd", false).apply();
                 if (dnd) {
                     // Give it back only if nobody changed it meanwhile.
-                    if (nm.getCurrentInterruptionFilter() == NotificationManager.INTERRUPTION_FILTER_PRIORITY) {
+                    int cur = nm.getCurrentInterruptionFilter();
+                    if (cur == NotificationManager.INTERRUPTION_FILTER_PRIORITY) {
                         nm.setInterruptionFilter(sp.getInt("sil_prev_f", NotificationManager.INTERRUPTION_FILTER_ALL));
+                        dbgSil(c, "off ok");
                         tell(c, nm, "رجع الهاتف للوضع العادي", "انتهى وقت الصمت");
+                    } else {
+                        dbgSil(c, "off skipped: filter was " + cur + " (changed by someone else)");
                     }
                 } else if (am.getRingerMode() == AudioManager.RINGER_MODE_SILENT) {
                     am.setRingerMode(sp.getInt("sil_prev", AudioManager.RINGER_MODE_NORMAL)); // set by an older version
@@ -470,6 +481,17 @@ final class PrayerNote {
         } catch (SecurityException ignored) {
             sp.edit().putBoolean("sil_active", false).apply();
         }
+    }
+
+    /** The last few silence events, for the diagnostics page. */
+    private static void dbgSil(Context c, String what) {
+        SharedPreferences sp = p(c);
+        String old = sp.getString("dbg_sil", "");
+        String line = new java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.US).format(new java.util.Date()) + " " + what;
+        String[] parts = old.isEmpty() ? new String[0] : old.split("\n");
+        StringBuilder b = new StringBuilder();
+        for (int i = Math.max(0, parts.length - 5); i < parts.length; i++) b.append(parts[i]).append('\n');
+        sp.edit().putString("dbg_sil", b.append(line).toString()).apply();
     }
 
     /** A short note that removes itself, with a double buzz. */

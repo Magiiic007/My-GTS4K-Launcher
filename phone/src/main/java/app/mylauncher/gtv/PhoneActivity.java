@@ -1960,6 +1960,8 @@ public class PhoneActivity extends Activity {
         row("آخر وصول لمنبّه الأذان", rx == 0 ? "لم يصل أي منبّه بعد" : new SimpleDateFormat("dd/MM HH:mm:ss", Locale.US).format(new Date(rx)), null, null);
         String err = sp.getString("dbg_err", "");
         row("آخر خطأ في تشغيل الأذان", err.isEmpty() ? "لا يوجد" : err, null, null);
+        String sl = sp.getString("dbg_sil", "");
+        if (!sl.isEmpty()) add(tv("سجل الصمت:\n" + sl, 10, dim, false), 8);
         String rl = sp.getString("radio_log", "");
         if (!rl.isEmpty()) {
             TextView t = tv("سجل الراديو:\n" + rl, 10, dim, false);
