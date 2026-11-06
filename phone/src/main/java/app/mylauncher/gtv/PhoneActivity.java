@@ -66,7 +66,7 @@ import java.util.Locale;
  */
 public class PhoneActivity extends Activity {
     private static final String P = "magiic";
-    private static final int REQ_NOTIF = 10, REQ_LOC = 11, REQ_SAVE = 21, REQ_LOAD = 22;
+    private static final int REQ_NOTIF = 10, REQ_LOC = 11, REQ_SAVE = 21, REQ_LOAD = 22, REQ_SND_AD = 31, REQ_SND_IQ = 32;
 
     // ---------------------------------------------------------------- state
     private final Handler h = new Handler(Looper.getMainLooper());
@@ -181,7 +181,7 @@ public class PhoneActivity extends Activity {
         }
         Scheduler.scheduleNext(this);
         Reminders.scheduleNext(this);
-        boolean direct = getIntent() != null && getIntent().getIntExtra("open_cat", 0) != 0;
+        boolean direct = numExtra(getIntent(), "open_cat") != 0 || numExtra(getIntent(), "open_tab") != 0;
         openFromBubble(getIntent());
         build();
         // opened straight to a chapter from the round icon: no opening screen
@@ -284,10 +284,27 @@ public class PhoneActivity extends Activity {
         }).start();
     }
 
-    /** The round adhkar icon over other apps opens the morning or evening chapter directly. */
+    /** An extra that may come as a number or as text (the shortcuts on the app icon give text). */
+    private static int numExtra(Intent in, String key) {
+        try {
+            Object o = in == null || in.getExtras() == null ? null : in.getExtras().get(key);
+            return o == null ? 0 : Integer.parseInt(o.toString().trim());
+        } catch (RuntimeException e) {
+            return 0;
+        }
+    }
+
+    /** The round adhkar icon over other apps opens the morning or evening chapter directly; the app-icon shortcuts open a page. */
     private void openFromBubble(Intent in) {
         if (in == null) return;
-        int cat = in.getIntExtra("open_cat", 0);
+        int page = numExtra(in, "open_tab");
+        if (page != 0) {
+            in.removeExtra("open_tab");
+            tab = page;
+            sub = null;
+            return;
+        }
+        int cat = numExtra(in, "open_cat");
         if (cat == 0) return;
         in.removeExtra("open_cat");
         tab = 5;
@@ -301,7 +318,7 @@ public class PhoneActivity extends Activity {
         super.onNewIntent(in);
         setIntent(in);
         // opened again from a notification, the widget or the adhkar icon: the opening screen shows then too
-        boolean direct = in != null && in.getIntExtra("open_cat", 0) != 0;
+        boolean direct = numExtra(in, "open_cat") != 0 || numExtra(in, "open_tab") != 0;
         if (!direct && sp.getBoolean("splash_on", true)) splash();
         if (direct) {
             openFromBubble(in);
@@ -936,10 +953,15 @@ public class PhoneActivity extends Activity {
         pp.setMarginStart(dp(8));
         pp.setMarginEnd(dp(8));
         top.addView(place, pp);
-        weatherTv = chip(weather.isEmpty() ? "--°" : weather);
-        top.addView(weatherTv);
+        boolean weatherOn = sp.getBoolean("weather_on", true);
+        if (weatherOn) {
+            weatherTv = chip(weather.isEmpty() ? "--°" : weather);
+            top.addView(weatherTv);
+        } else {
+            pp.setMarginEnd(0);
+        }
         addHeader(top);
-        if (weather.isEmpty()) {
+        if (weatherOn && weather.isEmpty()) {
             Weather.fetch(city, new Weather.Callback() {
                 @Override
                 public void onResult(int tempC, int code) {
@@ -1052,7 +1074,8 @@ public class PhoneActivity extends Activity {
             body.addView(r, rp);
         }
 
-        // verse of the day
+        // verse of the day (it can be switched off in the settings)
+        if (sp.getBoolean("verse_on", true)) {
         String[] vt = getResources().getStringArray(R.array.verse_text);
         String[] vr = getResources().getStringArray(R.array.verse_ref);
         if (verseIdx < 0 || verseIdx >= vt.length) verseIdx = new java.util.Random().nextInt(vt.length);
@@ -1068,6 +1091,7 @@ public class PhoneActivity extends Activity {
         vc.addView(v1);
         vc.addView(v2);
         add(vc, 8);
+        }
         body.post(new Runnable() {
             @Override
             public void run() {
@@ -1690,6 +1714,28 @@ public class PhoneActivity extends Activity {
                     sp.edit().putBoolean("splash_on", on).apply();
                 }
             });
+        switchRow("آية اليوم في الشاشة الرئيسية", "بطاقة آية في أسفل صفحة المواقيت", sp.getBoolean("verse_on", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("verse_on", on).apply();
+                }
+            });
+        switchRow("الطقس في الشاشة الرئيسية", "درجة الحرارة بجانب اسم المدينة (يحتاج إنترنت)", sp.getBoolean("weather_on", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("weather_on", on).apply();
+                    weather = "";
+                }
+            });
+        switchRow("اهتزاز خفيف عند العدّ", "عند الضغط على الذكر أو السبحة", sp.getBoolean("tap_buzz", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("tap_buzz", on).apply();
+                }
+            });
         final int forced = sp.getInt("look_force", -1);
         final String[] looks = {"تلقائي (بحسب وضع الهاتف)", "نهاري (أخضر)", "ليلي (كحلي)"};
         row("شكل التطبيق", looks[forced + 1], "›", new View.OnClickListener() {
@@ -1808,11 +1854,60 @@ public class PhoneActivity extends Activity {
         add(tv("الاستعادة تستبدل إعداداتك الحالية بما في الملف. بعد التثبيت على هاتف جديد أو بعد حذف التطبيق: ثبّته، ثم «استعادة من نسخة».", 12, dim, false), 10);
     }
 
+    private static final String[] SOUND_NAMES = {"التسجيل الافتراضي", "نغمة المنبّه في الهاتف", "ملف صوت من هاتفك"};
+
+    private String soundText(boolean iqama) {
+        String k = iqama ? "snd_iq" : "snd_ad";
+        int m = Math.max(0, Math.min(2, sp.getInt(k, 0)));
+        String name = sp.getString(k + "_name", "");
+        return m == 2 && !name.isEmpty() ? "ملف: " + name : SOUND_NAMES[m];
+    }
+
+    /** The sound of the adhan or of the iqama: the recording that comes with the app, the phone's alarm tone, or a file of one's own. */
+    private void pickSound(final boolean iqama) {
+        final String k = iqama ? "snd_iq" : "snd_ad";
+        new Pop(this).title(iqama ? "صوت الإقامة" : "صوت الأذان").single(SOUND_NAMES, Math.max(0, Math.min(2, sp.getInt(k, 0))), new Pop.Pick() {
+            @Override
+            public void on(int which) {
+                if (which == 2) {
+                    Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("audio/*")
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                    try {
+                        startActivityForResult(i, iqama ? REQ_SND_IQ : REQ_SND_AD);
+                    } catch (RuntimeException e) {
+                        toast("تعذّر فتح اختيار الملفات");
+                    }
+                    return;
+                }
+                sp.edit().putInt(k, which).apply();
+                build();
+            }
+        }).show();
+    }
+
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
         if (res != RESULT_OK || data == null || data.getData() == null) return;
         android.net.Uri u = data.getData();
+        if (req == REQ_SND_AD || req == REQ_SND_IQ) {
+            String k = req == REQ_SND_IQ ? "snd_iq" : "snd_ad";
+            try {
+                getContentResolver().takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (RuntimeException ignored) {
+                // some providers do not allow keeping the permission: the file is used while it stays readable
+            }
+            String name = "";
+            try (android.database.Cursor c = getContentResolver().query(u, new String[] {android.provider.OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+                if (c != null && c.moveToFirst()) name = c.getString(0);
+            } catch (RuntimeException ignored) {
+                // the name is only for show
+            }
+            sp.edit().putInt(k, 2).putString(k + "_uri", u.toString()).putString(k + "_name", name == null ? "" : name).apply();
+            toast("تم اختيار الصوت");
+            build();
+            return;
+        }
         try {
             if (req == REQ_SAVE) {
                 java.io.OutputStream o = getContentResolver().openOutputStream(u, "wt");
@@ -2128,6 +2223,18 @@ public class PhoneActivity extends Activity {
                         });
                 }
             });
+        row("صوت الأذان", soundText(false), "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pickSound(false);
+            }
+        });
+        row("صوت الإقامة", soundText(true), "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pickSound(true);
+            }
+        });
         switchRow("رفع صوت الأذان تدريجياً", "يبدأ هادئاً ويعلو خلال 15 ثانية حتى مستوى صوت المنبّه في الهاتف", sp.getBoolean("ad_ramp", false),
             new CompoundListener() {
                 @Override
@@ -2798,6 +2905,7 @@ public class PhoneActivity extends Activity {
 
     /** A short buzz on every count. */
     private void buzz() {
+        if (!sp.getBoolean("tap_buzz", true)) return;
         try {
             Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
             if (v != null && v.hasVibrator()) v.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE));

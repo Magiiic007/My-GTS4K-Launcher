@@ -28,7 +28,9 @@
         android:icon="@drawable/ic_launcher_phone"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:supportsRtl="true"
-        android:allowBackup="false"
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:networkSecurityConfig="@xml/network_security">
 
         <activity
@@ -42,6 +44,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
 
         <service

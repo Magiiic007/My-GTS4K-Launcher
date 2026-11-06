@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ph_app_name">الصلاة خير</string>
+    <string name="sc_qibla">القبلة</string>
+    <string name="sc_qibla_l">اتجاه القبلة</string>
+    <string name="sc_tasbih">السبحة</string>
+    <string name="sc_tasbih_l">السبحة والاستغفار</string>
+    <string name="sc_morning">أذكار الصباح</string>
+    <string name="sc_morning_l">أذكار الصباح</string>
+    <string name="sc_evening">أذكار المساء</string>
+    <string name="sc_evening_l">أذكار المساء</string>
 </resources>
