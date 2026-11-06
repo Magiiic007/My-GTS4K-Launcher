@@ -87,6 +87,13 @@ public class RadioService extends Service {
         reciter("عبد الرحمن السديس", "Abdul Rahman Al-Sudais", "abdulrahman_alsudaes"),
         reciter("ياسر الدوسري", "Yasser Al-Dosari", "yasser_aldosari"),
         reciter("ناصر القطامي", "Nasser Al-Qatami", "nasser_alqatami"),
+        reciter("أحمد العجمي", "Ahmad Al-Ajmi", "ahmad_alajmy"),
+        reciter("محمد الطبلاوي", "Mohammad Al-Tablawi", "mohammad_altablaway"),
+        reciter("محمد جبريل", "Mohammed Jibreel", "mohammed_jibreel"),
+        reciter("محمود علي البنا", "Mahmoud Ali Al-Banna", "mahmoud_ali__albanna"),
+        reciter("مصطفى إسماعيل", "Mustafa Ismail", "mustafa_ismail"),
+        reciter("حاتم فريد الواعر", "Hatem Fareed Al-Waer", "hatem_fareed_alwaer"),
+        reciter("بندر بليلة", "Bandar Balilah", "bandar_balilah"),
     };
 
     /** A reciter's own channel, around the clock (mp3quran.net, through qurango.net). */
