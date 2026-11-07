@@ -625,7 +625,7 @@ public class PhoneActivity extends Activity {
     /** The home page has the picture; the other pages have the same colours with a gold frame line. */
     private void applyBackground() {
         int w = dp(widthDp());
-        if (tab == 0 && !land) {
+        if (tab == 0) {
             if (artBmp == null || artLook != look) {
                 try {
                     artBmp = android.graphics.BitmapFactory.decodeResource(getResources(),
@@ -634,6 +634,16 @@ public class PhoneActivity extends Activity {
                 } catch (RuntimeException | OutOfMemoryError e) {
                     artBmp = null;
                 }
+            }
+            if (artBmp != null && land) {
+                // landscape: the mosque and lanterns in the middle at the top, the header on both sides of them
+                int bh = dp(Math.max(60, Math.min(110, Math.round(heightDp() * 0.24f))));
+                homeTop = Math.max(dp(4), bh - dp(44));
+                homeBottom = 0;
+                rootFrame.setBackground(new ArtBg.Land(artBmp, getResources().getDisplayMetrics().density, bh, gold));
+                header.setPadding(dp(14), dp(6), dp(14), dp(2));
+                body.setPadding(dp(14), homeTop, dp(14), dp(10));
+                return;
             }
             if (artBmp != null) {
                 homeTop = ArtBg.panelTop(artBmp, w);
@@ -1198,6 +1208,14 @@ public class PhoneActivity extends Activity {
         LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(0, -2, 1f);
         pp.setMarginStart(dp(8));
         pp.setMarginEnd(dp(8));
+        if (land) {
+            // the picture sits in the middle of this row: the menu on one side, the place and the weather on the other
+            top.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+            place.setMaxWidth(dp(150));
+            pp = new LinearLayout.LayoutParams(-2, -2);
+            pp.setMarginStart(dp(8));
+            pp.setMarginEnd(dp(8));
+        }
         top.addView(place, pp);
         boolean weatherOn = sp.getBoolean("weather_on", true);
         if (weatherOn) {
