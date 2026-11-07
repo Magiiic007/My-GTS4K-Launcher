@@ -503,6 +503,7 @@ public class PhoneActivity extends Activity {
     private void root() {
         getWindow().setStatusBarColor(bg1);
         getWindow().setNavigationBarColor(bg2);
+        getWindow().setBackgroundDrawable(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2}));
         FrameLayout f = new FrameLayout(this);
         f.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         rootFrame = f;

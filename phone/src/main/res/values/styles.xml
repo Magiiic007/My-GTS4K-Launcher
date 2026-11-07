@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window behind the app is the app's own green from the very first frame (no grey flash while it opens). -->
+    <style name="PhoneTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/ph_window</item>
+    </style>
+</resources>

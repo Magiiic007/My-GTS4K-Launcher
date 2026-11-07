@@ -24,7 +24,7 @@
         android:name=".PhoneApp"
         android:label="@string/ph_app_name"
         android:icon="@drawable/ic_launcher_phone"
-        android:theme="@android:style/Theme.Material.NoActionBar"
+        android:theme="@style/PhoneTheme"
         android:supportsRtl="true"
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
