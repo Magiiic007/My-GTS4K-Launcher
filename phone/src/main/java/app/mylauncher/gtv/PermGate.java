@@ -120,6 +120,16 @@ final class PermGate {
         }
     }
 
+    /** An update over an existing install (not a fresh install): nothing to show when everything is already granted. */
+    private static boolean upgraded(Activity a) {
+        try {
+            android.content.pm.PackageInfo i = a.getPackageManager().getPackageInfo(a.getPackageName(), 0);
+            return i.lastUpdateTime > i.firstInstallTime;
+        } catch (PackageManager.NameNotFoundException | RuntimeException e) {
+            return false;
+        }
+    }
+
     /** First run, a new version, or a few days since the last look: show the list (when something is missing, except on the first run). */
     static void maybeShow(Activity a) {
         if (flow || a.isFinishing()) return;
@@ -130,10 +140,7 @@ final class PermGate {
         boolean first = ver == 0;
         boolean due = first || ver != versionCode(a) || now - last > EVERY_MS;
         if (!due) return;
-        if (!first && missing(a).isEmpty()) {
-            s.edit().putInt("ver", versionCode(a)).putLong("last", now).apply();
-            return;
-        }
+        if ((!first || upgraded(a)) && missing(a).isEmpty()) return;
         s.edit().putInt("ver", versionCode(a)).putLong("last", now).apply();
         show(a);
     }
