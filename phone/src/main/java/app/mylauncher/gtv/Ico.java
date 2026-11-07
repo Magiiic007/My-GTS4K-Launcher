@@ -38,6 +38,13 @@ final class Ico extends Drawable {
 
     private void rr(Canvas c, float l, float t, float r, float b, float rad) { c.drawRoundRect(new RectF(l, t, r, b), rad, rad, p); }
 
+    private void cloud(Canvas c) {
+        c.drawArc(new RectF(3, 10, 11, 18), 90, 180, false, p);
+        c.drawArc(new RectF(7, 5, 16, 14), 180, 180, false, p);
+        c.drawArc(new RectF(13, 10, 21, 18), 270, 180, false, p);
+        line(c, 7, 18, 17, 18);
+    }
+
     @Override
     public void draw(Canvas c) {
         p.setColor(color);
@@ -130,6 +137,15 @@ final class Ico extends Drawable {
             case "link": rr(c, 2.5f, 9, 13, 15, 3); rr(c, 11, 9, 21.5f, 15, 3); break;
             case "wifi": dot(c, 12, 18, 1.3f); c.drawArc(new RectF(7, 13, 17, 23), 225, 90, false, p); c.drawArc(new RectF(3, 9, 21, 27), 225, 90, false, p); c.drawArc(new RectF(-1, 5, 25, 31), 228, 84, false, p); break;
             case "keyboard": rr(c, 2, 7, 22, 17, 2.5f); for (int i = 0; i < 4; i++) dot(c, 6 + i * 4, 10.5f, .9f); line(c, 7, 14, 17, 14); break;
+            case "sunrise": line(c, 3, 18, 21, 18); c.drawArc(new RectF(7, 11, 17, 21), 180, 180, false, p); line(c, 12, 4, 12, 7); line(c, 5, 10, 7, 12); line(c, 19, 10, 17, 12); break;
+            case "cloud": cloud(c); break;
+            case "shield": { Path q = new Path(); q.moveTo(12, 3); q.lineTo(19, 6); q.lineTo(19, 12); q.cubicTo(19, 16, 16, 19, 12, 21); q.cubicTo(8, 19, 5, 16, 5, 12); q.lineTo(5, 6); q.close(); c.drawPath(q, p); break; }
+            case "swords": line(c, 5, 5, 19, 19); line(c, 19, 5, 5, 19); line(c, 3.5f, 8.5f, 8.5f, 3.5f); line(c, 20.5f, 8.5f, 15.5f, 3.5f); break;
+            case "hands": c.drawArc(new RectF(4, 8, 20, 22), 0, 180, false, p); line(c, 4, 15, 5, 8); line(c, 20, 15, 19, 8); dot(c, 12, 7, 1.3f); break;
+            case "plane": poly(c, 3, 12, 21, 5, 15, 21, 12, 14, 3, 12); line(c, 12, 14, 21, 5); break;
+            case "people": c.drawCircle(7.5f, 7.5f, 2.4f, p); c.drawCircle(16.5f, 7.5f, 2.4f, p); c.drawArc(new RectF(3, 12, 12, 21), 180, 180, false, p); c.drawArc(new RectF(12, 12, 21, 21), 180, 180, false, p); c.drawCircle(12, 14, 1.7f, p); break;
+            case "handshake": poly(c, 3, 12, 8, 8, 12, 10, 16, 8, 21, 12); poly(c, 3, 12, 8, 17, 12, 19, 16, 17, 21, 12); break;
+            case "rain": c.save(); c.translate(0, -4); cloud(c); c.restore(); line(c, 8, 17, 7, 21); line(c, 12, 17, 11, 21); line(c, 16, 17, 15, 21); break;
             default: c.drawCircle(12, 12, 4, p);
         }
         c.restore();

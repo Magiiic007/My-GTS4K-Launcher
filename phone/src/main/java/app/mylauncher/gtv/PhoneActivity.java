@@ -1046,6 +1046,20 @@ public class PhoneActivity extends Activity {
         ICONS.put("وجدت على الشبكة", "wifi");
         ICONS.put("أو اكتب العنوان بنفسك", "keyboard");
         ICONS.put("في هذا الشهر", "calendar");
+        ICONS.put("أذكار اليوم والليلة", "sunrise");
+        ICONS.put("الصلاة والمسجد", "mosque");
+        ICONS.put("الطهارة والمنزل واللباس", "drop");
+        ICONS.put("الطعام والصيام", "plate");
+        ICONS.put("الهموم والكروب والحاجات", "cloud");
+        ICONS.put("التحصين والتوبة والوساوس", "shield");
+        ICONS.put("الخوف والأعداء والسلطان", "swords");
+        ICONS.put("المرض والموت والجنائز", "hands");
+        ICONS.put("السفر والحج والعمرة", "plane");
+        ICONS.put("الزواج والمولود والأسرة", "people");
+        ICONS.put("السلام والمجلس وآداب المعاملة", "handshake");
+        ICONS.put("الطقس والمطر والهلال", "rain");
+        ICONS.put("التسبيح والاستغفار وجوامع الخير", "beads");
+        ICONS.put("أبواب أخرى", "book");
     }
 
     /** A text view whose title has its own drawn icon before it (looks the same on every phone). */
@@ -1343,7 +1357,9 @@ public class PhoneActivity extends Activity {
         } else {
             top.addView(hamburger(), new LinearLayout.LayoutParams(dp(38), dp(38)));
         }
-        TextView place = chip("📍 " + city.name(true));
+        TextView place = chip(city.name(true));
+        place.setCompoundDrawablesRelative(new Ico("pin", cream, dp(15)), null, null, null);
+        place.setCompoundDrawablePadding(dp(6));
         place.setSingleLine(true);
         place.setEllipsize(android.text.TextUtils.TruncateAt.END);
         place.setGravity(Gravity.CENTER);
@@ -3156,7 +3172,7 @@ public class PhoneActivity extends Activity {
                 int n = 0;
                 for (Adhkar.Category c : all) if (Adhkar.groupOf(this, c.id) == g) n++;
                 if (n == 0) continue;
-                acc("ak:" + g, Adhkar.GROUP_ICONS[g] + "  " + Adhkar.GROUPS[g], bobs(n));
+                acc("ak:" + g, Adhkar.GROUPS[g], bobs(n));
                 for (Adhkar.Category c : all) {
                     if (Adhkar.groupOf(this, c.id) == g) chapterRow(c, false);
                 }
