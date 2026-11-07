@@ -568,6 +568,13 @@ final class TvSetup {
      * Brings the voice assistant back to a normal state: our old remote-keys service is taken out of the accessibility list,
      * Google's own app is enabled, the microphone allowed and its data cleared. The result is listed for the person to see.
      */
+    /** Opens the "app info" page of a package on the TV, where its Enable button is (the shell itself may not enable it). */
+    static void openAppInfo(Context c, Say say, String pkg) throws Exception {
+        String r = sh(c, "am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:" + pkg + " 2>&1", 60).trim();
+        say.say("فتح صفحة التطبيق على التلفزيون:\n" + r);
+        say.say("تابع شاشة التلفزيون: اضغط «تفعيل» (Enable) بالريموت، ثم أعد تشغيل التلفزيون.");
+    }
+
     static void fixAssistant(Context c, Say say) throws Exception {
         String g = "com.google.android.katniss";
         String pk = sh(c, "pm list packages");

@@ -3544,6 +3544,22 @@ public class PhoneActivity extends Activity {
                 });
             }
         });
+        row("فتح صفحة تفعيل خدمة التوصيات على التلفزيون", "تفتح لك على شاشة التلفزيون صفحة التطبيق وفيها زر «تفعيل»", "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tvRun("فتح الصفحة على التلفزيون…", new TvTask() {
+                    @Override
+                    public void run() throws Exception {
+                        TvSetup.openAppInfo(PhoneActivity.this, new TvSetup.Say() {
+                            @Override
+                            public void say(String s) {
+                                tvSay(s);
+                            }
+                        }, "com.google.android.tvrecommendations");
+                    }
+                });
+            }
+        });
         row("رجوع إلى الشاشة الأصلية للتلفزيون", "يعيد لانشر Google TV كما كان", "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
