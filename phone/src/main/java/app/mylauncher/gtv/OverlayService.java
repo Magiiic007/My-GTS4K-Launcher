@@ -195,7 +195,7 @@ public class OverlayService extends Service {
         lp.gravity = Gravity.TOP | Gravity.RIGHT;
         lp.x = dp(12);
         lp.y = dp(44);
-        lp.width = Math.round(getResources().getDisplayMetrics().widthPixels * 0.72f);
+        lp.width = Math.min(Math.round(getResources().getDisplayMetrics().widthPixels * 0.72f), Math.round(420 * getResources().getDisplayMetrics().density));
         wm.addView(c, lp);
         Fx.cardIn(c);
         card = c;

@@ -151,12 +151,36 @@ public class PhoneActivity extends Activity {
     public void onConfigurationChanged(Configuration cfg) {
         super.onConfigurationChanged(cfg);
         int l = lookNow();
-        if (l != look) {
+        boolean ls = isLand();
+        if (l != look || ls != land) {
             look = l;
+            land = ls;
+            homeAdj = 1f;
             palette();
             root();
             build();
         }
+    }
+
+    // ---- landscape: the same pages, laid out for a wide screen (phones and tablets turned sideways, or tablets upright)
+    private boolean land;
+
+    private boolean isLand() {
+        return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+    }
+
+    private int widthDp() {
+        return Math.round(getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density);
+    }
+
+    private int heightDp() {
+        return Math.round(getResources().getDisplayMetrics().heightPixels / getResources().getDisplayMetrics().density);
+    }
+
+    /** Side space that keeps the page at a readable width on wide screens (0 on a normal portrait phone). */
+    private int sideExtra(int maxDp) {
+        int w = getResources().getDisplayMetrics().widthPixels;
+        return Math.max(0, (w - dp(maxDp)) / 2);
     }
 
     @Override
@@ -164,6 +188,7 @@ public class PhoneActivity extends Activity {
         super.onCreate(b);
         sp = getSharedPreferences(P, MODE_PRIVATE);
         look = lookNow();
+        land = isLand();
         palette();
         root();
         // The permissions list (PermGate) asks for everything on the first run; the city is then found by address until the location is allowed.
@@ -467,7 +492,7 @@ public class PhoneActivity extends Activity {
     /** The home page has the picture; the other pages have the same colours with a gold frame line. */
     private void applyBackground() {
         int w = getResources().getDisplayMetrics().widthPixels;
-        if (tab == 0) {
+        if (tab == 0 && !land) {
             if (artBmp == null || artLook != look) {
                 try {
                     artBmp = android.graphics.BitmapFactory.decodeResource(getResources(),
@@ -481,8 +506,9 @@ public class PhoneActivity extends Activity {
                 homeTop = ArtBg.panelTop(artBmp, w);
                 homeBottom = Math.round(ArtBg.cornerHeight(artBmp, w) * 0.7f);
                 rootFrame.setBackground(new ArtBg(artBmp));
-                header.setPadding(dp(26), homeTop, dp(26), dp(2));
-                body.setPadding(dp(26), dp(8), dp(26), homeBottom);
+                int ex = sideExtra(560);
+                header.setPadding(dp(26) + ex, homeTop, dp(26) + ex, dp(2));
+                body.setPadding(dp(26) + ex, dp(8), dp(26) + ex, homeBottom);
                 return;
             }
         }
@@ -492,8 +518,11 @@ public class PhoneActivity extends Activity {
         Deco.Stars stars = new Deco.Stars((cream & 0x00FFFFFF) | 0x1A000000, dp(56));
         ArtBg.Border border = new ArtBg.Border((gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars, border}));
-        header.setPadding(dp(18), dp(14), dp(18), dp(2));
-        body.setPadding(dp(18), dp(10), dp(18), dp(20));
+        // landscape home uses the full width (two columns); the other pages keep a readable column in the middle
+        int ex = land ? (tab == 0 ? dp(10) : sideExtra(660)) : sideExtra(560);
+        int top = land ? dp(6) : dp(14);
+        header.setPadding(dp(18) + ex, top, dp(18) + ex, dp(2));
+        body.setPadding(dp(18) + ex, land ? dp(6) : dp(10), dp(18) + ex, land ? dp(10) : dp(20));
     }
 
     private void addHeader(View v) {
@@ -542,7 +571,8 @@ public class PhoneActivity extends Activity {
         drawerList.setPadding(dp(12), dp(30), dp(12), dp(16));
         drawerPanel.addView(drawerList, new ViewGroup.LayoutParams(-1, -2));
         // about half of the screen: 48% of its width, but never narrower than the longest menu name needs
-        drawerW = Math.max(dp(190), Math.round(getResources().getDisplayMetrics().widthPixels * 0.48f));
+        drawerW = Math.max(dp(190), Math.round(getResources().getDisplayMetrics().widthPixels * (land ? 0.34f : 0.48f)));
+        if (widthDp() >= 600) drawerW = Math.min(drawerW, dp(340));
         drawerLayer.addView(drawerPanel, new FrameLayout.LayoutParams(drawerW, -1, Gravity.START));
         f.addView(drawerLayer, new FrameLayout.LayoutParams(-1, -1));
         setContentView(f);
@@ -1062,7 +1092,25 @@ public class PhoneActivity extends Activity {
         iq.addView(iqLabel);
         iq.addView(iqValue);
         hero.addView(iq, lp(-2, -2, 6)); // wraps its text: a fixed height cut the letters when the page was squeezed
-        add(hero, 8);
+        LinearLayout rowsBox = null;
+        if (land) {
+            // two columns: the card with the clock and the next prayer, and the six times beside it
+            LinearLayout cols = hbox();
+            cols.setBaselineAligned(false);
+            LinearLayout left = vbox();
+            left.setGravity(Gravity.CENTER_VERTICAL);
+            left.addView(hero, new LinearLayout.LayoutParams(-1, -2));
+            rowsBox = vbox();
+            LinearLayout.LayoutParams lpL = new LinearLayout.LayoutParams(0, -1, 1f);
+            LinearLayout.LayoutParams lpR = new LinearLayout.LayoutParams(0, -1, 1.15f);
+            lpR.setMarginEnd(dp(10));
+            cols.addView(left, lpL);
+            cols.addView(rowsBox, lpR);
+            body.addView(cols, new LinearLayout.LayoutParams(-1, 0, 1f));
+            landLeft = left;
+        } else {
+            add(hero, 8);
+        }
 
         // the six times: they share whatever height is left, so the page fills the screen
         long[] t = PrayerCalc.day(city, now, 0, adj);
@@ -1106,10 +1154,10 @@ public class PhoneActivity extends Activity {
                 r.addView(ck, kp);
             }
             if (at < now && !next) r.setAlpha(0.6f);
-            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2, 1f);
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, land ? 0 : -2, 1f);
             rp.topMargin = dp(5);
             r.setGravity(Gravity.CENTER_VERTICAL);
-            body.addView(r, rp);
+            (rowsBox != null ? rowsBox : body).addView(r, rp);
         }
 
         // verse of the day (it can be switched off in the settings)
@@ -1128,7 +1176,12 @@ public class PhoneActivity extends Activity {
         v2.setGravity(Gravity.CENTER);
         vc.addView(v1);
         vc.addView(v2);
-        add(vc, 8);
+        if (land) {
+            // the verse sits under the clock card, only when the screen is tall enough for it
+            if (heightDp() >= 480 && landLeft != null) landLeft.addView(vc, lp(-1, -2, 8));
+        } else {
+            add(vc, 8);
+        }
         }
         body.post(new Runnable() {
             @Override
@@ -1150,12 +1203,14 @@ public class PhoneActivity extends Activity {
     private float fit() {
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         float availDp = (dm.heightPixels - homeTop - homeBottom) / dm.density - 50f;
+        if (land) return Math.max(0.45f, Math.min(1f, availDp / 330f) * homeAdj);
         return Math.max(0.45f, Math.min(1f, availDp / 780f) * homeAdj);
     }
 
     // The first estimate in fit() can be off on some screens: after the page is laid out, it is measured, and if it is
     // taller than the screen the text and spacing shrink a little and the page is drawn again (a few times at most).
     private float homeAdj = 1f;
+    private LinearLayout landLeft;
     private int homeTries;
     private boolean homeRetry;
 
