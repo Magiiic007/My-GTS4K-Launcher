@@ -3136,13 +3136,46 @@ public class PhoneActivity extends Activity {
                 goTab(t);
             }
         });
-        drawerList.addView(it, lp(-1, -2, 2));
+        (curBox != null ? curBox : drawerList).addView(it, lp(-1, -2, 2));
     }
 
-    private void menuGroup(String name) {
-        TextView g = tv(name, 12, gold, true);
-        g.setPadding(dp(8), 0, 0, 0);
-        drawerList.addView(g, lp(-1, -2, 14));
+    private LinearLayout curBox;
+    private final java.util.ArrayList<LinearLayout> groupBoxes = new java.util.ArrayList<>();
+    private final java.util.ArrayList<TextView> groupArrows = new java.util.ArrayList<>();
+
+    /** A collapsible group in the side menu: opening one closes the others. */
+    private void menuGroup(String name, int[] tabs) {
+        boolean has = false;
+        for (int t : tabs) if (t == tab) has = true;
+        final LinearLayout box = vbox();
+        box.setVisibility(has ? View.VISIBLE : View.GONE);
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(8), dp(10), dp(8), dp(10));
+        TextView g = tv(name, 14, gold, true);
+        final TextView arrow = tv(has ? "▴" : "▾", 13, gold, false);
+        row.addView(g, new LinearLayout.LayoutParams(0, -2, 1));
+        row.addView(arrow, new LinearLayout.LayoutParams(-2, -2));
+        groupBoxes.add(box);
+        groupArrows.add(arrow);
+        row.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean show = box.getVisibility() != View.VISIBLE;
+                for (int i = 0; i < groupBoxes.size(); i++) {
+                    groupBoxes.get(i).setVisibility(View.GONE);
+                    groupArrows.get(i).setText("▾");
+                }
+                if (show) {
+                    box.setVisibility(View.VISIBLE);
+                    arrow.setText("▴");
+                }
+            }
+        });
+        drawerList.addView(row, lp(-1, -2, 8));
+        drawerList.addView(box, lp(-1, -2, 0));
+        curBox = box;
     }
 
     private void openDrawer() {
@@ -3152,21 +3185,23 @@ public class PhoneActivity extends Activity {
         head.addView(tv("الصلاة خير", 24, gold, true));
         head.addView(tv("أوقات الصلاة والأذكار", 12, dim, false));
         drawerList.addView(head, lp(-1, -2, 0));
-        menuGroup("الصلاة");
+        groupBoxes.clear();
+        groupArrows.clear();
+        menuGroup("الصلاة", new int[] {0, 4, 11, 13, 10});
         menuItem("مواقيت الصلاة", 0);
         menuItem("الأذان والإقامة", 4);
         menuItem("متابعة وقضاء الصلوات", 11);
         menuItem("مدن أخرى", 13);
         menuItem("التقويم الهجري", 10);
-        menuGroup("الأذكار والتذكيرات");
+        menuGroup("الأذكار والتذكيرات", new int[] {5, 6, 8, 2});
         menuItem("الأذكار والأدعية", 5);
         menuItem("السبحة والاستغفار", 6);
         menuItem("الأذكار فوق التطبيقات", 8);
         menuItem("التذكيرات", 2);
-        menuGroup("القبلة والمزيد");
+        menuGroup("القبلة والمزيد", new int[] {9, 1});
         menuItem("القبلة", 9);
         menuItem("الراديو", 1);
-        menuGroup("");
+        curBox = null;
         menuItem("الإعدادات", 3);
         drawerOpen = true;
         drawerLayer.setVisibility(View.VISIBLE);
