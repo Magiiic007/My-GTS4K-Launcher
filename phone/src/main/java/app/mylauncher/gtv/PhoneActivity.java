@@ -207,9 +207,9 @@ public class PhoneActivity extends Activity {
         int overlap = Math.round(dp(Math.round(landBandDp())) * 0.82f);
         panel.addView(new View(this), new LinearLayout.LayoutParams(-1, overlap));
         LinearLayout rest = vbox();
-        rest.setGravity(Gravity.CENTER);
-        rest.setPadding(dp(10), 0, dp(10), dp(12));
-        rest.addView(landHero, new LinearLayout.LayoutParams(-1, -2));
+        rest.setPadding(dp(12), 0, dp(12), dp(14));
+        // the card fills all the room under the picture
+        rest.addView(landHero, new LinearLayout.LayoutParams(-1, -1));
         panel.addView(rest, new LinearLayout.LayoutParams(-1, 0, 1f));
         cols.addView(panel, new LinearLayout.LayoutParams(0, -1, 1f));
         LinearLayout left = vbox();
@@ -1397,11 +1397,17 @@ public class PhoneActivity extends Activity {
             hero.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {shape(card, line, 22), frame}));
             hero.setPadding(dp(10), dp(Math.round(10 * f)), dp(10), dp(Math.round(10 * f)));
             hA = vbox();
-            hA.setGravity(Gravity.CENTER_HORIZONTAL);
+            hA.setGravity(Gravity.CENTER);
             hB = vbox();
-            hB.setGravity(Gravity.CENTER_HORIZONTAL);
-            hero.addView(hA, new LinearLayout.LayoutParams(0, -2, 1f));
-            hero.addView(hB, new LinearLayout.LayoutParams(0, -2, 1f));
+            hB.setGravity(Gravity.CENTER);
+            hero.addView(hA, new LinearLayout.LayoutParams(0, -1, 1f));
+            // a thin gold line between the two halves of the card
+            View div = new View(this);
+            div.setBackgroundColor((gold & 0x00FFFFFF) | 0x55000000);
+            LinearLayout.LayoutParams dvp = new LinearLayout.LayoutParams(dp(1), -1);
+            dvp.setMargins(dp(4), dp(14), dp(4), dp(14));
+            hero.addView(div, dvp);
+            hero.addView(hB, new LinearLayout.LayoutParams(0, -1, 1f));
         }
         // clock and dates
         LinearLayout clock = hbox();
@@ -1560,7 +1566,7 @@ public class PhoneActivity extends Activity {
         float availDp = heightDp() - (homeTop + homeBottom) / dm.density - 50f;
         if (land) {
             float remaining = heightDp() - 16f - landBandDp() * 0.82f - 24f;
-            return Math.max(0.5f, Math.min(1f, (remaining - 112f) / 120f));
+            return Math.max(0.5f, Math.min(1f, (remaining - 110f) / 75f));
         }
         return Math.max(0.45f, Math.min(1f, availDp / 780f) * homeAdj);
     }
