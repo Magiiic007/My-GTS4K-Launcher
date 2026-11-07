@@ -152,6 +152,10 @@ public class PhoneActivity extends Activity {
         super.onConfigurationChanged(cfg);
         int l = lookNow();
         boolean ls = cfg.orientation == Configuration.ORIENTATION_LANDSCAPE;
+        if (cfg.screenWidthDp > 0 && cfg.screenHeightDp > 0) {
+            cfgW = cfg.screenWidthDp;
+            cfgH = cfg.screenHeightDp;
+        }
         if (l != look || ls != land) {
             look = l;
             land = ls;
@@ -164,6 +168,7 @@ public class PhoneActivity extends Activity {
 
     // ---- landscape: the same pages, laid out for a wide screen (phones and tablets turned sideways, or tablets upright)
     private boolean land;
+    private int cfgW, cfgH; // the size of the screen in dp, taken from the newest configuration (the resources can lag behind a rotation)
 
     // ---- landscape pages: the screen is split in two halves. The main thing of the page (the dial, the counter, the player,
     // the month) is on one side and the rest on the other; each side scrolls by itself.
@@ -409,11 +414,13 @@ public class PhoneActivity extends Activity {
     }
 
     private int widthDp() {
+        if (cfgW > 0) return cfgW;
         int w = getResources().getConfiguration().screenWidthDp;
         return w > 0 ? w : Math.round(getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density);
     }
 
     private int heightDp() {
+        if (cfgH > 0) return cfgH;
         int h = getResources().getConfiguration().screenHeightDp;
         return h > 0 ? h : Math.round(getResources().getDisplayMetrics().heightPixels / getResources().getDisplayMetrics().density);
     }
@@ -796,13 +803,19 @@ public class PhoneActivity extends Activity {
             public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
                 final int w = r - l, hh = b - t;
                 if (w <= 0 || hh <= 0 || v != rootFrame) return;
-                if ((w > hh) != land) {
+                float dn = getResources().getDisplayMetrics().density;
+                boolean sizeOff = Math.abs(w / dn - widthDp()) > 80f;
+                if ((w > hh) != land || sizeOff) {
                     v.post(new Runnable() {
                         @Override
                         public void run() {
                             if (rootFrame == null || rootFrame.getWidth() <= 0) return;
                             boolean nl = rootFrame.getWidth() > rootFrame.getHeight();
-                            if (nl == land) return;
+                            float dn2 = getResources().getDisplayMetrics().density;
+                            boolean off = Math.abs(rootFrame.getWidth() / dn2 - widthDp()) > 80f;
+                            if (nl == land && !off) return;
+                            cfgW = Math.round(rootFrame.getWidth() / dn2);
+                            cfgH = Math.round(rootFrame.getHeight() / dn2);
                             land = nl;
                             homeAdj = 1f;
                             palette();
