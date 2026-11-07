@@ -41,6 +41,8 @@ final class Menu {
     static final class Box extends Dialog {
         TextView message;
         View firstFocus;
+        View panelView;
+        android.view.ViewGroup bodyView;
         /** The menu this one was opened from: Back (or Close) comes back to it, on the row that opened this one. */
         Box parent;
         static Box lastShown;
@@ -74,6 +76,17 @@ final class Menu {
                 w.setDimAmount(0.65f);
             }
             if (firstFocus != null) firstFocus.requestFocus();
+            final View pv = panelView;
+            final android.view.ViewGroup bv = bodyView;
+            if (pv != null) {
+                pv.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Motion.panelIn(pv);
+                        if (bv != null) Motion.rowsIn(bv);
+                    }
+                });
+            }
         }
 
         void setMessage(CharSequence text) {
@@ -272,6 +285,7 @@ final class Menu {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             plp.topMargin = plateH / 2;
             root.addView(panel, plp);
+            d.panelView = panel;
 
             if (title != null) {
                 TextView plate = new TextView(c);
@@ -297,6 +311,7 @@ final class Menu {
             body.setPadding(Math.round(3 * k), Math.round(3 * k), Math.round(3 * k), Math.round(3 * k));
             MaxScroll scroll = new MaxScroll(c, Math.round(dm.heightPixels * 0.62f));
             scroll.setClipToPadding(false);
+            d.bodyView = body;
             scroll.addView(body, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             panel.addView(scroll, new LinearLayout.LayoutParams(

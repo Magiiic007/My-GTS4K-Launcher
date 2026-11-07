@@ -252,6 +252,8 @@ public class MainActivity extends Activity {
         empty.setVisibility(View.GONE);
         Stage.add(stage, empty, g.bar[0], g.bar[1], g.bar[2], g.bar[3]);
         addRadioBg(stage);
+        stageView = stage;
+        new FocusRing(this, stage, root);
 
         setContentView(root);
         if (state == null) splash(root);
@@ -259,6 +261,7 @@ public class MainActivity extends Activity {
 
     // ---------------------------------------------------------------- the opening screen
     private static final String[] SPLASH_WORDS = {"النوم", "الغفلة", "اللهو", "اللعب", "اللغو", "الكسل", "التأجيل", "المال", "التجارة", "العمل", "الدنيا وما فيها", "الراحة", "السهر"};
+    private FrameLayout stageView;
     private View splashView;
     private FrameLayout splashHost;
     private int splashStep;
@@ -307,6 +310,10 @@ public class MainActivity extends Activity {
         col.addView(word, wp);
         v.addView(col, new FrameLayout.LayoutParams(-1, -1));
         host.addView(v, new FrameLayout.LayoutParams(-1, -1));
+        icon.setScaleX(0.88f);
+        icon.setScaleY(0.88f);
+        icon.setAlpha(0f);
+        icon.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(700L).setInterpolator(Motion.SMOOTH).start();
         splashView = v;
         splashHost = host;
         splashStep = 0;
@@ -342,7 +349,8 @@ public class MainActivity extends Activity {
         final View v = splashView;
         if (v == null) return;
         splashView = null;
-        v.animate().alpha(0f).setDuration(300).withEndAction(new Runnable() {
+        if (stageView != null) Motion.stageIn(stageView, sparkle, null);
+        v.animate().alpha(0f).scaleX(1.05f).scaleY(1.05f).setDuration(500).setInterpolator(Motion.SMOOTH).withEndAction(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -504,8 +512,7 @@ public class MainActivity extends Activity {
             b.setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View v, boolean has) {
-                    v.setForeground(has ? ring : null);
-                    Motion.pop(v, has, 1.05f);
+                        Motion.pop(v, has, 1.05f);
                 }
             });
             b.setOnClickListener(new View.OnClickListener() {
@@ -614,7 +621,6 @@ public class MainActivity extends Activity {
         row.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean has) {
-                v.setForeground(has ? ring : null);
                 Motion.pop(v, has, 1.03f);
             }
         });
@@ -646,7 +652,6 @@ public class MainActivity extends Activity {
         b.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean has) {
-                v.setForeground(has ? ring : null);
                 Motion.pop(v, has, 1.06f);
             }
         });
@@ -1201,8 +1206,7 @@ public class MainActivity extends Activity {
         tile.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean has) {
-                v.setForeground(has ? ring : null);
-                v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(120).start();
+                Motion.pop(v, has, 1.05f);
             }
         });
         tile.setOnClickListener(new View.OnClickListener() {
@@ -1287,8 +1291,7 @@ public class MainActivity extends Activity {
         tile.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean has) {
-                v.setForeground(has ? ring : null);
-                v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(120).start();
+                Motion.pop(v, has, 1.05f);
             }
         });
         tile.setOnClickListener(new View.OnClickListener() {

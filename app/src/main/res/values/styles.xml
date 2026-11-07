@@ -33,6 +33,10 @@
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsFloating">true</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowAnimationStyle">@style/MagiicMenuAnim</item>
+    </style>
+    <style name="MagiicMenuAnim" parent="@android:style/Animation">
+        <item name="android:windowEnterAnimation">@anim/menu_in</item>
+        <item name="android:windowExitAnimation">@anim/menu_out</item>
     </style>
 </resources>
