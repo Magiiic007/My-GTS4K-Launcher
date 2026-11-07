@@ -223,5 +223,5 @@ app/src/main/res/         layouts, drawables, strings (ar / en), raw audio
 
 ## Licence
 
-Copyright (c) 2026 Mahmoud. All rights reserved. See [LICENSE](LICENSE) for what is allowed, and
+Copyright (c) 2026 Mahmoud Arafa. All rights reserved. See [LICENSE](LICENSE) for what is allowed, and
 [THIRD_PARTY.md](THIRD_PARTY.md) for the third-party material and its licences.
