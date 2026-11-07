@@ -259,4 +259,19 @@
     <string name="radio_boot_off">Play the radio when the device starts: OFF</string>
     <string name="radio_boot_now_on">The radio will play when the device starts</string>
     <string name="radio_boot_now_off">The radio will not play when the device starts</string>
+    <string name="pg_title">Permissions the app needs</string>
+    <string name="pg_title_ok">All permissions are set</string>
+    <string name="pg_grant">Grant missing</string>
+    <string name="pg_later">Later</string>
+    <string name="pg_ok">OK</string>
+    <string name="pg_done">All permissions granted</string>
+    <string name="pg_left">Some permissions are still missing. You can set them later from the home screen notices</string>
+    <string name="pg_notif">Notifications</string>
+    <string name="pg_notif_why">For the adhan and reminders</string>
+    <string name="pg_exact">Exact alarms</string>
+    <string name="pg_exact_why">So the adhan rings exactly on time</string>
+    <string name="pg_overlay">Display over other apps</string>
+    <string name="pg_overlay_why">So the adhan and reminders show over any app</string>
+    <string name="pg_install">Install updates</string>
+    <string name="pg_install_why">To update the app from inside</string>
 </resources>

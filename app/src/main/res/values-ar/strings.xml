@@ -259,4 +259,19 @@
     <string name="radio_boot_off">تشغيل الراديو مع تشغيل الجهاز: مقفول</string>
     <string name="radio_boot_now_on">سيعمل الراديو عند تشغيل الجهاز</string>
     <string name="radio_boot_now_off">لن يعمل الراديو عند تشغيل الجهاز</string>
+    <string name="pg_title">الصلاحيات التي يحتاجها التطبيق</string>
+    <string name="pg_title_ok">كل الصلاحيات تمام</string>
+    <string name="pg_grant">منح الناقص</string>
+    <string name="pg_later">لاحقًا</string>
+    <string name="pg_ok">تمام</string>
+    <string name="pg_done">تمت الصلاحيات كلها</string>
+    <string name="pg_left">بقيت صلاحيات لم تُمنح. يمكنك ضبطها لاحقًا من تنبيهات الشاشة الرئيسية</string>
+    <string name="pg_notif">الإشعارات</string>
+    <string name="pg_notif_why">لتنبيه الأذان والتذكيرات</string>
+    <string name="pg_exact">المنبّه الدقيق</string>
+    <string name="pg_exact_why">ليأتي الأذان في وقته بالضبط</string>
+    <string name="pg_overlay">العرض فوق التطبيقات</string>
+    <string name="pg_overlay_why">لتظهر نافذة الأذان والتذكيرات فوق أي تطبيق</string>
+    <string name="pg_install">تثبيت التحديثات</string>
+    <string name="pg_install_why">لتحديث التطبيق من داخله</string>
 </resources>

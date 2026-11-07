@@ -71,6 +71,18 @@ public class PhoneActivity extends Activity {
 
     // ---------------------------------------------------------------- state
     private final Handler h = new Handler(Looper.getMainLooper());
+    private final Runnable gateRun = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing()) return;
+            if (splashView != null) {
+                h.postDelayed(this, 500);
+                return;
+            }
+            PermGate.resume(PhoneActivity.this);
+            PermGate.maybeShow(PhoneActivity.this);
+        }
+    };
     private SharedPreferences sp;
     private int tab;
     private String sub;
@@ -154,23 +166,10 @@ public class PhoneActivity extends Activity {
         look = lookNow();
         palette();
         root();
-        // Everything is asked for at once on the first run: two separate requests cancel each other.
+        // The permissions list (PermGate) asks for everything on the first run; the city is then found by address until the location is allowed.
         if (!sp.getBoolean("ph_first", false)) {
-            ArrayList<String> need = new ArrayList<>();
-            if (Build.VERSION.SDK_INT >= 33
-                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                need.add(Manifest.permission.POST_NOTIFICATIONS);
-            }
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                need.add(Manifest.permission.ACCESS_FINE_LOCATION);
-                need.add(Manifest.permission.ACCESS_COARSE_LOCATION);
-            }
-            if (!need.isEmpty()) {
-                locAsked = true;
-                requestPermissions(need.toArray(new String[0]), REQ_NOTIF);
-            } else {
-                sp.edit().putBoolean("ph_first", true).apply();
-            }
+            locAsked = true;
+            sp.edit().putBoolean("ph_first", true).apply();
         }
         Scheduler.scheduleNext(this);
         Reminders.scheduleNext(this);
@@ -331,6 +330,7 @@ public class PhoneActivity extends Activity {
         if (tab == 8 || tab == 6 || (tab == 0 && sub == null)) build();
         if (tab == 9) qiblaStart();
         h.post(ticker);
+        h.postDelayed(gateRun, 1200);
         if (!autoTried && sp.getBoolean("ph_first", false)
             ) {
             autoTried = true;
@@ -344,26 +344,17 @@ public class PhoneActivity extends Activity {
         if (tab == 6) endTasbihRound();
         RadioService.unlisten(radioListener);
         h.removeCallbacks(ticker);
+        h.removeCallbacks(gateRun);
         PrayerNote.refresh(this);
         qiblaStop();
     }
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
-        if (code == REQ_NOTIF) {
-            sp.edit().putBoolean("ph_first", true).apply();
+        if (code == REQ_NOTIF || code == PermGate.REQ) {
             autoTried = true;
             autoCity(false);
-            new Pop(this).title("خطوة أخيرة مهمة")
-                .message("لكي يعمل الأذان والراديو والشاشة مقفولة، افتح صفحة «تأكد أن الأذان يعمل» وفعّل كل بند فيها.")
-                .ok("فتح الصفحة", new Runnable() {
-                    @Override
-                    public void run() {
-                        tab = 3;
-                        sub = "fix";
-                        build();
-                    }
-                }).cancel("لاحقًا").show();
+            if (tab == 3 || tab == 8) build();
             return;
         }
         if (code == REQ_LOC) autoCity(false);

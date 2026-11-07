@@ -69,6 +69,14 @@ public class MainActivity extends Activity {
     private static final String PREFS = "magiic";
     private static final long WEATHER_EVERY_MS = 30L * 60L * 1000L;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable gateRun = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing()) return;
+            PermGate.resume(MainActivity.this);
+            PermGate.maybeShow(MainActivity.this);
+        }
+    };
     private TextView weatherView;
     private TextView radioBtn;
     /** The radio controls at the top of the settings list: previous, play or stop, next. */
@@ -690,6 +698,8 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(ambienceTick);
         handler.postDelayed(ambienceTick, 60000L);
         sparkle.start();
+        handler.removeCallbacks(gateRun);
+        handler.postDelayed(gateRun, 1500);
         refreshNotices();
         Updater.checkIfDue(this, new Runnable() {
             @Override
@@ -751,6 +761,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onPause() {
+        handler.removeCallbacks(gateRun);
         handler.removeCallbacks(weatherTick);
         handler.removeCallbacks(ambienceTick);
         sparkle.stop();
