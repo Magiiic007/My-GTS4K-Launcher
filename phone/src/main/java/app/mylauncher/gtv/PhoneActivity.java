@@ -3425,6 +3425,29 @@ public class PhoneActivity extends Activity {
         accEnd();
     }
 
+    private float swipeX, swipeY;
+
+    /** On the Hijri calendar a sideways swipe turns the month: toward the "next" arrow (left) for the next month. */
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent e) {
+        boolean handled = super.dispatchTouchEvent(e);
+        if (tab == 10 && !drawerOpen) {
+            int a = e.getActionMasked();
+            if (a == android.view.MotionEvent.ACTION_DOWN) {
+                swipeX = e.getX();
+                swipeY = e.getY();
+            } else if (a == android.view.MotionEvent.ACTION_UP) {
+                float dx = e.getX() - swipeX, dy = e.getY() - swipeY;
+                if (Math.abs(dx) > dp(70) && Math.abs(dx) > Math.abs(dy) * 1.8f) {
+                    // the layout is right-to-left: the next month is on the left, so dragging to the right brings it
+                    calOff += dx > 0 ? 1 : -1;
+                    build();
+                }
+            }
+        }
+        return handled;
+    }
+
     private void calendarPage() {
         title("التقويم الهجري", false);
         final int adj = Hijri.adjust(this);
