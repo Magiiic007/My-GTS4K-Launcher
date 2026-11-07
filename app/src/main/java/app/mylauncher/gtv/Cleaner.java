@@ -1,7 +1,6 @@
 package app.mylauncher.gtv;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.AppOpsManager;
 import android.app.usage.StorageStats;
 import android.app.usage.StorageStatsManager;

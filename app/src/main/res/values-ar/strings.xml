@@ -64,7 +64,6 @@
     <string name="radio_prev">المحطة السابقة</string>
     <string name="radio_stop">إيقاف الراديو</string>
     <string name="menu_about">عن التطبيق والمصادر</string>
-    <string name="hidden_title">علّم التطبيقات اللي عايز تخفيها</string>
     <string name="about_text">الصلاة خير، تطبيق شخصي.\n\nالطقس: Open-Meteo.com (رخصة CC BY 4.0).\nمواقيت الصلاة: مكتبة adhan-java (رخصة MIT).\nالإذاعتان ملك لأصحابهما وغير تابعتين لهذا التطبيق.\nتسجيلات الأذان والإقامة: راجع ملف THIRD_PARTY.md في صفحة المشروع.</string>
     <string name="menu_device">إعدادات الجهاز</string>
     <string name="menu_theme">شكل التطبيق</string>
@@ -87,13 +86,8 @@
     <string name="account_hint">اختر "الحسابات وتسجيل الدخول"</string>
     <string name="menu_adhan">إعدادات الأذان والإقامة</string>
     <string name="menu_radio">الراديو</string>
-    <string name="menu_apps">التطبيقات: إظهار وإخفاء وترتيب</string>
     <string name="menu_hijri">التقويم الهجري</string>
     <string name="menu_reminders">التذكيرات</string>
-    <string name="apps_hide_show">إخفاء أو إظهار التطبيقات</string>
-    <string name="apps_reset_order">الرجوع للترتيب الأبجدي</string>
-    <string name="apps_tip">نصيحة: اضغط مطوّلًا على OK فوق أي تطبيق في الصف السفلي لتحريكه أو إخفائه أو حذفه</string>
-    <string name="apps_order_reset">رجعت التطبيقات للترتيب الأبجدي</string>
     <string name="uninstall_failed">تعذّر بدء إلغاء التثبيت</string>
     <string name="location_format">%1$s - %2$s</string>
     <string name="next_prayer">الصلاة التالية: %1$s</string>
@@ -260,10 +254,8 @@
     <string name="radio_boot_now_on">سيعمل الراديو عند تشغيل الجهاز</string>
     <string name="radio_boot_now_off">لن يعمل الراديو عند تشغيل الجهاز</string>
     <string name="pg_title">الصلاحيات التي يحتاجها التطبيق</string>
-    <string name="pg_title_ok">كل الصلاحيات تمام</string>
     <string name="pg_grant">منح الناقص</string>
     <string name="pg_later">لاحقًا</string>
-    <string name="pg_ok">تمام</string>
     <string name="pg_done">تمت الصلاحيات كلها</string>
     <string name="pg_left">بقيت صلاحيات لم تُمنح. يمكنك ضبطها لاحقًا من تنبيهات الشاشة الرئيسية</string>
     <string name="pg_notif">الإشعارات</string>

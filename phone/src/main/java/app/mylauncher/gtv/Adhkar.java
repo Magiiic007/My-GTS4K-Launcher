@@ -317,12 +317,6 @@ final class Adhkar {
         return l;
     }
 
-    static void saveMine(Context c, List<String> l) {
-        JSONArray a = new JSONArray();
-        for (String s : l) a.put(s);
-        p(c).edit().putString("mine", a.toString()).apply();
-    }
-
     // ---------------------------------------------------------------- a chapter as the user arranged it
     /** One dhikr in a chapter, in the order the user chose; {@code key} is "i3" (the book's fourth) or "x7" (added by the user). */
     static final class Entry {

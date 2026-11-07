@@ -7,7 +7,6 @@ import android.graphics.Path;
 import android.graphics.RectF;
 import android.view.View;
 
-import java.util.Locale;
 
 /** The qibla: its bearing from a city, and a compass dial that turns with the phone. */
 final class Qibla {

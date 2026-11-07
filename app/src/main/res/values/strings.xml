@@ -64,7 +64,6 @@
     <string name="radio_prev">Previous station</string>
     <string name="radio_stop">Stop the radio</string>
     <string name="menu_about">About and credits</string>
-    <string name="hidden_title">Tick the apps to hide</string>
     <string name="about_text">Salat Khair, a personal app.\n\nWeather: Open-Meteo.com (CC BY 4.0).\nPrayer times: adhan-java (MIT).\nThe two radio stations belong to their owners and are not affiliated with this app.\nAdhan and iqama recordings: see THIRD_PARTY.md in the project page.</string>
     <string name="menu_device">Device settings</string>
     <string name="menu_theme">Look of the home screen</string>
@@ -86,13 +85,8 @@
     <string name="account_hint">Choose Accounts &amp; sign-in</string>
     <string name="menu_adhan">Adhan &amp; iqama settings</string>
     <string name="menu_radio">Radio</string>
-    <string name="menu_apps">Apps: show, hide, arrange</string>
     <string name="menu_hijri">Hijri calendar</string>
     <string name="menu_reminders">Reminders</string>
-    <string name="apps_hide_show">Hide or show apps</string>
-    <string name="apps_reset_order">Back to alphabetical order</string>
-    <string name="apps_tip">Tip: hold OK on an app in the bottom row to move, hide or uninstall it</string>
-    <string name="apps_order_reset">The apps are in alphabetical order again</string>
     <string name="uninstall_failed">Could not start the uninstall</string>
     <string name="location_format">%1$s - %2$s</string>
     <string name="next_prayer">Next prayer: %1$s</string>
@@ -260,10 +254,8 @@
     <string name="radio_boot_now_on">The radio will play when the device starts</string>
     <string name="radio_boot_now_off">The radio will not play when the device starts</string>
     <string name="pg_title">Permissions the app needs</string>
-    <string name="pg_title_ok">All permissions are set</string>
     <string name="pg_grant">Grant missing</string>
     <string name="pg_later">Later</string>
-    <string name="pg_ok">OK</string>
     <string name="pg_done">All permissions granted</string>
     <string name="pg_left">Some permissions are still missing. You can set them later from the home screen notices</string>
     <string name="pg_notif">Notifications</string>

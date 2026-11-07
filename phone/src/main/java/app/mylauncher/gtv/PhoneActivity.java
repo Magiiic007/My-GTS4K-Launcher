@@ -3,12 +3,8 @@ package app.mylauncher.gtv;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlarmManager;
-import android.app.AlertDialog;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.TimePickerDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -19,7 +15,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.location.Location;
@@ -447,7 +442,7 @@ public class PhoneActivity extends Activity {
         land = isLand();
         palette();
         root();
-        if (Build.VERSION.SDK_INT >= 33 && !BuildConfig.NO_INSETS) {
+        if (Build.VERSION.SDK_INT >= 33) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
                 new android.window.OnBackInvokedCallback() {
                     @Override
@@ -933,7 +928,7 @@ public class PhoneActivity extends Activity {
         f.addView(col, new FrameLayout.LayoutParams(-1, -1));
         // From Android 15 the app is drawn under the status and navigation bars: keep the content clear of them.
         final LinearLayout colRef = col;
-        if (!BuildConfig.NO_INSETS) f.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+        f.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
             @Override
             public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets w) {
                 int l, t, r, b;

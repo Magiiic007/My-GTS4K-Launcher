@@ -96,10 +96,6 @@ final class Pop {
         return cream;
     }
 
-    int dimColor() {
-        return dim;
-    }
-
     private boolean cancelable = true;
 
     /** false: the pop-up cannot be closed by tapping outside it or with the back button (for a download in progress). */
