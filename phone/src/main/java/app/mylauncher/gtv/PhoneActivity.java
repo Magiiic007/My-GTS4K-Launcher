@@ -1400,14 +1400,15 @@ public class PhoneActivity extends Activity {
             hA.setGravity(Gravity.CENTER);
             hB = vbox();
             hB.setGravity(Gravity.CENTER);
-            hero.addView(hA, new LinearLayout.LayoutParams(0, -1, 1f));
+            hero.setGravity(Gravity.CENTER_VERTICAL);
+            hero.addView(hA, new LinearLayout.LayoutParams(0, land ? -1 : -2, 1f));
             // a thin gold line between the two halves of the card
             View div = new View(this);
             div.setBackgroundColor((gold & 0x00FFFFFF) | 0x55000000);
-            LinearLayout.LayoutParams dvp = new LinearLayout.LayoutParams(dp(1), -1);
-            dvp.setMargins(dp(4), dp(14), dp(4), dp(14));
+            LinearLayout.LayoutParams dvp = new LinearLayout.LayoutParams(dp(1), land ? -1 : dp(110));
+            dvp.setMargins(dp(4), dp(land ? 14 : 0), dp(4), dp(land ? 14 : 0));
             hero.addView(div, dvp);
-            hero.addView(hB, new LinearLayout.LayoutParams(0, -1, 1f));
+            hero.addView(hB, new LinearLayout.LayoutParams(0, land ? -1 : -2, 1f));
         }
         // clock and dates
         LinearLayout clock = hbox();
