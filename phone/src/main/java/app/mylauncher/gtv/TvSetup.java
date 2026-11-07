@@ -573,34 +573,28 @@ final class TvSetup {
         String pk = sh(c, "pm list packages");
         say.say(has(pk, g) ? "تطبيق Google (المساعد) موجود على التلفزيون" : "تطبيق Google (المساعد) غير موجود على التلفزيون!");
         String off = sh(c, "pm list packages -d").trim();
-        say.say("التطبيقات المعطّلة على التلفزيون:\n" + (off.isEmpty() ? "(لا شيء)" : off.replace("package:", "")));
-        // Google's own parts that the voice button and the home screen lean on: if any of them was switched off, switch it on.
-        String[] parts = {"com.google.android.tvrecommendations", STOCK_X, STOCK_T, SETUP, "com.google.android.katniss"};
+        say.say("المعطّلة قبل الإصلاح:\n" + (off.isEmpty() ? "(لا شيء)" : off.replace("package:", "")));
+        // Google's own parts that the voice button and the home screen lean on: if any of them was switched off, switch it on,
+        // and show what the TV really answered.
+        String[] parts = {"com.google.android.tvrecommendations", STOCK_X, STOCK_T, SETUP, g};
         for (String part : parts) {
-            if (off.contains(part)) {
-                sh(c, "pm enable " + part + " 2>&1");
-                say.say("فُعّل: " + part);
-            }
+            if (!off.contains(part)) continue;
+            String r1 = sh(c, "pm enable --user 0 " + part + " 2>&1", 60).trim();
+            String r2 = sh(c, "pm default-state --user 0 " + part + " 2>&1", 60).trim();
+            say.say("تفعيل " + part + ":\n" + r1 + (r2.isEmpty() ? "" : "\n" + r2));
         }
-        // our old accessibility service must not stay in the list: it intercepted the remote's keys
-        String cur = sh(c, "settings get secure enabled_accessibility_services").trim();
+        String after = sh(c, "pm list packages -d", 60).trim();
+        say.say("المعطّلة بعد الإصلاح:\n" + (after.isEmpty() ? "(لا شيء)" : after.replace("package:", "")));
+        String cur = sh(c, "settings get secure enabled_accessibility_services", 60).trim();
         say.say("خدمات إمكانية الوصول: " + (cur.isEmpty() ? "(لا شيء)" : cur));
         if (cur.contains("RemoteKeys")) {
-            sh(c, "n=$(settings get secure enabled_accessibility_services | sed 's#" + PKG + "/" + PKG + ".RemoteKeys##g; s#::*#:#g; s#^:##; s#:$##'); "
-                + "if [ -z \"$n\" ] || [ \"$n\" = null ]; then settings delete secure enabled_accessibility_services; settings put secure accessibility_enabled 0; "
-                + "else settings put secure enabled_accessibility_services \"$n\"; fi");
-            say.say("أُزيلت خدمة الأزرار القديمة من قائمة إمكانية الوصول");
+            sh(c, "settings delete secure enabled_accessibility_services; settings put secure accessibility_enabled 0", 60);
+            say.say("أُزيلت خدمة الأزرار القديمة");
         }
         if (has(pk, g)) {
-            sh(c, "pm enable " + g);
-            sh(c, "pm grant " + g + " android.permission.RECORD_AUDIO 2>&1");
-            sh(c, "pm clear " + g + " 2>&1");
-            sh(c, "pm grant " + g + " android.permission.RECORD_AUDIO 2>&1");
-            say.say("فُعّل تطبيق Google، وسُمح له بالميكروفون، ومُسحت بياناته");
+            say.say("الميكروفون: " + sh(c, "pm grant " + g + " android.permission.RECORD_AUDIO 2>&1", 60).trim());
         }
-        String role = sh(c, "cmd role get-role-holders --user 0 android.app.role.ASSISTANT 2>&1").trim();
-        say.say("مساعد النظام: " + (role.isEmpty() ? "(غير محدد)" : role));
-        say.say("الآن أعد تشغيل التلفزيون من القائمة، ثم جرّب زر المساعد.");
+        say.say("انتهى. أعد تشغيل التلفزيون من القائمة ثم جرّب زر المساعد.");
     }
 
     static void restore(Context c, Say say) throws Exception {
