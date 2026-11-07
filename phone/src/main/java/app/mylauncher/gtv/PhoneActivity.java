@@ -409,6 +409,13 @@ public class PhoneActivity extends Activity {
         return false;
     }
 
+    /** The turn-the-screen option: off keeps the app upright, on follows the phone's own auto-rotate setting. */
+    private void applyRotation() {
+        setRequestedOrientation(sp.getBoolean("rotate_on", true)
+            ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+            : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+    }
+
     private boolean isLand() {
         return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
     }
@@ -434,6 +441,7 @@ public class PhoneActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         sp = getSharedPreferences(P, MODE_PRIVATE);
+        applyRotation();
         look = lookNow();
         land = isLand();
         palette();
@@ -2187,6 +2195,14 @@ public class PhoneActivity extends Activity {
         }
         title("الإعدادات", false);
         acc("st:look", "الشكل والعرض", "الشكل والخط وظلال البطاقات والشاشة الافتتاحية");
+        switchRow("تدوير الشاشة (الوضع الأفقي)", "لو أوقفته يبقى التطبيق رأسياً دائماً حتى لو أدرت الهاتف", sp.getBoolean("rotate_on", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("rotate_on", on).apply();
+                    applyRotation();
+                }
+            });
         switchRow("ظلال وعمق البطاقات", "تعطي إحساس البروز ثلاثي الأبعاد", sp.getBoolean("depth_on", true),
             new CompoundListener() {
                 @Override
