@@ -41,56 +41,6 @@ final class Deco {
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
     }
 
-    private static android.graphics.Bitmap panelBmp;
-
-    /**
-     * The geometric panel behind every screen: one picture, fitted to the whole screen (cropped a little at the sides if
-     * the proportions differ). On a wide screen (landscape) it is turned 90 degrees so it stays upright along the width.
-     * It is only a mask: it is painted in the given colour (with its own transparency).
-     */
-    static final class Panel extends Drawable {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-        private final android.graphics.Bitmap bmp;
-
-        Panel(android.content.res.Resources res, int color) {
-            synchronized (Deco.class) {
-                if (panelBmp == null) panelBmp = android.graphics.BitmapFactory.decodeResource(res, R.drawable.pattern_panel);
-                bmp = panelBmp;
-            }
-            paint.setColorFilter(new android.graphics.PorterDuffColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN));
-        }
-
-        @Override
-        public void draw(Canvas c) {
-            if (bmp == null) return;
-            Rect b = getBounds();
-            boolean wide = b.width() > b.height();
-            float bw = wide ? bmp.getHeight() : bmp.getWidth();
-            float bh = wide ? bmp.getWidth() : bmp.getHeight();
-            float s = Math.max(b.width() / bw, b.height() / bh);
-            int n = c.save();
-            c.clipRect(b);
-            c.translate(b.exactCenterX(), b.exactCenterY());
-            if (wide) c.rotate(90f);
-            c.scale(s, s);
-            c.drawBitmap(bmp, -bmp.getWidth() / 2f, -bmp.getHeight() / 2f, paint);
-            c.restoreToCount(n);
-        }
-
-        @Override
-        public void setAlpha(int a) {
-        }
-
-        @Override
-        public void setColorFilter(ColorFilter f) {
-        }
-
-        @Override
-        public int getOpacity() {
-            return PixelFormat.TRANSLUCENT;
-        }
-    }
-
     /**
      * Drawn behind the next-prayer card. Mihrab: two nested arches. Royal: a dotted frame with a star on each
      * corner and one at the top.
