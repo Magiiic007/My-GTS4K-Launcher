@@ -1605,9 +1605,9 @@ public class PhoneActivity extends Activity {
         String[] vr = getResources().getStringArray(R.array.verse_ref);
         if (verseIdx < 0 || verseIdx >= vt.length) {
             int vm = sp.getInt("verse_mode", 0);
-            long now = System.currentTimeMillis() + java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis());
-            if (vm == 1) verseIdx = (int) ((now / 86_400_000L) % vt.length);
-            else if (vm == 2) verseIdx = (int) ((now / 21_600_000L) % vt.length);
+            long vnow = System.currentTimeMillis() + java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis());
+            if (vm == 1) verseIdx = (int) ((vnow / 86_400_000L) % vt.length);
+            else if (vm == 2) verseIdx = (int) ((vnow / 21_600_000L) % vt.length);
             else verseIdx = new java.util.Random().nextInt(vt.length);
         }
         int vi = verseIdx;
