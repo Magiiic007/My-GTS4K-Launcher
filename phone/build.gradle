@@ -28,6 +28,7 @@ android {
             dimension 'dist'
             // A fresh-install test copy of the GitHub build (its own package, so it starts with no data).
             if (project.hasProperty('freshTest')) applicationIdSuffix '.fresh'
+            if (project.hasProperty('sideloadId')) applicationId project.property('sideloadId')
             buildConfigField 'boolean', 'PLAY', 'false'
             buildConfigField 'boolean', 'NO_INSETS', 'false'
         }
@@ -82,6 +83,11 @@ android {
         main {
             java.srcDir "$buildDir/shared/java"
             res.srcDir "$buildDir/shared/res"
+        }
+        // A/B test switches: the Play build without its own manifest edit / without its own shortcuts file
+        play {
+            if (project.hasProperty('playNoManifest')) manifest.srcFile 'src/empty/AndroidManifest.xml'
+            if (project.hasProperty('playNoShortcuts')) res.srcDirs = []
         }
     }
 }
