@@ -176,6 +176,49 @@ public class PhoneActivity extends Activity {
     private LinearLayout landCols;
     private View landHint;
 
+
+    /** The share of the width the fixed right panel of the landscape home takes. */
+    private int landPanelDp() {
+        return Math.max(220, Math.min(330, Math.round(widthDp() * 0.36f)));
+    }
+
+    /** Height of the mosque picture over the right panel, in dp (it keeps its own shape). */
+    private float landBandDp() {
+        if (artBmp == null) return 0f;
+        return landPanelDp() * (artBmp.getHeight() * ArtBg.TOP_F) / artBmp.getWidth();
+    }
+
+    /**
+     * Landscape home: the right side never moves (the mosque, framed in gold, with the clock and the next prayer under it).
+     * On the left side are the menu, the place and the weather, and under them the six times, which scroll.
+     */
+    private void assembleLandHome(View topRow, LinearLayout rowsBox) {
+        LinearLayout cols = hbox();
+        cols.setBaselineAligned(false);
+        LinearLayout panel = vbox();
+        if (artBmp != null) panel.setBackground(new ArtBg.Panel(artBmp, getResources().getDisplayMetrics().density, gold));
+        else panel.setBackground(shape(card, line, 18));
+        int overlap = Math.round(dp(Math.round(landBandDp())) * 0.82f);
+        panel.addView(new View(this), new LinearLayout.LayoutParams(-1, overlap));
+        LinearLayout rest = vbox();
+        rest.setGravity(Gravity.CENTER);
+        rest.setPadding(dp(10), 0, dp(10), dp(12));
+        rest.addView(landHero, new LinearLayout.LayoutParams(-1, -2));
+        panel.addView(rest, new LinearLayout.LayoutParams(-1, 0, 1f));
+        cols.addView(panel, new LinearLayout.LayoutParams(dp(landPanelDp()), -1));
+        LinearLayout left = vbox();
+        left.addView(topRow, new LinearLayout.LayoutParams(-1, -2));
+        ScrollView sv = new ScrollView(this);
+        sv.setVerticalScrollBarEnabled(false);
+        sv.addView(rowsBox, new ViewGroup.LayoutParams(-1, -2));
+        left.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
+        LinearLayout.LayoutParams lpL = new LinearLayout.LayoutParams(0, -1, 1f);
+        lpL.setMarginStart(dp(10));
+        cols.addView(left, lpL);
+        body.addView(cols, new LinearLayout.LayoutParams(-1, landHeight()));
+        landCols = cols;
+    }
+
     private int landHeight() {
         int h = scroll.getHeight() - body.getPaddingTop() - body.getPaddingBottom();
         if (h <= 0) h = dp(heightDp() - 96);
@@ -680,6 +723,7 @@ public class PhoneActivity extends Activity {
 
     /** The home page has the picture; the other pages have the same colours with a gold frame line. */
     private void applyBackground() {
+        header.setVisibility(View.VISIBLE);
         int w = dp(widthDp());
         if (tab == 0) {
             if (artBmp == null || artLook != look) {
@@ -693,12 +737,14 @@ public class PhoneActivity extends Activity {
             }
             if (artBmp != null && land) {
                 // landscape: the mosque and lanterns in the middle at the top, the header on both sides of them
-                int bh = dp(Math.max(52, Math.min(96, Math.round(heightDp() * 0.19f))));
-                homeTop = Math.max(dp(4), bh - dp(44));
+                homeTop = 0;
                 homeBottom = 0;
-                rootFrame.setBackground(new ArtBg.Land(artBmp, getResources().getDisplayMetrics().density, bh, gold));
-                header.setPadding(dp(14), dp(6), dp(14), dp(2));
-                body.setPadding(dp(14), homeTop, dp(14), dp(10));
+                GradientDrawable lg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
+                Deco.Stars lstars = new Deco.Stars((cream & 0x00FFFFFF) | 0x1A000000, dp(56));
+                rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {lg, lstars}));
+                header.setVisibility(View.GONE);
+                header.setPadding(0, 0, 0, 0);
+                body.setPadding(dp(10), dp(8), dp(10), dp(8));
                 return;
             }
             if (artBmp != null) {
@@ -1281,7 +1327,7 @@ public class PhoneActivity extends Activity {
         } else {
             pp.setMarginEnd(0);
         }
-        addHeader(top);
+        if (!land) addHeader(top);
         if (weatherOn && weather.isEmpty()) {
             Weather.fetch(city, new Weather.Callback() {
                 @Override
@@ -1347,24 +1393,14 @@ public class PhoneActivity extends Activity {
         iq.addView(iqValue);
         hero.addView(iq, lp(-2, -2, 6)); // wraps its text: a fixed height cut the letters when the page was squeezed
         LinearLayout rowsBox = null;
+        final LinearLayout topRow = top;
         if (land) {
-            // two columns: the card with the clock and the next prayer, and the six times beside it
-            LinearLayout cols = hbox();
-            cols.setBaselineAligned(false);
-            LinearLayout left = vbox();
-            left.setGravity(Gravity.CENTER_VERTICAL);
-            left.addView(hero, new LinearLayout.LayoutParams(-1, -2));
             rowsBox = vbox();
-            LinearLayout.LayoutParams lpL = new LinearLayout.LayoutParams(0, -1, 1f);
-            LinearLayout.LayoutParams lpR = new LinearLayout.LayoutParams(0, -1, 1.15f);
-            lpR.setMarginEnd(dp(10));
-            cols.addView(left, lpL);
-            cols.addView(rowsBox, lpR);
-            body.addView(cols, new LinearLayout.LayoutParams(-1, 0, 1f));
-            landLeft = left;
+            landHero = hero;
         } else {
             add(hero, 8);
         }
+        final float rf = land ? 1f : f;
 
         // the six times: they share whatever height is left, so the page fills the screen
         long[] t = PrayerCalc.day(city, now, 0, adj);
@@ -1379,10 +1415,10 @@ public class PhoneActivity extends Activity {
             boolean next = idx >= 0 && idx == shownNext;
             LinearLayout r = hbox();
             r.setBackground(shape(next ? hl : card, next ? gold : 0, 16));
-            r.setPadding(dp(14), dp(Math.round(8 * f)), dp(14), dp(Math.round(8 * f)));
+            r.setPadding(dp(14), dp(Math.round(8 * rf)), dp(14), dp(Math.round(8 * rf)));
             // landscape: the name and the iqama on one line, so six rows fit the short screen
             LinearLayout v = land ? hbox() : vbox();
-            v.addView(tv(name, Math.round(18 * f), cream, true));
+            v.addView(tv(name, Math.round(18 * rf), cream, true));
             int iqv = idx >= 0 ? PrayerPrefs.iqamaOf(iqm, idx, fri && idx == PrayerCalc.DHUHR) : 0;
             if (idx >= 0 && iqv > 0) {
                 TextView iqt = tv(getString(R.string.iqama_minutes, iqv), 11, dim, false);
@@ -1390,7 +1426,7 @@ public class PhoneActivity extends Activity {
                 v.addView(iqt);
             }
             r.addView(v, new LinearLayout.LayoutParams(0, -2, 1f));
-            TextView tt = tv(ap(PrayerCalc.time(this, city, at)), Math.round(19 * f), gold, true);
+            TextView tt = tv(ap(PrayerCalc.time(this, city, at)), Math.round(19 * rf), gold, true);
             tt.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
             r.addView(tt);
             if (idx >= 0 && at <= now) {
@@ -1413,7 +1449,7 @@ public class PhoneActivity extends Activity {
                 r.addView(ck, kp);
             }
             if (at < now && !next) r.setAlpha(0.6f);
-            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, land ? 0 : -2, 1f);
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, land ? -2 : -2, 1f);
             rp.topMargin = dp(5);
             r.setGravity(Gravity.CENTER_VERTICAL);
             (rowsBox != null ? rowsBox : body).addView(r, rp);
@@ -1436,12 +1472,12 @@ public class PhoneActivity extends Activity {
         vc.addView(v1);
         vc.addView(v2);
         if (land) {
-            // the verse sits under the clock card, only when the screen is tall enough for it
-            if (heightDp() >= 480 && landLeft != null) landLeft.addView(vc, lp(-1, -2, 8));
+            rowsBox.addView(vc, lp(-1, -2, 8));
         } else {
             add(vc, 8);
         }
         }
+        if (land) assembleLandHome(topRow, rowsBox);
         body.post(new Runnable() {
             @Override
             public void run() {
@@ -1462,14 +1498,17 @@ public class PhoneActivity extends Activity {
     private float fit() {
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         float availDp = heightDp() - (homeTop + homeBottom) / dm.density - 50f;
-        if (land) return Math.max(0.5f, Math.min(1f, (availDp - 24f) / 310f) * homeAdj);
+        if (land) {
+            float remaining = heightDp() - 16f - landBandDp() * 0.82f - 24f;
+            return Math.max(0.5f, Math.min(1f, (remaining - 125f) / 184f));
+        }
         return Math.max(0.45f, Math.min(1f, availDp / 780f) * homeAdj);
     }
 
     // The first estimate in fit() can be off on some screens: after the page is laid out, it is measured, and if it is
     // taller than the screen the text and spacing shrink a little and the page is drawn again (a few times at most).
     private float homeAdj = 1f;
-    private LinearLayout landLeft;
+    private LinearLayout landHero;
     private int homeTries;
     private boolean homeRetry;
 
@@ -3960,7 +3999,7 @@ public class PhoneActivity extends Activity {
                     gd.setGravity(Gravity.CENTER);
                     cell.addView(hd);
                     cell.addView(gd);
-                    cell.setBackground(shape(isToday ? hl : occ >= 0 ? (gold & 0x00FFFFFF) | 0x66000000 : white ? (gold & 0x00FFFFFF) | 0x22000000 : 0, isToday || (land && calSel == day) ? gold : occ >= 0 ? line : 0, 12));
+                    cell.setBackground(shape(calSel == day ? (gold & 0x00FFFFFF) | 0x77000000 : isToday ? hl : occ >= 0 ? (gold & 0x00FFFFFF) | 0x66000000 : white ? (gold & 0x00FFFFFF) | 0x22000000 : 0, isToday || calSel == day ? gold : occ >= 0 ? line : 0, 12));
                     if (occ >= 0) notes.append(day).append(" ").append(Hijri.hijriAr(new int[] {year, month0 + 1, day}).replaceFirst("^\\d+ ", "").replaceFirst(" \\d+ هـ$", ""))
                         .append(": ").append(Reminders.occName(this, occ)).append("\n");
                     cell.setOnClickListener(new View.OnClickListener() {
@@ -4260,7 +4299,22 @@ public class PhoneActivity extends Activity {
             @Override
             public void onSensorChanged(SensorEvent e) {
                 SensorManager.getRotationMatrixFromVector(rot, e.values);
-                SensorManager.getOrientation(rot, ori);
+                // held sideways, the phone's axes are turned: the heading must follow the screen, not the body of the phone
+                int ax = SensorManager.AXIS_X, ay = SensorManager.AXIS_Y;
+                int dr = getWindowManager().getDefaultDisplay().getRotation();
+                if (dr == android.view.Surface.ROTATION_90) {
+                    ax = SensorManager.AXIS_Y;
+                    ay = SensorManager.AXIS_MINUS_X;
+                } else if (dr == android.view.Surface.ROTATION_180) {
+                    ax = SensorManager.AXIS_MINUS_X;
+                    ay = SensorManager.AXIS_MINUS_Y;
+                } else if (dr == android.view.Surface.ROTATION_270) {
+                    ax = SensorManager.AXIS_MINUS_Y;
+                    ay = SensorManager.AXIS_X;
+                }
+                float[] rm = new float[9];
+                SensorManager.remapCoordinateSystem(rot, ax, ay, rm);
+                SensorManager.getOrientation(rm, ori);
                 float az = (float) ((Math.toDegrees(ori[0]) + decl + 360.0) % 360.0);
                 if (first) {
                     heading = az;
