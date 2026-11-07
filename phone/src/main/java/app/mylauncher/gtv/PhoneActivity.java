@@ -173,7 +173,8 @@ public class PhoneActivity extends Activity {
     private String calSelKey;
     private boolean splitFixed;
     private int splitCenter; // 1: the main side is centred, 2: both sides
-    private LinearLayout landCols;
+    private ViewGroup landCols;
+    private View landMenu;
     private View landHint;
 
 
@@ -215,8 +216,16 @@ public class PhoneActivity extends Activity {
         LinearLayout.LayoutParams lpL = new LinearLayout.LayoutParams(0, -1, 1f);
         lpL.setMarginStart(dp(10));
         cols.addView(left, lpL);
-        body.addView(cols, new LinearLayout.LayoutParams(-1, landHeight()));
-        landCols = cols;
+        FrameLayout wrap = new FrameLayout(this);
+        wrap.addView(cols, new FrameLayout.LayoutParams(-1, -1));
+        if (landMenu != null) {
+            FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(dp(38), dp(38), Gravity.TOP | Gravity.START);
+            mp.setMarginStart(dp(12));
+            mp.topMargin = dp(10);
+            wrap.addView(landMenu, mp);
+        }
+        body.addView(wrap, new LinearLayout.LayoutParams(-1, landHeight()));
+        landCols = wrap;
     }
 
     private int landHeight() {
@@ -817,7 +826,7 @@ public class PhoneActivity extends Activity {
             @Override
             public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
                 if (landCols == null || b - t == ob - ot) return;
-                final LinearLayout c = landCols;
+                final ViewGroup c = landCols;
                 c.post(new Runnable() {
                     @Override
                     public void run() {
@@ -1295,7 +1304,18 @@ public class PhoneActivity extends Activity {
         float f = fit();
         // top row: the menu, the place (down to the neighbourhood when the phone's location is used) and the weather
         LinearLayout top = hbox();
-        top.addView(hamburger(), new LinearLayout.LayoutParams(dp(38), dp(38)));
+        landMenu = null;
+        if (land) {
+            // landscape: the menu button stays in the top right corner of the screen, over the fixed panel
+            landMenu = hamburger();
+            GradientDrawable mb = new GradientDrawable();
+            mb.setShape(GradientDrawable.OVAL);
+            mb.setColor(0xAA000000);
+            mb.setStroke(dp(1), line);
+            landMenu.setBackground(mb);
+        } else {
+            top.addView(hamburger(), new LinearLayout.LayoutParams(dp(38), dp(38)));
+        }
         TextView place = chip("📍 " + city.name(true));
         place.setSingleLine(true);
         place.setEllipsize(android.text.TextUtils.TruncateAt.END);
