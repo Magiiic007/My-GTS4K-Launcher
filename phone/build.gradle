@@ -26,11 +26,14 @@ android {
     productFlavors {
         sideload {
             dimension 'dist'
+            // A fresh-install test copy of the GitHub build (its own package, so it starts with no data).
+            if (project.hasProperty('freshTest')) applicationIdSuffix '.fresh'
             buildConfigField 'boolean', 'PLAY', 'false'
         }
         play {
             dimension 'dist'
-            targetSdk 36
+            targetSdk project.hasProperty('t34') ? 34 : 36
+            if (project.hasProperty('t34')) applicationIdSuffix '.t34'
             // The store name of the app: «Salat Khair». (The sideload build keeps app.magiic.phone so it updates from GitHub.)
             applicationId 'app.alsalatu.khair'
             // A test copy of the Play build that installs next to the real app (CI passes -PplayTest).

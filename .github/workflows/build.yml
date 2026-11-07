@@ -124,6 +124,20 @@ jobs:
         continue-on-error: true
         run: ./gradlew :phone:assemblePlayDebug -PplayTest --no-daemon --stacktrace
 
+      # Two extra test copies, to tell what makes the Play build close: a fresh install of the GitHub build, and the Play build aimed at Android 14.
+      - name: Build the A/B test APKs
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./gradlew :phone:assembleSideloadDebug -PfreshTest --no-daemon --stacktrace
+          cp phone/build/outputs/apk/sideload/debug/*.apk ab-fresh-github.apk
+          ./gradlew :phone:assemblePlayDebug -Pt34 --no-daemon --stacktrace
+          cp phone/build/outputs/apk/play/debug/*.apk ab-play-target34.apk
+          gh release delete ab-test --yes --cleanup-tag || true
+          gh release create ab-test ab-fresh-github.apk ab-play-target34.apk --prerelease --target "$GITHUB_SHA" \
+            --title "A/B test APKs" --notes "ab-fresh-github: GitHub build, fresh install. ab-play-target34: Play build aimed at Android 14. commit=${GITHUB_SHA::7}"
+
       - name: Publish the Play test APK as release "play-test"
         if: steps.playtest.outcome == 'success'
         env:
