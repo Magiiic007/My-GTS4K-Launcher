@@ -208,8 +208,8 @@ final class Menu {
         private DialogInterface.OnClickListener itemClick;
         private DialogInterface.OnMultiChoiceClickListener multiClick;
         private View view;
-        private CharSequence posText, negText, neuText;
-        private DialogInterface.OnClickListener posClick, negClick, neuClick;
+        private CharSequence posText, negText;
+        private DialogInterface.OnClickListener posClick, negClick;
         private boolean cancelable = true;
         private List<Drawable> icons;
 
@@ -249,9 +249,6 @@ final class Menu {
         }
         Builder setNegativeButton(CharSequence t, DialogInterface.OnClickListener l) {
             negText = t; negClick = l; return this;
-        }
-        Builder setNeutralButton(int res, DialogInterface.OnClickListener l) {
-            neuText = c.getString(res); neuClick = l; return this;
         }
 
         Box show() {
@@ -437,7 +434,6 @@ final class Menu {
             // Buttons: one row at the bottom (the close button is the common one).
             List<Object[]> buttons = new ArrayList<>();
             if (posText != null) buttons.add(new Object[] {posText, posClick, DialogInterface.BUTTON_POSITIVE});
-            if (neuText != null) buttons.add(new Object[] {neuText, neuClick, DialogInterface.BUTTON_NEUTRAL});
             if (negText != null) buttons.add(new Object[] {negText, negClick, DialogInterface.BUTTON_NEGATIVE});
             if (!buttons.isEmpty()) {
                 LinearLayout bar = new LinearLayout(c);
