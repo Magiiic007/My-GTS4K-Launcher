@@ -3286,7 +3286,8 @@ public class PhoneActivity extends Activity {
                         @Override
                         public void onClick(View v) {
                             left[0]--;
-                            buzz();
+                            if (left[0] == 0) buzzDone();
+                            else buzz();
                             Adhkar.bump(PhoneActivity.this);
                             refreshTotal();
                             done.put(key, left[0]);
@@ -3453,6 +3454,17 @@ public class PhoneActivity extends Activity {
         try {
             Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
             if (v != null && v.hasVibrator()) v.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE));
+        } catch (RuntimeException ignored) {
+            // no vibration on this phone
+        }
+    }
+
+    /** A different buzz when a card is finished and the next one starts: two short pulses, then a long one. */
+    private void buzzDone() {
+        if (!sp.getBoolean("tap_buzz", true)) return;
+        try {
+            Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+            if (v != null && v.hasVibrator()) v.vibrate(VibrationEffect.createWaveform(new long[] {0, 40, 70, 40, 70, 170}, -1));
         } catch (RuntimeException ignored) {
             // no vibration on this phone
         }
