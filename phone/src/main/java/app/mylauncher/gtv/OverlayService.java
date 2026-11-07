@@ -197,17 +197,12 @@ public class OverlayService extends Service {
         lp.y = dp(44);
         lp.width = Math.round(getResources().getDisplayMetrics().widthPixels * 0.72f);
         wm.addView(c, lp);
+        Fx.cardIn(c);
         card = c;
     }
 
     private void hideCard() {
-        if (card != null && wm != null) {
-            try {
-                wm.removeView(card);
-            } catch (RuntimeException ignored) {
-                // already gone
-            }
-        }
+        if (card != null && wm != null) Fx.remove(wm, card, null);
         card = null;
     }
 }

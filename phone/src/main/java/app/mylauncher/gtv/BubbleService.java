@@ -328,6 +328,7 @@ public class BubbleService extends Service {
             }
         });
         wm.addView(col, lp);
+        Fx.bubbleIn(col);
         view = col;
         shownFor = cat;
     }
@@ -347,13 +348,7 @@ public class BubbleService extends Service {
     }
 
     private void hide() {
-        if (view != null && wm != null) {
-            try {
-                wm.removeView(view);
-            } catch (RuntimeException ignored) {
-                // already gone
-            }
-        }
+        if (view != null && wm != null) Fx.remove(wm, view, null);
         view = null;
         shownFor = 0;
     }

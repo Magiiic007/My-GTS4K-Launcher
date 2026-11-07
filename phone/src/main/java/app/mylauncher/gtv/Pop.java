@@ -219,6 +219,7 @@ final class Pop {
         d.setCancelable(cancelable);
         Window w = d.getWindow();
         w.setLayout(a.getResources().getDisplayMetrics().widthPixels - dp(36), ViewGroup.LayoutParams.WRAP_CONTENT);
+        w.setWindowAnimations(R.style.FxDialog);
         w.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         d.show();
         return d;

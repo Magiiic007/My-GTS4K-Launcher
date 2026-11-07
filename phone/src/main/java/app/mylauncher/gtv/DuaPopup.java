@@ -123,6 +123,7 @@ final class DuaPopup {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT);
             wm.addView(root, lp);
+            Fx.popupIn(root, card);
             shown = root;
             H.postDelayed(new Runnable() {
                 @Override
@@ -139,11 +140,8 @@ final class DuaPopup {
     static void hide() {
         H.removeCallbacksAndMessages(null);
         if (shown != null && wm != null) {
-            try {
-                wm.removeView(shown);
-            } catch (RuntimeException ignored) {
-                // already gone
-            }
+            Fx.remove(wm, shown, shown instanceof android.view.ViewGroup && ((android.view.ViewGroup) shown).getChildCount() > 0
+                ? ((android.view.ViewGroup) shown).getChildAt(0) : null);
         }
         shown = null;
         // its notice goes with it
