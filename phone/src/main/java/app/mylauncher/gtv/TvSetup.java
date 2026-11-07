@@ -575,6 +575,40 @@ final class TvSetup {
         say.say("تابع شاشة التلفزيون: اضغط «تفعيل» (Enable) بالريموت، ثم أعد تشغيل التلفزيون.");
     }
 
+    /** Clears the data of Google TV's home and of the Google app, frees every app's cache, allows the microphone and restarts the TV. */
+    static void resetGoogle(Context c, Say say) throws Exception {
+        String[] pkgs = {STOCK_X, "com.google.android.katniss"};
+        String all = sh(c, "pm list packages", 60);
+        for (String pkg : pkgs) {
+            if (!has(all, pkg)) {
+                say.say(pkg + ": غير موجود");
+                continue;
+            }
+            try {
+                say.say("مسح بيانات " + pkg + ": " + sh(c, "pm clear " + pkg + " 2>&1", 90).trim());
+            } catch (java.io.IOException e) {
+                say.say("مسح بيانات " + pkg + ": انتهت المهلة (ربما تم، التلفزيون بطيء)");
+            }
+        }
+        try {
+            sh(c, "pm trim-caches 999G 2>&1", 90);
+            say.say("نُظّفت الذاكرة المؤقتة للتطبيقات");
+        } catch (java.io.IOException e) {
+            say.say("تنظيف الكاش: انتهت المهلة");
+        }
+        try {
+            say.say("الميكروفون: " + sh(c, "pm grant com.google.android.katniss android.permission.RECORD_AUDIO 2>&1", 60).trim());
+        } catch (java.io.IOException e) {
+            say.say("الميكروفون: انتهت المهلة");
+        }
+        say.say("سيُعاد تشغيل التلفزيون الآن. انتظر دقيقة ثم جرّب زر المساعد.");
+        try {
+            sh(c, "svc power reboot 2>&1 || reboot", 20);
+        } catch (Exception ignored) {
+            // the connection drops while it restarts
+        }
+    }
+
     static void fixAssistant(Context c, Say say) throws Exception {
         String g = "com.google.android.katniss";
         String pk = sh(c, "pm list packages");

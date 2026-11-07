@@ -3544,6 +3544,29 @@ public class PhoneActivity extends Activity {
                 });
             }
         });
+        row("تصفير بيانات Google على التلفزيون", "يمسح بيانات واجهة Google TV وتطبيق Google ويعيد تشغيل التلفزيون", "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new Pop(PhoneActivity.this).title("تصفير بيانات Google")
+                    .message("سيمسح بيانات واجهة Google TV وتطبيق Google (ترتيب الشاشة الرئيسية يرجع كالأول، ويبقى حسابك وتطبيقاتك) ثم يعيد تشغيل التلفزيون. أكمل؟")
+                    .ok("تصفير", new Runnable() {
+                        @Override
+                        public void run() {
+                            tvRun("تصفير بيانات Google…", new TvTask() {
+                                @Override
+                                public void run() throws Exception {
+                                    TvSetup.resetGoogle(PhoneActivity.this, new TvSetup.Say() {
+                                        @Override
+                                        public void say(String s) {
+                                            tvSay(s);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    }).cancel("إلغاء").show();
+            }
+        });
         row("فتح صفحة تفعيل خدمة التوصيات على التلفزيون", "تفتح لك على شاشة التلفزيون صفحة التطبيق وفيها زر «تفعيل»", "›", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
