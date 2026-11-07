@@ -101,11 +101,13 @@ public class AdhanService extends Service {
         // Per prayer: 0 adhan sound, 1 vibration only, 2 nothing but the notification; and whether the sound still
         // plays while the phone's ringer is on silent or vibrate (it always did before this setting existed).
         SharedPreferences sp = getSharedPreferences("magiic", MODE_PRIVATE);
-        int mode = test ? 0 : sp.getInt("ad_mode_" + index, 0);
+        // The Friday prayer (and its first adhan) has its own choices; until it is set there, it follows Dhuhr.
+        boolean fri = friday && index == PrayerCalc.DHUHR;
+        int mode = test ? 0 : PrayerPrefs.adhanMode(sp, index, fri);
         int ringer = audio != null ? audio.getRingerMode() : AudioManager.RINGER_MODE_NORMAL;
         boolean quietPhone = ringer != AudioManager.RINGER_MODE_NORMAL;
         boolean wc = Wc.on(this);
-        boolean mute = wc || mode != 0 || (!test && quietPhone && !sp.getBoolean("ad_ring_" + index, true));
+        boolean mute = wc || mode != 0 || (!test && quietPhone && !PrayerPrefs.adhanRing(sp, index, fri));
         if (mute) {
             if (!wc && (mode == 1 || (mode == 0 && ringer == AudioManager.RINGER_MODE_VIBRATE))) buzz();
             handler.postDelayed(finisher, 4000L);
