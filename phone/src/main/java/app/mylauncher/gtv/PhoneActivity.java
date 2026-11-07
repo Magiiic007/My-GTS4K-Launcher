@@ -2501,13 +2501,13 @@ public class PhoneActivity extends Activity {
             fa.setValue(PrayerPrefs.firstAdhan(this));
             LinearLayout c3 = vbox();
             c3.setGravity(Gravity.CENTER);
-            c3.addView(tv("الأذان الأول (قبل الأذان بـ)", 13, dim, false));
+            c3.addView(tv("الأذان الأول (دقائق)", 13, dim, false));
             c3.addView(fa);
             l.addView(c3, new LinearLayout.LayoutParams(0, -2, 1f));
         }
         final LinearLayout all = vbox();
         all.addView(l);
-        if (friday) all.addView(tv("الأول 0 = متوقف. صوت الأذان واهتزازه كما في الظهر.", 12, dim, false), lp(-1, -2, 10));
+        if (friday) all.addView(tv("الأذان الأول: عدد الدقائق قبل أذان الجمعة (0 = متوقف). صوت الأذان واهتزازه كما في الظهر.", 12, dim, false), lp(-1, -2, 10));
         else all.addView(tv("عند الأذان والإقامة", 13, dim, false), lp(-1, -2, 12));
         final RadioGroup modes = new RadioGroup(this);
         String[] mn = {"صوت الأذان", "اهتزاز فقط", "بدون صوت ولا اهتزاز"};
