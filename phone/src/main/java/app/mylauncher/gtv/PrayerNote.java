@@ -150,7 +150,8 @@ final class PrayerNote {
         }
         Wc.expire(c);
         boolean wc = Wc.on(c);
-        if (noteOn(c) && !wc) {
+        // the countdown note stays while bathroom mode is on (with its button), so the mode is always one tap away
+        if (noteOn(c)) {
             if (cur != null) post(c, nm, city, cur, now);
         } else {
             nm.cancel(NOTE_ID);
@@ -299,7 +300,8 @@ final class PrayerNote {
         rv.setTextViewText(R.id.note_title, title);
         rv.setChronometerCountDown(R.id.note_clock, true);
         rv.setChronometer(R.id.note_clock, SystemClock.elapsedRealtime() + (target - now), null, true);
-        rv.setTextViewText(R.id.note_label, iqama ? "باقي على الإقامة" : "باقي على الأذان");
+        boolean wc = Wc.on(c);
+        rv.setTextViewText(R.id.note_label, (iqama ? "باقي على الإقامة" : "باقي على الأذان") + (wc ? " · الخلاء شغّال" : ""));
 
         PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, PhoneActivity.class)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
@@ -315,6 +317,8 @@ final class PrayerNote {
             .setCategory(Notification.CATEGORY_STATUS)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setContentIntent(open)
+            .addAction(new Notification.Action.Builder(null, wc ? "🚻 إنهاء وضع الخلاء" : "🚻 وضع الخلاء",
+                Widgets.tap(c, 351, Widgets.A_WC, 0)).build())
             .build();
         try {
             nm.notify(NOTE_ID, n);
