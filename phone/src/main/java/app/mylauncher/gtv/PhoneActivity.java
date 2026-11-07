@@ -165,6 +165,80 @@ public class PhoneActivity extends Activity {
     // ---- landscape: the same pages, laid out for a wide screen (phones and tablets turned sideways, or tablets upright)
     private boolean land;
 
+    // ---- landscape pages: the screen is split in two halves. The main thing of the page (the dial, the counter, the player,
+    // the month) is on one side and the rest on the other; each side scrolls by itself.
+    private int splitAt = -1;
+    private LinearLayout landCols;
+
+    private int landHeight() {
+        int h = scroll.getHeight() - body.getPaddingTop() - body.getPaddingBottom();
+        if (h <= 0) h = getResources().getDisplayMetrics().heightPixels - dp(96);
+        return h;
+    }
+
+    private void splitLand() {
+        int n = body.getChildCount();
+        java.util.ArrayList<View> kids = new java.util.ArrayList<>();
+        for (int i = 0; i < n; i++) kids.add(body.getChildAt(i));
+        int k = splitAt;
+        boolean main = k > 0 && k < n;
+        if (!main) {
+            int halfW = (getResources().getDisplayMetrics().widthPixels - body.getPaddingLeft() - body.getPaddingRight() - dp(20)) / 2;
+            int[] hs = new int[n];
+            int total = 0;
+            for (int i = 0; i < n; i++) {
+                View c = kids.get(i);
+                c.measure(View.MeasureSpec.makeMeasureSpec(halfW, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                int mt = c.getLayoutParams() instanceof LinearLayout.LayoutParams ? ((LinearLayout.LayoutParams) c.getLayoutParams()).topMargin : 0;
+                hs[i] = c.getMeasuredHeight() + mt;
+                total += hs[i];
+            }
+            int cum = 0;
+            k = n - 1;
+            for (int i = 0; i < n; i++) {
+                cum += hs[i];
+                if (cum * 2 >= total) {
+                    k = i + 1;
+                    break;
+                }
+            }
+            k = Math.max(1, Math.min(n - 1, k));
+        }
+        // a group's body stays right after its title
+        while (k < n - 1 && isAccBox(kids.get(k))) k++;
+        body.removeAllViews();
+        LinearLayout cols = hbox();
+        cols.setBaselineAligned(false);
+        LinearLayout[] side = new LinearLayout[2];
+        for (int j = 0; j < 2; j++) {
+            side[j] = vbox();
+            if (j == 0 && main) side[j].setGravity(Gravity.CENTER_VERTICAL);
+            ScrollView sv = new ScrollView(this);
+            sv.setFillViewport(true);
+            sv.setVerticalScrollBarEnabled(false);
+            sv.addView(side[j], new ViewGroup.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -1, 1f);
+            if (j == 0) cp.setMarginStart(dp(4));
+            cols.addView(sv, cp);
+            if (j == 0) {
+                View sep = new View(this);
+                sep.setBackgroundColor(line);
+                LinearLayout.LayoutParams ps = new LinearLayout.LayoutParams(dp(1), -1);
+                ps.setMargins(dp(8), dp(10), dp(8), dp(10));
+                cols.addView(sep, ps);
+            }
+        }
+        for (int i = 0; i < n; i++) side[i < k ? 0 : 1].addView(kids.get(i));
+        body.addView(cols, new LinearLayout.LayoutParams(-1, landHeight()));
+        landCols = cols;
+    }
+
+    private boolean isAccBox(View v) {
+        for (Object[] a : accs) if (a[1] == v) return true;
+        return false;
+    }
+
     private boolean isLand() {
         return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
     }
@@ -222,6 +296,7 @@ public class PhoneActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER);
+        final float sr = land ? Math.max(0.55f, Math.min(1f, (heightDp() - 240) / 150f)) : 1f;
         android.widget.ImageView icon = new android.widget.ImageView(this);
         final View shadow;
         icon.setImageResource(R.drawable.ic_launcher_phone);
@@ -229,11 +304,11 @@ public class PhoneActivity extends Activity {
         iconBox.setClipChildren(false);
         col.setClipChildren(false);
         ImageView shadowView = new ImageView(this);
-        shadowView.setImageBitmap(IconShadow.build(getResources(), R.drawable.ic_launcher_phone, dp(150), dp(34), dp(12), dp(10), 120));
+        shadowView.setImageBitmap(IconShadow.build(getResources(), R.drawable.ic_launcher_phone, Math.round(dp(150) * sr), Math.round(dp(34) * sr), Math.round(dp(12) * sr), Math.round(dp(10) * sr), 120));
         shadow = shadowView;
-        iconBox.addView(shadow, new FrameLayout.LayoutParams(dp(218), dp(218), Gravity.CENTER));
-        iconBox.addView(icon, new FrameLayout.LayoutParams(dp(150), dp(150), Gravity.CENTER));
-        col.addView(iconBox, new LinearLayout.LayoutParams(dp(150), dp(150)));
+        iconBox.addView(shadow, new FrameLayout.LayoutParams(Math.round(dp(218) * sr), Math.round(dp(218) * sr), Gravity.CENTER));
+        iconBox.addView(icon, new FrameLayout.LayoutParams(Math.round(dp(150) * sr), Math.round(dp(150) * sr), Gravity.CENTER));
+        col.addView(iconBox, new LinearLayout.LayoutParams(Math.round(dp(150) * sr), Math.round(dp(150) * sr)));
         // the fixed phrase in the middle, and under it the changing word: bigger, but never wider than the phrase
         final TextView phrase = new TextView(this);
         phrase.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
@@ -243,7 +318,7 @@ public class PhoneActivity extends Activity {
         phrase.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
         phrase.setText("الصلاة خير من");
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
-        rp.topMargin = dp(26);
+        rp.topMargin = land ? dp(12) : dp(26);
         col.addView(phrase, rp);
         final TextView word = new TextView(this);
         word.setTypeface(Typeface.DEFAULT_BOLD);
@@ -254,10 +329,10 @@ public class PhoneActivity extends Activity {
         word.setAutoSizeTextTypeUniformWithConfiguration(16, 44, 1, TypedValue.COMPLEX_UNIT_SP);
         android.text.TextPaint tp = new android.text.TextPaint(phrase.getPaint());
         int pw = Math.round(tp.measureText("الصلاة خير من")) + dp(4);
-        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(pw, dp(60));
-        wp.topMargin = dp(8);
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(pw, land ? dp(48) : dp(60));
+        wp.topMargin = land ? dp(2) : dp(8);
         col.addView(word, wp);
-        col.setPadding(0, 0, 0, dp(80)); // lifts the group about 40dp: the eye sees the middle higher than the true middle
+        col.setPadding(0, 0, 0, land ? dp(24) : dp(80)); // lifts the group about 40dp: the eye sees the middle higher than the true middle
         v.addView(col, new FrameLayout.LayoutParams(-1, -1));
         rootFrame.addView(v, new FrameLayout.LayoutParams(-1, -1));
         android.view.animation.PathInterpolator soft = new android.view.animation.PathInterpolator(0.2f, 0.8f, 0.2f, 1f);
@@ -519,7 +594,7 @@ public class PhoneActivity extends Activity {
         ArtBg.Border border = new ArtBg.Border((gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars, border}));
         // landscape home uses the full width (two columns); the other pages keep a readable column in the middle
-        int ex = land ? (tab == 0 ? dp(10) : sideExtra(660)) : sideExtra(560);
+        int ex = land ? dp(10) : sideExtra(560);
         int top = land ? dp(6) : dp(14);
         header.setPadding(dp(18) + ex, top, dp(18) + ex, dp(2));
         body.setPadding(dp(18) + ex, land ? dp(6) : dp(10), dp(18) + ex, land ? dp(10) : dp(20));
@@ -545,6 +620,22 @@ public class PhoneActivity extends Activity {
         col.addView(header, new LinearLayout.LayoutParams(-1, -2));
         scroll = new ScrollView(this);
         scroll.setFillViewport(true);
+        scroll.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                if (landCols == null || b - t == ob - ot) return;
+                final LinearLayout c = landCols;
+                c.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (c != landCols) return;
+                        ViewGroup.LayoutParams p = c.getLayoutParams();
+                        p.height = landHeight();
+                        c.setLayoutParams(p);
+                    }
+                });
+            }
+        });
         body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
         body.setPadding(dp(14), dp(10), dp(14), dp(16));
@@ -914,6 +1005,8 @@ public class PhoneActivity extends Activity {
         else getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         clockTv = apTv = nameTv = cdTv = altTv = iqLabel = iqValue = weatherTv = null;
         applyBackground();
+        splitAt = -1;
+        landCols = null;
         body.removeAllViews();
         header.removeAllViews();
         if (tab != 9) qiblaStop();
@@ -942,6 +1035,7 @@ public class PhoneActivity extends Activity {
             e.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
             add(e, 10);
         }
+        if (land && tab != 0 && body.getChildCount() > 1) splitLand();
         int y = 0;
         if (!toTop && (samePage || backNav)) {
             Integer v = savedScroll.get(key);
@@ -1334,6 +1428,7 @@ public class PhoneActivity extends Activity {
             });
         }
         radioHero();
+        splitAt = body.getChildCount();
         int stN = 0, rcN = 0;
         for (RadioService.Station q : RadioService.STATIONS) {
             if (q.url.contains("qurango")) rcN++;
@@ -3079,13 +3174,15 @@ public class PhoneActivity extends Activity {
                 refreshTasbih();
             }
         });
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(190), dp(190));
+        int cs = land ? Math.max(120, Math.min(190, heightDp() - 175)) : 190;
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(cs), dp(cs));
         rp.gravity = Gravity.CENTER_HORIZONTAL;
         rp.topMargin = dp(10);
         body.addView(tcBig, rp);
         TextView hint = tv("اضغط الدائرة للعدّ", 12, dim, false);
         hint.setGravity(Gravity.CENTER);
         add(hint, 6);
+        splitAt = body.getChildCount();
         section("الأذكار");
         tcRows = new TextView[names.length];
         for (int i = 0; i < names.length; i++) {
@@ -3688,6 +3785,7 @@ public class PhoneActivity extends Activity {
             }
             add(row, 0);
         }
+        splitAt = body.getChildCount();
         section("في هذا الشهر");
         String extra = month0 == 8 ? "شهر رمضان: صيام الشهر كله.\n" : "";
         add(tv(extra + (notes.length() > 0 ? notes.toString() : "") + "13 و14 و15: الأيام البيض (مظلّلة).\nالإثنين والخميس: صيام السنّة.", 13, dim, false), 4);
@@ -3844,10 +3942,12 @@ public class PhoneActivity extends Activity {
         double bearing = Qibla.bearing(city.lat, city.lon);
         dial = new Qibla.Dial(this, gold, cream, dim);
         dial.set(0f, (float) bearing, false);
-        LinearLayout.LayoutParams dp1 = new LinearLayout.LayoutParams(dp(310), dp(380));
+        int dh = land ? Math.max(200, Math.min(380, heightDp() - 120)) : 380;
+        LinearLayout.LayoutParams dp1 = new LinearLayout.LayoutParams(dp(dh * 310 / 380), dp(dh));
         dp1.gravity = Gravity.CENTER_HORIZONTAL;
         dp1.topMargin = dp(6);
         body.addView(dial, dp1);
+        splitAt = body.getChildCount();
 
         // the heading of the phone, big, under the dial
         qiblaHead = tv(String.format(Locale.US, "%.0f°", bearing), 46, cream, true);
