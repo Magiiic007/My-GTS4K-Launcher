@@ -1443,7 +1443,7 @@ public class PhoneActivity extends Activity {
             Weather.fetch(city, new Weather.Callback() {
                 @Override
                 public void onResult(int tempC, int code) {
-                    weather = tempC + "°";
+                    weather = tempText(tempC);
                     if (weatherTv != null) weatherTv.setText(weather);
                 }
 
@@ -1603,7 +1603,13 @@ public class PhoneActivity extends Activity {
         if (sp.getBoolean("verse_on", true)) {
         String[] vt = getResources().getStringArray(R.array.verse_text);
         String[] vr = getResources().getStringArray(R.array.verse_ref);
-        if (verseIdx < 0 || verseIdx >= vt.length) verseIdx = new java.util.Random().nextInt(vt.length);
+        if (verseIdx < 0 || verseIdx >= vt.length) {
+            int vm = sp.getInt("verse_mode", 0);
+            long now = System.currentTimeMillis() + java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis());
+            if (vm == 1) verseIdx = (int) ((now / 86_400_000L) % vt.length);
+            else if (vm == 2) verseIdx = (int) ((now / 21_600_000L) % vt.length);
+            else verseIdx = new java.util.Random().nextInt(vt.length);
+        }
         int vi = verseIdx;
         LinearLayout vc = vbox();
         vc.setBackground(shape(card, line, 18));
@@ -2312,8 +2318,17 @@ public class PhoneActivity extends Activity {
                 @Override
                 public void changed(boolean on) {
                     sp.edit().putBoolean("verse_on", on).apply();
+                    build();
                 }
             });
+        if (sp.getBoolean("verse_on", true)) {
+            choiceRow("تغيير الآية", "verse_mode", 0, new String[] {"عند كل فتح للتطبيق", "آية كل يوم", "آية كل 6 ساعات"}, new int[] {0, 1, 2}, new Runnable() {
+                @Override
+                public void run() {
+                    verseIdx = -1;
+                }
+            });
+        }
         switchRow("الطقس في الشاشة الرئيسية", "درجة الحرارة بجانب اسم المدينة (يحتاج إنترنت)", sp.getBoolean("weather_on", true),
             new CompoundListener() {
                 @Override
@@ -2322,11 +2337,30 @@ public class PhoneActivity extends Activity {
                     weather = "";
                 }
             });
+        choiceRow("وحدة الحرارة", "w_unit", 0, new String[] {"مئوية (°م)", "فهرنهايت (°ف)"}, new int[] {0, 1}, new Runnable() {
+            @Override
+            public void run() {
+                weather = "";
+            }
+        });
         switchRow("اهتزاز خفيف عند العدّ", "عند الضغط على الذكر أو السبحة", sp.getBoolean("tap_buzz", true),
             new CompoundListener() {
                 @Override
                 public void changed(boolean on) {
                     sp.edit().putBoolean("tap_buzz", on).apply();
+                }
+            });
+        choiceRow("قوة الاهتزاز", "buzz_lvl", 1, new String[] {"خفيف", "متوسط", "قوي"}, new int[] {0, 1, 2}, new Runnable() {
+            @Override
+            public void run() {
+                buzz();
+            }
+        });
+        switchRow("اهتزاز مميّز عند إتمام البطاقة", "نبضتان قصيرتان ثم طويلة عند الانتقال إلى الذكر التالي", sp.getBoolean("buzz_done", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("buzz_done", on).apply();
                 }
             });
         final int forced = sp.getInt("look_force", -1);
@@ -2868,13 +2902,17 @@ public class PhoneActivity extends Activity {
                 pickSound(true);
             }
         });
-        switchRow("رفع صوت الأذان تدريجياً", "يبدأ هادئاً ويعلو خلال 15 ثانية حتى مستوى صوت المنبّه في الهاتف", sp.getBoolean("ad_ramp", false),
+        switchRow("رفع صوت الأذان تدريجياً", "يبدأ هادئاً ويعلو حتى مستوى صوت المنبّه في الهاتف", sp.getBoolean("ad_ramp", false),
             new CompoundListener() {
                 @Override
                 public void changed(boolean on) {
                     sp.edit().putBoolean("ad_ramp", on).apply();
+                    build();
                 }
             });
+        if (sp.getBoolean("ad_ramp", false)) {
+            choiceRow("مدة رفع الصوت", "ad_ramp_s", 15, new String[] {"5 ثوانٍ", "15 ثانية", "30 ثانية"}, new int[] {5, 15, 30}, null);
+        }
         acc("ad:calc", "المواقيت والتاريخ الهجري", "طريقة الحساب والمذهب وتعديل التاريخ");
         final int m = sp.getInt("calc_method", -1);
         switchRow("تلقائي حسب الموقع", "يختار الطريقة والمذهب حسب بلد مدينتك", m < 0, new CompoundListener() {
@@ -2946,8 +2984,12 @@ public class PhoneActivity extends Activity {
                 @Override
                 public void changed(boolean on) {
                     sp.edit().putBoolean("ad_dua", on).apply();
+                    build();
                 }
             });
+        if (sp.getBoolean("ad_dua", true)) {
+            choiceRow("إغلاق نافذة الدعاء تلقائياً", "dua_close", 600, new String[] {"بعد 30 ثانية", "بعد دقيقة", "بعد 5 دقائق", "بعد 10 دقائق"}, new int[] {30, 60, 300, 600}, null);
+        }
         switchRow("أقم الصلاة", "لو فيه صلوات جاء وقتها ولم تعلّمها ✓ تظهر نافذة فوق التطبيقات لا تختفي إلا بزر OK، وتوقف الفيديو أو الصوت الشغّال. أول مرة بعد الإقامة بـ 5 دقائق، ثم كل فترة تحددها. لا تظهر بين الأذان وهذا الوقت، ولا بعد منتصف الليل", PrayerNote.missedOn(this),
             new CompoundListener() {
                 @Override
@@ -3572,12 +3614,41 @@ public class PhoneActivity extends Activity {
         }), 10);
     }
 
+    /** A settings row that opens a short list of fixed choices and stores the chosen value under one key. */
+    private void choiceRow(String title, final String key, int def, final String[] names, final int[] vals, final Runnable after) {
+        int v = sp.getInt(key, def);
+        int at = 0;
+        for (int i = 0; i < vals.length; i++) if (vals[i] == v) at = i;
+        final int cur = at;
+        row(title, names[cur], "›", new View.OnClickListener() {
+            @Override
+            public void onClick(View x) {
+                final String t = title;
+                new Pop(PhoneActivity.this).title(t).single(names, cur, new Pop.Pick() {
+                    @Override
+                    public void on(int which) {
+                        sp.edit().putInt(key, vals[which]).apply();
+                        if (after != null) after.run();
+                        build();
+                    }
+                }).cancel("إلغاء").show();
+            }
+        });
+    }
+
+    private String tempText(int c) {
+        return sp.getInt("w_unit", 0) == 1 ? Math.round(c * 9f / 5f + 32f) + "°ف" : c + "°";
+    }
+
+    private int buzzLevel() { return sp.getInt("buzz_lvl", 1); }
+
     /** A short buzz on every count. */
     private void buzz() {
         if (!sp.getBoolean("tap_buzz", true)) return;
         try {
             Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-            if (v != null && v.hasVibrator()) v.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE));
+            int lv = buzzLevel();
+            if (v != null && v.hasVibrator()) v.vibrate(VibrationEffect.createOneShot(lv == 0 ? 12 : lv == 1 ? 18 : 38, lv == 0 ? 70 : lv == 1 ? VibrationEffect.DEFAULT_AMPLITUDE : 255));
         } catch (RuntimeException ignored) {
             // no vibration on this phone
         }
@@ -3585,7 +3656,7 @@ public class PhoneActivity extends Activity {
 
     /** A different buzz when a card is finished and the next one starts: two short pulses, then a long one. */
     private void buzzDone() {
-        if (!sp.getBoolean("tap_buzz", true)) return;
+        if (!sp.getBoolean("tap_buzz", true) || !sp.getBoolean("buzz_done", true)) return;
         try {
             Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
             if (v != null && v.hasVibrator()) v.vibrate(VibrationEffect.createWaveform(new long[] {0, 40, 70, 40, 70, 170}, -1));

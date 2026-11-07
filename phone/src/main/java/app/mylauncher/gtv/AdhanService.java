@@ -287,7 +287,7 @@ public class AdhanService extends Service {
     /** Raises the adhan from silence to the phone's own volume level over about 15 seconds. */
     private void rampUp() {
         final long t0 = SystemClock.uptimeMillis();
-        final long total = 15_000L;
+        final long total = getSharedPreferences("magiic", MODE_PRIVATE).getInt("ad_ramp_s", 15) * 1000L;
         handler.post(new Runnable() {
             @Override
             public void run() {

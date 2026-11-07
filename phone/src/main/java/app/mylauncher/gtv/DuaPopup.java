@@ -130,7 +130,7 @@ final class DuaPopup {
                 public void run() {
                     hide();
                 }
-            }, 10 * 60_000L);
+            }, c.getSharedPreferences("magiic", Context.MODE_PRIVATE).getInt("dua_close", 600) * 1000L);
             return true;
         } catch (RuntimeException e) {
             return false;
