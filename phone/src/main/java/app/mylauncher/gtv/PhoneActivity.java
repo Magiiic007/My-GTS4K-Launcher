@@ -441,6 +441,7 @@ public class PhoneActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         sp = getSharedPreferences(P, MODE_PRIVATE);
+        if (showLastCrash()) return;
         applyRotation();
         look = lookNow();
         land = isLand();
@@ -467,6 +468,57 @@ public class PhoneActivity extends Activity {
         build();
         // opened straight to a chapter from the round icon: no opening screen
         if (b == null && !direct && sp.getBoolean("splash_on", true)) splash();
+    }
+
+    /**
+     * If the app closed by itself a moment ago, the start shows the reason (copyable) instead of the app, so it can be
+     * sent for a fix. "متابعة" clears it and opens the app. Returns true when this screen is shown.
+     */
+    private boolean showLastCrash() {
+        final String crash = sp.getString("dbg_crash", "");
+        long at = sp.getLong("dbg_crash_at", 0L);
+        if (crash.isEmpty() || System.currentTimeMillis() - at > 10 * 60_000L) return false;
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setBackgroundColor(0xFF0B1B3F);
+        col.setPadding(dp(16), dp(36), dp(16), dp(16));
+        TextView h = new TextView(this);
+        h.setText("أغلق التطبيق قبل قليل. هذا هو السبب (انسخه وأرسله):");
+        h.setTextColor(0xFFE8B84A);
+        h.setTextSize(15);
+        col.addView(h);
+        final TextView t = new TextView(this);
+        t.setText(crash);
+        t.setTextColor(0xFFF1E8D0);
+        t.setTextSize(11);
+        t.setTextIsSelectable(true);
+        t.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        ScrollView sv = new ScrollView(this);
+        sv.addView(t);
+        col.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
+        Button copy = new Button(this);
+        copy.setText("نسخ");
+        copy.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                if (cm != null) cm.setPrimaryClip(android.content.ClipData.newPlainText("crash", crash));
+                toast("تم النسخ");
+            }
+        });
+        col.addView(copy);
+        Button go = new Button(this);
+        go.setText("متابعة");
+        go.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sp.edit().remove("dbg_crash").remove("dbg_crash_at").apply();
+                recreate();
+            }
+        });
+        col.addView(go);
+        setContentView(col);
+        return true;
     }
 
     private static final String[] SPLASH_WORDS = {"النوم", "الغفلة", "اللهو", "اللعب", "اللغو", "الكسل", "التأجيل", "المال", "التجارة", "العمل", "الدنيا وما فيها", "الراحة", "السهر"};
