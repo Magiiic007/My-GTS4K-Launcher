@@ -1,7 +1,6 @@
 package app.mylauncher.gtv;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.DialogInterface;
@@ -577,10 +576,6 @@ public class MainActivity extends Activity {
 
     private void refreshBoardDates() {
         if (board != null) board.refreshDates();
-    }
-
-    void openTiming() {
-        TimingDialogs.open(this, prayerChanged);
     }
 
     /** The two looks, in a list; picking the other one restarts the screen in it. */

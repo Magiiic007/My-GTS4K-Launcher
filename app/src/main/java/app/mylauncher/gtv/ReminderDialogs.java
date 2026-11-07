@@ -1,6 +1,5 @@
 package app.mylauncher.gtv;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.text.InputType;

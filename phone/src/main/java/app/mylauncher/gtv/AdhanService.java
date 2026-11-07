@@ -24,7 +24,6 @@ import android.os.PowerManager;
 import android.os.SystemClock;
 import android.view.KeyEvent;
 
-import java.util.Locale;
 
 /**
  * The call to prayer on the phone. It plays in the background with no screen of its own: a small notification is

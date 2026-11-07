@@ -77,18 +77,9 @@ final class Theme {
 
     // ---------------------------------------------------------------- colours
 
-    /** Text drawn straight on the background (the title, the clock). */
-    static int bgText(Context c) {
-        return pick(c, "#FFFFF4D6", "#FF7A3347");
-    }
-
     /** Text inside a panel. */
     static int text(Context c) {
         return pick(c, "#FFFFF8E7", "#FFFFFFFF");
-    }
-
-    static int textDim(Context c) {
-        return pick(c, "#FFD9CDA6", "#FFFFE9EE");
     }
 
     /** Gold (royal) or warm cream (kids): outlines, the iqama times, highlights. */
@@ -100,16 +91,8 @@ final class Theme {
         return pick(c, "#FFE9C766", "#FFFFF4E0");
     }
 
-    static int pillText(Context c) {
-        return pick(c, "#FF3A2A00", "#FF7A3347");
-    }
-
     static int panelFill(Context c) {
         return pick(c, "#CC0A3B2C", "#F2E58AA2");
-    }
-
-    static int tileFill(Context c) {
-        return pick(c, "#E60B4232", "#FFFFF4E0");
     }
 
     static int tileLabel(Context c) {
@@ -123,14 +106,6 @@ final class Theme {
 
     static int popupBottom(Context c) {
         return pick3(c, "#FF052B20", "#FFE5667F", "#FF0A1838");
-    }
-
-    static int popupText(Context c) {
-        return pick3(c, "#FFFFF8E7", "#FF6B2237", "#FFF4EEDC");
-    }
-
-    static int popupDim(Context c) {
-        return pick3(c, "#FFE4D8B0", "#FF8A4558", "#FFB9C6E6");
     }
 
     // ---------------------------------------------------------------- shapes
@@ -186,35 +161,12 @@ final class Theme {
         return s;
     }
 
-    /** Text on a chip. */
-    static int chipText(Context c) {
-        return pick(c, "#FFFFF8E7", "#FFFFFFFF");
-    }
-
-    /** What the chip's text turns into while focused (kids' focused chip is light). */
-    static int chipTextFocused(Context c) {
-        return pick(c, "#FFFFFFFF", "#FF7A3347");
-    }
-
     static GradientDrawable pill(Context c) {
         GradientDrawable g = new GradientDrawable();
         g.setColor(pillFill(c));
         g.setCornerRadius(dp(c, 16));
         g.setStroke(dp(c, 1), pick(c, "#FFB88A22", "#FFE0A3B3"));
         return g;
-    }
-
-    /** The marker over the app (or row) the remote is on. */
-    static Drawable focusRing(Context c, float radiusDp) {
-        GradientDrawable g = new GradientDrawable();
-        g.setColor(pick(c, "#26E8B84A", "#33FFFFFF"));
-        g.setCornerRadius(dp(c, radiusDp));
-        g.setStroke(dp(c, 4), pick(c, "#FFE8B84A", "#FFFFFFFF"));
-        return g;
-    }
-
-    static int tileColor(String pkg) {
-        return Color.WHITE;
     }
 
     // ---------------------------------------------------------------- the home screen's own colours and shapes
