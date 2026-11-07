@@ -45,60 +45,6 @@ final class SettingsMenu {
         c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(ORDER, b.toString()).apply();
     }
 
-    /** "Apps": choose which show, or put them back in alphabetical order. */
-    static void apps(final Context c, final List<String[]> allApps, final Runnable appsChanged) {
-        String[] items = {c.getString(R.string.apps_hide_show), c.getString(R.string.apps_reset_order),
-            c.getString(R.string.apps_tip)};
-        new Menu.Builder(c)
-            .setTitle(R.string.menu_apps)
-            .setItems(items, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int which) {
-                    if (which == 0) {
-                        hiddenApps(c, allApps, appsChanged);
-                    } else if (which == 1) {
-                        setOrder(c, new ArrayList<String>());
-                        appsChanged.run();
-                        Toast.makeText(c, R.string.apps_order_reset, Toast.LENGTH_SHORT).show();
-                    }
-                }
-            })
-            .show();
-    }
-
-    /** A checklist of every app; the ticked ones are hidden from the home screen (they stay installed). */
-    private static void hiddenApps(final Context c, final List<String[]> allApps, final Runnable appsChanged) {
-        final Set<String> hidden = hidden(c);
-        final String[] labels = new String[allApps.size()];
-        final boolean[] checked = new boolean[labels.length];
-        for (int i = 0; i < labels.length; i++) {
-            labels[i] = allApps.get(i)[0];
-            checked[i] = hidden.contains(allApps.get(i)[1]);
-        }
-        new Menu.Builder(c)
-            .setTitle(R.string.hidden_title)
-            .setMultiChoiceItems(labels, checked, new DialogInterface.OnMultiChoiceClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int which, boolean isChecked) {
-                    checked[which] = isChecked;
-                }
-            })
-            .setPositiveButton(R.string.save, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int w) {
-                    for (int i = 0; i < labels.length; i++) {
-                        String pkg = allApps.get(i)[1];
-                        if (checked[i]) hidden.add(pkg);
-                        else hidden.remove(pkg);
-                    }
-                    setHidden(c, hidden);
-                    appsChanged.run();
-                }
-            })
-            .setNegativeButton(R.string.cancel, null)
-            .show();
-    }
-
     // ---------------------------------------------------------------- the device's own settings
 
     private static final String[][] DEVICE = {

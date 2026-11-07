@@ -46,6 +46,9 @@ final class Menu {
         /** The menu this one was opened from: Back (or Close) comes back to it, on the row that opened this one. */
         Box parent;
         static Box lastShown;
+        /** The menu whose row was just pressed: a menu that opens soon after (even a little later) is its child. */
+        static Box opener;
+        static long openerAt;
 
         Box(Context c) {
             super(c, R.style.MagiicMenu);
@@ -61,11 +64,15 @@ final class Menu {
         void reopenParent() {
             Box p = parent;
             parent = null;
+            opener = null;
             if (p != null) p.show();
         }
 
         @Override
         public void show() {
+            if (parent == null && opener != null && opener != this
+                && android.os.SystemClock.uptimeMillis() - openerAt < 2500) parent = opener;
+            opener = null;
             lastShown = this;
             super.show();
             Window w = getWindow();
@@ -403,6 +410,8 @@ final class Menu {
                         public void onClick(View v) {
                             if (kind == 1) {
                                 Box before = Box.lastShown;
+                                Box.opener = d;
+                                Box.openerAt = android.os.SystemClock.uptimeMillis();
                                 if (itemClick != null) itemClick.onClick(d, which);
                                 Box child = Box.lastShown;
                                 if (child != null && child != before && child != d) {
@@ -454,9 +463,11 @@ final class Menu {
                     t.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
+                            Box before = Box.lastShown;
                             if (l != null) l.onClick(d, id);
                             d.dismiss();
-                            if (id == DialogInterface.BUTTON_NEGATIVE) d.reopenParent();
+                            // Close/Back/Save come back to the menu this one was opened from, unless a new menu took over
+                            if (id == DialogInterface.BUTTON_NEGATIVE || Box.lastShown == before) d.reopenParent();
                         }
                     });
                     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,

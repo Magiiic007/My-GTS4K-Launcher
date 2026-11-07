@@ -106,14 +106,16 @@ final class NumberDialog {
         ok.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Menu.Box before = Menu.Box.lastShown;
                 dialog[0].dismiss();
                 save.saved(value[0]);
+                if (Menu.Box.lastShown == before && dialog[0] instanceof Menu.Box) ((Menu.Box) dialog[0]).reopenParent();
             }
         });
         cancel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                dialog[0].dismiss();
+                dialog[0].cancel();
             }
         });
 

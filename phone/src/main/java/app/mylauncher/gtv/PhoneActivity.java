@@ -940,7 +940,7 @@ public class PhoneActivity extends Activity {
         head.setPadding(dp(14), dp(11), dp(14), dp(11));
         head.setMinimumHeight(dp(52));
         LinearLayout v = vbox();
-        v.addView(tv(ic(name), 16, gold, true));
+        v.addView(itv(name, 16, gold, true));
         if (summary != null && !summary.isEmpty()) v.addView(tv(summary, 12, dim, false));
         head.addView(v, new LinearLayout.LayoutParams(0, -2, 1f));
         final TextView arrow = tv(key.equals(accOpen) ? "▴" : "▾", 18, gold, true);
@@ -993,65 +993,70 @@ public class PhoneActivity extends Activity {
 
     private static final java.util.HashMap<String, String> ICONS = new java.util.HashMap<>();
     static {
-        ICONS.put("مواقيت الصلاة", "🕌");
-        ICONS.put("الصلاة خير", "🕌");
-        ICONS.put("الأذان والإقامة", "📢");
-        ICONS.put("متابعة وقضاء الصلوات", "✅");
-        ICONS.put("مدن أخرى", "🌍");
-        ICONS.put("التقويم الهجري", "📅");
-        ICONS.put("الأذكار والأدعية", "📖");
-        ICONS.put("السبحة والاستغفار", "📿");
-        ICONS.put("الأذكار فوق التطبيقات", "🪟");
-        ICONS.put("التذكيرات", "⏰");
-        ICONS.put("القبلة", "🧭");
-        ICONS.put("الراديو", "📻");
-        ICONS.put("الإعدادات", "⚙️");
-        ICONS.put("المناسبات القادمة", "🌙");
-        ICONS.put("حجم الخط ولونه", "🔤");
-        ICONS.put("نسخة احتياطية", "💾");
-        ICONS.put("عن التطبيق", "ℹ️");
-        ICONS.put("اختر الدولة", "🌍");
-        ICONS.put("ابحث عن مدينتك", "🔍");
-        ICONS.put("أحاديث بشرحها", "📜");
-        ICONS.put("اختبار أزرار الريموت", "🎮");
-        ICONS.put("تأكد أن الأذان يعمل", "🔔");
-        ICONS.put("الشكل والعرض", "🎨");
-        ICONS.put("التشغيل في الخلفية", "🔋");
-        ICONS.put("التطبيق", "📱");
-        ICONS.put("الأذان والإقامة لكل صلاة", "📢");
-        ICONS.put("المواقيت والتاريخ الهجري", "🧮");
-        ICONS.put("التنبيهات والتذكير", "🔔");
-        ICONS.put("الصامت وقت الصلاة", "🔕");
-        ICONS.put("الصوت", "🔊");
-        ICONS.put("الصيام", "🍽");
-        ICONS.put("الأذكار", "📖");
-        ICONS.put("يوم الجمعة", "🕌");
-        ICONS.put("المناسبات الهجرية", "🌙");
-        ICONS.put("تذكيراتي", "📝");
-        ICONS.put("الإحصائية", "📊");
-        ICONS.put("آخر 7 أيام", "🗓");
-        ICONS.put("قضاء الصلوات", "🔁");
-        ICONS.put("الإظهار والتوقيت", "🎛");
-        ICONS.put("الأذكار المفعّلة", "🟢");
-        ICONS.put("الأذكار غير المفعّلة", "⚪");
-        ICONS.put("وضع الخلاء", "🚿");
-        ICONS.put("الحجم", "📏");
-        ICONS.put("اللون", "🎨");
-        ICONS.put("المصادر", "📚");
-        ICONS.put("التشخيص", "🩺");
-        ICONS.put("الأزرار", "🎮");
-        ICONS.put("اختر المكان", "📍");
-        ICONS.put("آخر ما حدث", "🕘");
-        ICONS.put("متصل", "🔗");
-        ICONS.put("وجدت على الشبكة", "📡");
-        ICONS.put("أو اكتب العنوان بنفسك", "⌨️");
-        ICONS.put("في هذا الشهر", "🗓");
+        ICONS.put("مواقيت الصلاة", "mosque");
+        ICONS.put("الصلاة خير", "mosque");
+        ICONS.put("الأذان والإقامة", "speaker");
+        ICONS.put("متابعة وقضاء الصلوات", "check");
+        ICONS.put("مدن أخرى", "globe");
+        ICONS.put("التقويم الهجري", "calendar");
+        ICONS.put("الأذكار والأدعية", "book");
+        ICONS.put("السبحة والاستغفار", "beads");
+        ICONS.put("الأذكار فوق التطبيقات", "window");
+        ICONS.put("التذكيرات", "clock");
+        ICONS.put("القبلة", "compass");
+        ICONS.put("الراديو", "radio");
+        ICONS.put("الإعدادات", "gear");
+        ICONS.put("المناسبات القادمة", "moon");
+        ICONS.put("حجم الخط ولونه", "text");
+        ICONS.put("نسخة احتياطية", "save");
+        ICONS.put("عن التطبيق", "info");
+        ICONS.put("اختر الدولة", "globe");
+        ICONS.put("ابحث عن مدينتك", "search");
+        ICONS.put("أحاديث بشرحها", "scroll");
+        ICONS.put("اختبار أزرار الريموت", "gamepad");
+        ICONS.put("تأكد أن الأذان يعمل", "bell");
+        ICONS.put("الشكل والعرض", "palette");
+        ICONS.put("التشغيل في الخلفية", "battery");
+        ICONS.put("التطبيق", "phone");
+        ICONS.put("الأذان والإقامة لكل صلاة", "speaker");
+        ICONS.put("المواقيت والتاريخ الهجري", "calc");
+        ICONS.put("التنبيهات والتذكير", "bell");
+        ICONS.put("الصامت وقت الصلاة", "bellOff");
+        ICONS.put("الصوت", "speaker");
+        ICONS.put("الصيام", "plate");
+        ICONS.put("الأذكار", "book");
+        ICONS.put("يوم الجمعة", "mosque");
+        ICONS.put("المناسبات الهجرية", "moon");
+        ICONS.put("تذكيراتي", "note");
+        ICONS.put("الإحصائية", "chart");
+        ICONS.put("آخر 7 أيام", "calendar");
+        ICONS.put("قضاء الصلوات", "repeat");
+        ICONS.put("الإظهار والتوقيت", "sliders");
+        ICONS.put("الأذكار المفعّلة", "dotOn");
+        ICONS.put("الأذكار غير المفعّلة", "dotOff");
+        ICONS.put("وضع الخلاء", "drop");
+        ICONS.put("الحجم", "ruler");
+        ICONS.put("اللون", "palette");
+        ICONS.put("المصادر", "books");
+        ICONS.put("التشخيص", "pulse");
+        ICONS.put("الأزرار", "gamepad");
+        ICONS.put("اختر المكان", "pin");
+        ICONS.put("آخر ما حدث", "clock");
+        ICONS.put("متصل", "link");
+        ICONS.put("وجدت على الشبكة", "wifi");
+        ICONS.put("أو اكتب العنوان بنفسك", "keyboard");
+        ICONS.put("في هذا الشهر", "calendar");
     }
 
-    /** Puts the matching picture (all from one emoji set) before a title. */
-    private static String ic(String t) {
-        String e = ICONS.get(t);
-        return e == null ? t : e + "  " + t;
+    /** A text view whose title has its own drawn icon before it (looks the same on every phone). */
+    private TextView itv(String name, int sp, int color, boolean bold) {
+        TextView t = tv(name, sp, color, bold);
+        String k = ICONS.get(name);
+        if (k != null) {
+            t.setCompoundDrawablesRelative(new Ico(k, color, dp(Math.round(sp * 1.25f))), null, null, null);
+            t.setCompoundDrawablePadding(dp(10));
+        }
+        return t;
     }
 
     private void title(String t, boolean back) {
@@ -1069,7 +1074,7 @@ public class PhoneActivity extends Activity {
             r.addView(b, new LinearLayout.LayoutParams(dp(38), dp(38)));
         }
         else r.addView(hamburger(), new LinearLayout.LayoutParams(dp(38), dp(38)));
-        TextView t1 = tv(ic(t), 22, gold, true);
+        TextView t1 = itv(t, 22, gold, true);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
         p.setMarginStart(dp(10));
         r.addView(t1, p);
@@ -1077,7 +1082,7 @@ public class PhoneActivity extends Activity {
     }
 
     private void section(String t) {
-        TextView s = tv(ic(t), 13, gold, true);
+        TextView s = itv(t, 13, gold, true);
         s.setPadding(dp(4), 0, 0, 0);
         add(s, 14);
     }
@@ -3033,7 +3038,7 @@ public class PhoneActivity extends Activity {
     }
 
     private void menuItem(String name, final int t) {
-        TextView it = tv(ic(name), 16, t == tab ? gold : cream, true);
+        TextView it = itv(name, 16, t == tab ? gold : cream, true);
         it.setPadding(dp(12), dp(11), dp(12), dp(11));
         if (t == tab) it.setBackground(shape(hl, 0, 12));
         it.setOnClickListener(new View.OnClickListener() {
