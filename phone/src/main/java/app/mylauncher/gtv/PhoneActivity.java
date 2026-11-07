@@ -1286,6 +1286,7 @@ public class PhoneActivity extends Activity {
         final Cities.City city = Cities.selected(this);
         if (city == null) {
             title("الصلاة خير", false);
+            header.setVisibility(View.VISIBLE); // landscape hides the header on the home page, but this page has no panel
             row("اختر مدينتك", "لحساب مواقيت الصلاة", "تلقائي", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {

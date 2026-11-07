@@ -103,17 +103,7 @@ final class PermGate {
         }
     }
 
-    /** An update over an existing install (not a fresh install): nothing to show when everything is already granted. */
-    private static boolean upgraded(Activity a) {
-        try {
-            android.content.pm.PackageInfo i = a.getPackageManager().getPackageInfo(a.getPackageName(), 0);
-            return i.lastUpdateTime > i.firstInstallTime;
-        } catch (PackageManager.NameNotFoundException | RuntimeException e) {
-            return false;
-        }
-    }
-
-    /** First run, a new version, or a few days since the last look: show the list (on later looks only when something is missing). */
+    /** First run, a new version, or a few days since the last look: show the list when something is missing. */
     static void maybeShow(Activity a) {
         if (flow || a.isFinishing()) return;
         SharedPreferences s = sp(a);
