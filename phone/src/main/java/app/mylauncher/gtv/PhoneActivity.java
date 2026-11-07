@@ -151,7 +151,7 @@ public class PhoneActivity extends Activity {
     public void onConfigurationChanged(Configuration cfg) {
         super.onConfigurationChanged(cfg);
         int l = lookNow();
-        boolean ls = isLand();
+        boolean ls = cfg.orientation == Configuration.ORIENTATION_LANDSCAPE;
         if (l != look || ls != land) {
             look = l;
             land = ls;
@@ -169,6 +169,7 @@ public class PhoneActivity extends Activity {
     // the month) is on one side and the rest on the other; each side scrolls by itself.
     private int splitAt = -1;
     private LinearLayout landCols;
+    private View landHint;
 
     private int landHeight() {
         int h = scroll.getHeight() - body.getPaddingTop() - body.getPaddingBottom();
@@ -182,7 +183,9 @@ public class PhoneActivity extends Activity {
         for (int i = 0; i < n; i++) kids.add(body.getChildAt(i));
         int k = splitAt;
         boolean main = k > 0 && k < n;
-        if (!main) {
+        // a page of groups: the titles stay on the right, and the open group shows its content on the left
+        boolean master = !main && !accs.isEmpty();
+        if (!main && !master) {
             int halfW = (getResources().getDisplayMetrics().widthPixels - body.getPaddingLeft() - body.getPaddingRight() - dp(20)) / 2;
             int[] hs = new int[n];
             int total = 0;
@@ -229,7 +232,18 @@ public class PhoneActivity extends Activity {
                 cols.addView(sep, ps);
             }
         }
-        for (int i = 0; i < n; i++) side[i < k ? 0 : 1].addView(kids.get(i));
+        if (master) {
+            for (View c : kids) side[isAccBox(c) ? 1 : 0].addView(c);
+            TextView hint = tv("اختر من القائمة ليظهر محتواها هنا", 14, dim, false);
+            hint.setGravity(Gravity.CENTER);
+            hint.setPadding(dp(16), dp(40), dp(16), dp(16));
+            hint.setVisibility(accOpen == null ? View.VISIBLE : View.GONE);
+            side[1].addView(hint, new LinearLayout.LayoutParams(-1, -2));
+            landHint = hint;
+            // the groups' titles come first in the list, on the right side of the screen
+        } else {
+            for (int i = 0; i < n; i++) side[i < k ? 0 : 1].addView(kids.get(i));
+        }
         body.addView(cols, new LinearLayout.LayoutParams(-1, landHeight()));
         landCols = cols;
     }
@@ -611,6 +625,29 @@ public class PhoneActivity extends Activity {
         FrameLayout f = new FrameLayout(this);
         f.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         rootFrame = f;
+        // safety net: if the real shape of the screen no longer matches the layout in use, the page is drawn again at once
+        f.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                final int w = r - l, hh = b - t;
+                if (w <= 0 || hh <= 0 || v != rootFrame) return;
+                if ((w > hh) != land) {
+                    v.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (rootFrame == null || rootFrame.getWidth() <= 0) return;
+                            boolean nl = rootFrame.getWidth() > rootFrame.getHeight();
+                            if (nl == land) return;
+                            land = nl;
+                            homeAdj = 1f;
+                            palette();
+                            root();
+                            build();
+                        }
+                    });
+                }
+            }
+        });
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         // the title row (with the menu or back button) stays put while the page scrolls under it
@@ -745,7 +782,8 @@ public class PhoneActivity extends Activity {
                     }
                     ((TextView) a[2]).setText(on ? "▴" : "▾");
                 }
-                if (opening) {
+                if (landHint != null) landHint.setVisibility(accOpen == null ? View.VISIBLE : View.GONE);
+                if (opening && !land) {
                     final View target = head;
                     scroll.post(new Runnable() {
                         @Override
@@ -1007,6 +1045,7 @@ public class PhoneActivity extends Activity {
         applyBackground();
         splitAt = -1;
         landCols = null;
+        landHint = null;
         body.removeAllViews();
         header.removeAllViews();
         if (tab != 9) qiblaStop();
