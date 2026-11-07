@@ -447,7 +447,7 @@ public class PhoneActivity extends Activity {
         land = isLand();
         palette();
         root();
-        if (Build.VERSION.SDK_INT >= 33) {
+        if (Build.VERSION.SDK_INT >= 33 && !BuildConfig.NO_INSETS) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
                 new android.window.OnBackInvokedCallback() {
                     @Override
@@ -933,7 +933,7 @@ public class PhoneActivity extends Activity {
         f.addView(col, new FrameLayout.LayoutParams(-1, -1));
         // From Android 15 the app is drawn under the status and navigation bars: keep the content clear of them.
         final LinearLayout colRef = col;
-        f.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+        if (!BuildConfig.NO_INSETS) f.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
             @Override
             public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets w) {
                 int l, t, r, b;

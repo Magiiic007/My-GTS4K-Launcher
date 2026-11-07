@@ -134,16 +134,16 @@ jobs:
           gh release create play-test my-phone-play-test.apk --prerelease --target "$GITHUB_SHA" \
             --title "Play build, test copy" --notes "Test copy of the Google Play build (package app.alsalatu.khair.test). commit=${GITHUB_SHA::7}"
 
-      # Two extra test copies, to tell what makes the Play build close: a fresh install of the GitHub build, and the Play build aimed at Android 14.
+      # Test copies, each changing one thing that differs between the Play build and the GitHub build (find what makes it close).
       - name: Build the A/B test APKs
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ./gradlew :phone:assembleSideloadDebug -PfreshTest --no-daemon --stacktrace
-          cp phone/build/outputs/apk/sideload/debug/*.apk ab-fresh-github.apk
-          ./gradlew :phone:assemblePlayDebug -Pt34 --no-daemon --stacktrace
-          cp phone/build/outputs/apk/play/debug/*.apk ab-play-target34.apk
+          ./gradlew :phone:assemblePlayDebug -PabId=noinsets -PnoInsets --no-daemon --stacktrace
+          cp phone/build/outputs/apk/play/debug/*.apk ab-1-no-insets.apk
+          ./gradlew :phone:assemblePlayDebug -PabId=c34 -Pc34 --no-daemon --stacktrace
+          cp phone/build/outputs/apk/play/debug/*.apk ab-2-compile34.apk
           gh release delete ab-test --yes --cleanup-tag || true
-          gh release create ab-test ab-fresh-github.apk ab-play-target34.apk --prerelease --target "$GITHUB_SHA" \
-            --title "A/B test APKs" --notes "ab-fresh-github: GitHub build, fresh install. ab-play-target34: Play build aimed at Android 14. commit=${GITHUB_SHA::7}"
+          gh release create ab-test ab-1-no-insets.apk ab-2-compile34.apk --prerelease --target "$GITHUB_SHA" \
+            --title "A/B test APKs" --notes "ab-1: Play build without the edge-to-edge insets and back callback. ab-2: Play build compiled with SDK 34. commit=${GITHUB_SHA::7}"

@@ -6,7 +6,7 @@ android {
     // The same package as the TV app on purpose: the files shared with it (prayer times, Hijri dates, reminders,
     // radio) are copied in at build time and refer to the generated R of this package.
     namespace 'app.mylauncher.gtv'
-    compileSdk 36
+    compileSdk project.hasProperty('c34') ? 34 : 36
 
     defaultConfig {
         applicationId 'app.magiic.phone'
@@ -29,16 +29,19 @@ android {
             // A fresh-install test copy of the GitHub build (its own package, so it starts with no data).
             if (project.hasProperty('freshTest')) applicationIdSuffix '.fresh'
             buildConfigField 'boolean', 'PLAY', 'false'
+            buildConfigField 'boolean', 'NO_INSETS', 'false'
         }
         play {
             dimension 'dist'
-            targetSdk project.hasProperty('t34') ? 34 : 36
-            if (project.hasProperty('t34')) applicationIdSuffix '.t34'
+            targetSdk 36
             // The store name of the app: «Salat Khair». (The sideload build keeps app.magiic.phone so it updates from GitHub.)
             applicationId 'app.alsalatu.khair'
             // A test copy of the Play build that installs next to the real app (CI passes -PplayTest).
             if (project.hasProperty('playTest')) applicationIdSuffix '.test'
             buildConfigField 'boolean', 'PLAY', 'true'
+            buildConfigField 'boolean', 'NO_INSETS', project.hasProperty('noInsets') ? 'true' : 'false'
+            // A/B test copies: each switches one thing that differs from the GitHub build
+            if (project.hasProperty('abId')) applicationIdSuffix '.' + project.property('abId')
         }
     }
 
