@@ -45,60 +45,6 @@ final class SettingsMenu {
         c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(ORDER, b.toString()).apply();
     }
 
-    /** "Apps": choose which show, or put them back in alphabetical order. */
-    static void apps(final Context c, final List<String[]> allApps, final Runnable appsChanged) {
-        String[] items = {c.getString(R.string.apps_hide_show), c.getString(R.string.apps_reset_order),
-            c.getString(R.string.apps_tip)};
-        new Menu.Builder(c)
-            .setTitle(R.string.menu_apps)
-            .setItems(items, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int which) {
-                    if (which == 0) {
-                        hiddenApps(c, allApps, appsChanged);
-                    } else if (which == 1) {
-                        setOrder(c, new ArrayList<String>());
-                        appsChanged.run();
-                        Toast.makeText(c, R.string.apps_order_reset, Toast.LENGTH_SHORT).show();
-                    }
-                }
-            })
-            .show();
-    }
-
-    /** A checklist of every app; the ticked ones are hidden from the home screen (they stay installed). */
-    private static void hiddenApps(final Context c, final List<String[]> allApps, final Runnable appsChanged) {
-        final Set<String> hidden = hidden(c);
-        final String[] labels = new String[allApps.size()];
-        final boolean[] checked = new boolean[labels.length];
-        for (int i = 0; i < labels.length; i++) {
-            labels[i] = allApps.get(i)[0];
-            checked[i] = hidden.contains(allApps.get(i)[1]);
-        }
-        new Menu.Builder(c)
-            .setTitle(R.string.hidden_title)
-            .setMultiChoiceItems(labels, checked, new DialogInterface.OnMultiChoiceClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int which, boolean isChecked) {
-                    checked[which] = isChecked;
-                }
-            })
-            .setPositiveButton(R.string.save, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int w) {
-                    for (int i = 0; i < labels.length; i++) {
-                        String pkg = allApps.get(i)[1];
-                        if (checked[i]) hidden.add(pkg);
-                        else hidden.remove(pkg);
-                    }
-                    setHidden(c, hidden);
-                    appsChanged.run();
-                }
-            })
-            .setNegativeButton(R.string.cancel, null)
-            .show();
-    }
-
     // ---------------------------------------------------------------- the device's own settings
 
     private static final String[][] DEVICE = {
@@ -125,13 +71,12 @@ final class SettingsMenu {
         }
         final int n = have.size();
         final boolean tools = c instanceof android.app.Activity;
-        String[] items = new String[n + (tools ? 4 : 1)];
+        String[] items = new String[n + (tools ? 3 : 1)];
         for (int i = 0; i < n; i++) items[i] = c.getString(Integer.parseInt(have.get(i)[0]));
         items[n] = c.getString(R.string.menu_about);
         if (tools) {
             items[n + 1] = c.getString(R.string.menu_saver);
             items[n + 2] = c.getString(R.string.menu_clean);
-            items[n + 3] = c.getString(R.string.menu_stock);
         }
         new Menu.Builder(c)
             .setTitle(R.string.menu_device)
@@ -141,7 +86,6 @@ final class SettingsMenu {
                     if (which == n) about(c);
                     else if (which == n + 1) screensaver(c);
                     else if (which == n + 2) Cleaner.open((android.app.Activity) c);
-                    else if (which == n + 3) StockHome.menu(c);
                     else launch(c, have.get(which)[1], Settings.ACTION_SYNC_SETTINGS.equals(have.get(which)[1]) ? R.string.account_hint : 0);
                 }
             })

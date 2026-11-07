@@ -81,7 +81,9 @@ public class BubbleService extends Service {
 
     /** When the post-prayer icon of prayer i of the day {@code t} starts: the iqama time plus the delay. */
     private static long postStart(Context c, long[] t, int i) {
-        return t[i] + PrayerPrefs.iqama(c)[i] * 60_000L + postDelayMin(c) * 60_000L;
+        Cities.City city = Cities.selected(c);
+        boolean fri = i == PrayerCalc.DHUHR && city != null && PrayerCalc.isFriday(city, t[i]);
+        return t[i] + PrayerPrefs.iqamaOf(PrayerPrefs.iqama(c), i, fri) * 60_000L + postDelayMin(c) * 60_000L;
     }
 
     /** What to show now: {chapter, prayer index or -1 for morning/evening}, or null. */
@@ -328,6 +330,7 @@ public class BubbleService extends Service {
             }
         });
         wm.addView(col, lp);
+        Fx.bubbleIn(col);
         view = col;
         shownFor = cat;
     }
@@ -347,13 +350,7 @@ public class BubbleService extends Service {
     }
 
     private void hide() {
-        if (view != null && wm != null) {
-            try {
-                wm.removeView(view);
-            } catch (RuntimeException ignored) {
-                // already gone
-            }
-        }
+        if (view != null && wm != null) Fx.remove(wm, view, null);
         view = null;
         shownFor = 0;
     }

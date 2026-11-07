@@ -41,9 +41,14 @@ final class Menu {
     static final class Box extends Dialog {
         TextView message;
         View firstFocus;
+        View panelView;
+        android.view.ViewGroup bodyView;
         /** The menu this one was opened from: Back (or Close) comes back to it, on the row that opened this one. */
         Box parent;
         static Box lastShown;
+        /** The menu whose row was just pressed: a menu that opens soon after (even a little later) is its child. */
+        static Box opener;
+        static long openerAt;
 
         Box(Context c) {
             super(c, R.style.MagiicMenu);
@@ -59,11 +64,15 @@ final class Menu {
         void reopenParent() {
             Box p = parent;
             parent = null;
+            opener = null;
             if (p != null) p.show();
         }
 
         @Override
         public void show() {
+            if (parent == null && opener != null && opener != this
+                && android.os.SystemClock.uptimeMillis() - openerAt < 2500) parent = opener;
+            opener = null;
             lastShown = this;
             super.show();
             Window w = getWindow();
@@ -74,6 +83,17 @@ final class Menu {
                 w.setDimAmount(0.65f);
             }
             if (firstFocus != null) firstFocus.requestFocus();
+            final View pv = panelView;
+            final android.view.ViewGroup bv = bodyView;
+            if (pv != null) {
+                pv.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Motion.panelIn(pv);
+                        if (bv != null) Motion.rowsIn(bv);
+                    }
+                });
+            }
         }
 
         void setMessage(CharSequence text) {
@@ -139,12 +159,7 @@ final class Menu {
 
     private static Pal pal(Context c) {
         Pal p = new Pal();
-        if (Theme.mihrab(c)) {
-            p.top = 0xFF142A56; p.bottom = 0xFF0B1A3A; p.border = 0xFFE0B960; p.halo = 0xFF08122A; p.halo2 = 0xBFE0B960;
-            p.ink = 0xFFF4EEDC; p.accent = 0xFFE0B960; p.rowFill = 0x59000000; p.rowLine = 0x80E0B960;
-            p.plateTop = 0xFFEBCB7C; p.plateBottom = 0xFFC9A24A; p.plateLine = 0xFF8A6A22; p.plateText = 0xFF2A1F00;
-            p.closeFill = 0x14FFFFFF; p.scrim = 0xE0040A1A;
-        } else if (Theme.kids(c)) {
+        if (Theme.kids(c)) {
             p.top = 0xFFFBD3DE; p.bottom = 0xFFEFA6BB; p.border = 0xFFFFF0CC; p.halo = 0xFFE58FA3; p.halo2 = 0xFFFFF0CC;
             p.ink = 0xFF7A3347; p.accent = 0xFFB8566F; p.rowFill = 0x99FFFFFF; p.rowLine = 0xE6E58FA3;
             p.plateTop = 0xFFFFF8EC; p.plateBottom = 0xFFFBE3C6; p.plateLine = 0xFFE5A9B7; p.plateText = 0xFF7A3347;
@@ -277,6 +292,7 @@ final class Menu {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             plp.topMargin = plateH / 2;
             root.addView(panel, plp);
+            d.panelView = panel;
 
             if (title != null) {
                 TextView plate = new TextView(c);
@@ -302,6 +318,7 @@ final class Menu {
             body.setPadding(Math.round(3 * k), Math.round(3 * k), Math.round(3 * k), Math.round(3 * k));
             MaxScroll scroll = new MaxScroll(c, Math.round(dm.heightPixels * 0.62f));
             scroll.setClipToPadding(false);
+            d.bodyView = body;
             scroll.addView(body, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             panel.addView(scroll, new LinearLayout.LayoutParams(
@@ -393,6 +410,8 @@ final class Menu {
                         public void onClick(View v) {
                             if (kind == 1) {
                                 Box before = Box.lastShown;
+                                Box.opener = d;
+                                Box.openerAt = android.os.SystemClock.uptimeMillis();
                                 if (itemClick != null) itemClick.onClick(d, which);
                                 Box child = Box.lastShown;
                                 if (child != null && child != before && child != d) {
@@ -444,9 +463,11 @@ final class Menu {
                     t.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
+                            Box before = Box.lastShown;
                             if (l != null) l.onClick(d, id);
                             d.dismiss();
-                            if (id == DialogInterface.BUTTON_NEGATIVE) d.reopenParent();
+                            // Close/Back/Save come back to the menu this one was opened from, unless a new menu took over
+                            if (id == DialogInterface.BUTTON_NEGATIVE || Box.lastShown == before) d.reopenParent();
                         }
                     });
                     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,

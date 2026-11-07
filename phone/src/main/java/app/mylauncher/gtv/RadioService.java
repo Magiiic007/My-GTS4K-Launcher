@@ -178,7 +178,6 @@ public class RadioService extends Service {
 
     /** True from the moment another app took the sound until the radio is started again (this process only). */
     private static boolean yielded;
-    private static boolean coldChecked;
 
     /**
      * The home screen calls this: bring the radio back if it was cut off rather than stopped. After a fresh start of

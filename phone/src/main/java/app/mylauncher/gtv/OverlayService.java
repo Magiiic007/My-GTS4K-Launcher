@@ -195,19 +195,14 @@ public class OverlayService extends Service {
         lp.gravity = Gravity.TOP | Gravity.RIGHT;
         lp.x = dp(12);
         lp.y = dp(44);
-        lp.width = Math.round(getResources().getDisplayMetrics().widthPixels * 0.72f);
+        lp.width = Math.min(Math.round(getResources().getDisplayMetrics().widthPixels * 0.72f), Math.round(420 * getResources().getDisplayMetrics().density));
         wm.addView(c, lp);
+        Fx.cardIn(c);
         card = c;
     }
 
     private void hideCard() {
-        if (card != null && wm != null) {
-            try {
-                wm.removeView(card);
-            } catch (RuntimeException ignored) {
-                // already gone
-            }
-        }
+        if (card != null && wm != null) Fx.remove(wm, card, null);
         card = null;
     }
 }

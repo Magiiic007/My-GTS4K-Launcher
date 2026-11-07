@@ -14,25 +14,56 @@ import android.graphics.drawable.StateListDrawable;
 final class Theme {
     private Theme() {}
 
-    static final int ROYAL = 0, KIDS = 1, MIHRAB = 2;
+    static final int ROYAL = 0, KIDS = 1, AUTO = 2;
     private static final String PREFS = "magiic";
     private static final String KEY = "theme";
 
-    static int id(Context c) {
+    /** What was chosen in the list: royal, kids, or automatic. */
+    static int mode(Context c) {
         int v = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY, ROYAL);
-        return v == KIDS ? KIDS : v == MIHRAB ? MIHRAB : ROYAL;
+        return v == KIDS ? KIDS : v == AUTO ? AUTO : ROYAL;
     }
 
-    /** The third look: navy and gold, with the prayer cards and the mihrab arch (see MihrabHome). */
-    static boolean mihrab(Context c) {
-        return id(c) == MIHRAB;
+    /** The look that is on now: automatic means kids from sunrise to Maghrib and royal for the night. */
+    static int id(Context c) {
+        int v = mode(c);
+        if (v != AUTO) return v;
+        return day(c) ? KIDS : ROYAL;
     }
 
-    private static int pick3(Context c, String royal, String kids, String mih) {
-        return Color.parseColor(mihrab(c) ? mih : kids(c) ? kids : royal);
+    private static long dayAt;
+    private static boolean dayIs;
+
+    private static boolean day(Context c) {
+        long now = System.currentTimeMillis();
+        if (now - dayAt < 30000L && dayAt != 0L) return dayIs;
+        boolean d;
+        try {
+            Cities.City city = Cities.selected(c);
+            if (city != null) {
+                int[] adj = PrayerPrefs.adjust(c);
+                long sunrise = PrayerCalc.sunrise(city, now, 0, adj);
+                long maghrib = PrayerCalc.day(city, now, 0, adj)[PrayerCalc.MAGHRIB];
+                d = now >= sunrise && now < maghrib;
+            } else {
+                int h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+                d = h >= 6 && h < 18;
+            }
+        } catch (RuntimeException e) {
+            int h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+            d = h >= 6 && h < 18;
+        }
+        dayAt = now;
+        dayIs = d;
+        return d;
+    }
+
+    private static int pick3(Context c, String royal, String kids, String ignored) {
+        return Color.parseColor(kids(c) ? kids : royal);
     }
 
     static void set(Context c, int id) {
+        dayAt = 0L;
         c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(KEY, id).apply();
     }
 
@@ -247,7 +278,7 @@ final class Theme {
     }
 
     static int edgeColour(Context c) {
-        return Color.parseColor(mihrab(c) ? "#FF050D22" : kids(c) ? "#FFF4B4C6" : "#FF04251A");
+        return Color.parseColor(kids(c) ? "#FFF4B4C6" : "#FF04251A");
     }
 
     // ---------------------------------------------------------------- the dome popup
@@ -258,6 +289,6 @@ final class Theme {
 
     /** The dialog style of the chosen look: gold-framed dark green, or the soft pink one. */
     static int dialogStyle(Context c) {
-        return mihrab(c) ? R.style.MagiicDialogMihrab : kids(c) ? R.style.MagiicDialogKids : R.style.MagiicDialogRoyal;
+        return kids(c) ? R.style.MagiicDialogKids : R.style.MagiicDialogRoyal;
     }
 }

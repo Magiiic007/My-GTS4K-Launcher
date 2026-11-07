@@ -23,7 +23,6 @@ import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.provider.Settings;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -176,10 +175,6 @@ public class AdhanService extends Service {
         am.dispatchMediaKeyEvent(new KeyEvent(t, t, KeyEvent.ACTION_UP, code, 0));
     }
 
-    private int dp(int value) {
-        return Math.round(TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, value, getResources().getDisplayMetrics()));
-    }
 
     /** The full-screen popup (themed like the home screen). Back or OK closes it and stops the adhan. */
     private void showOverlay(String title, String where) {

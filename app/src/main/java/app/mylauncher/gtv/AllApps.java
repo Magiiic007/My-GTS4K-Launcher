@@ -48,7 +48,6 @@ final class AllApps {
 
     static void show(final Activity a, final List<Entry> entries, final Runnable changed, final Opener opener) {
         final boolean kids = Theme.kids(a);
-        final boolean mih = Theme.mihrab(a);
         final int ink = kids ? Color.parseColor("#FF7A3347") : Color.parseColor("#FFFFF8E7");
         final int gold = kids ? Color.parseColor("#FFB8566F") : Color.parseColor("#FFE8C15C");
 
@@ -69,7 +68,7 @@ final class AllApps {
             ViewGroup.LayoutParams.WRAP_CONTENT));
 
         TextView hint = new TextView(a);
-        hint.setText(mih ? R.string.all_apps_hint_fav : R.string.all_apps_hint);
+        hint.setText(R.string.all_apps_hint);
         hint.setTextColor(ink);
         hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         hint.setGravity(Gravity.CENTER);
@@ -114,8 +113,7 @@ final class AllApps {
             public View getView(int i, View old, ViewGroup parent) {
                 Entry e = entries.get(i);
                 Set<String> hidden = SettingsMenu.hidden(a);
-                boolean shown = mih ? MihrabHome.isFav(a, e.component.getPackageName())
-                    : !hidden.contains(e.component.getPackageName());
+                boolean shown = !hidden.contains(e.component.getPackageName());
 
                 FrameLayout cell = new FrameLayout(a);
                 cell.setLayoutParams(new AbsListViewLp(dp(a, 120)));
@@ -170,13 +168,6 @@ final class AllApps {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
                 String pkg = entries.get(position).component.getPackageName();
-                if (mih) {
-                    boolean nowFav = MihrabHome.toggleFav(a, pkg);
-                    changed.run();
-                    adapter.notifyDataSetChanged();
-                    Toast.makeText(a, nowFav ? R.string.fav_added : R.string.fav_removed, Toast.LENGTH_SHORT).show();
-                    return true;
-                }
                 Set<String> hidden = SettingsMenu.hidden(a);
                 boolean nowShown;
                 if (hidden.contains(pkg)) {

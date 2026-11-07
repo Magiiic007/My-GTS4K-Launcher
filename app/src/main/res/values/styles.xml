@@ -29,22 +29,14 @@
         <item name="android:divider">@android:color/transparent</item>
     </style>
 
-    <style name="MagiicDialogMihrab" parent="android:Theme.Material.Dialog.Alert">
-        <item name="android:windowBackground">@drawable/dlg_bg_mihrab</item>
-        <item name="android:textColorPrimary">#FFF4EEDC</item>
-        <item name="android:textColorSecondary">#FFE0B960</item>
-        <item name="android:textColorAlertDialogListItem">#FFF4EEDC</item>
-        <item name="android:colorAccent">#FFE0B960</item>
-        <item name="android:colorBackground">#FF0B1A3A</item>
-        <item name="android:listSelector">@drawable/dlg_sel_mihrab</item>
-        <item name="android:listDivider">@android:color/transparent</item>
-        <item name="android:divider">@android:color/transparent</item>
-    </style>
-
     <style name="MagiicMenu" parent="android:Theme.Material.Dialog">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsFloating">true</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowAnimationStyle">@style/MagiicMenuAnim</item>
+    </style>
+    <style name="MagiicMenuAnim" parent="@android:style/Animation">
+        <item name="android:windowEnterAnimation">@anim/menu_in</item>
+        <item name="android:windowExitAnimation">@anim/menu_out</item>
     </style>
 </resources>

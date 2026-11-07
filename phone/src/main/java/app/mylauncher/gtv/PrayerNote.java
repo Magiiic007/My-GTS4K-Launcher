@@ -107,8 +107,9 @@ final class PrayerNote {
                 s.index = i;
                 s.friday = fri;
                 s.a = t[i];
-                s.hasIqama = iqm[i] > 0;
-                s.q = s.a + iqm[i] * 60_000L;
+                int iqv = PrayerPrefs.iqamaOf(iqm, i, fri);
+                s.hasIqama = iqv > 0;
+                s.q = s.a + iqv * 60_000L;
                 s.s = s.a + (i == PrayerCalc.FAJR ? FAJR_ADHAN_MS : ADHAN_MS);
                 s.e = Math.max(s.q + after * 60_000L, s.s + 60_000L);
                 // The time of a prayer runs out at the sunrise, the next prayer, or the middle of the night.
@@ -149,7 +150,8 @@ final class PrayerNote {
         }
         Wc.expire(c);
         boolean wc = Wc.on(c);
-        if (noteOn(c) && !wc) {
+        // the countdown note stays while bathroom mode is on (with its button), so the mode is always one tap away
+        if (noteOn(c)) {
             if (cur != null) post(c, nm, city, cur, now);
         } else {
             nm.cancel(NOTE_ID);
@@ -298,7 +300,8 @@ final class PrayerNote {
         rv.setTextViewText(R.id.note_title, title);
         rv.setChronometerCountDown(R.id.note_clock, true);
         rv.setChronometer(R.id.note_clock, SystemClock.elapsedRealtime() + (target - now), null, true);
-        rv.setTextViewText(R.id.note_label, iqama ? "باقي على الإقامة" : "باقي على الأذان");
+        boolean wc = Wc.on(c);
+        rv.setTextViewText(R.id.note_label, (iqama ? "باقي على الإقامة" : "باقي على الأذان") + (wc ? " · الخلاء شغّال" : ""));
 
         PendingIntent open = PendingIntent.getActivity(c, 0, new Intent(c, PhoneActivity.class)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
@@ -314,6 +317,8 @@ final class PrayerNote {
             .setCategory(Notification.CATEGORY_STATUS)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setContentIntent(open)
+            .addAction(new Notification.Action.Builder(null, wc ? "🚻 إنهاء وضع الخلاء" : "🚻 وضع الخلاء",
+                Widgets.tap(c, 351, Widgets.A_WC, 0)).build())
             .build();
         try {
             nm.notify(NOTE_ID, n);
@@ -360,8 +365,12 @@ final class PrayerNote {
     /** When each of today's prayers starts being asked about: its adhan + the iqama wait + 5 minutes. */
     private static long[] askFrom(Context c, long[] t) {
         int[] iq = PrayerPrefs.iqama(c);
+        Cities.City city = Cities.selected(c);
         long[] el = new long[5];
-        for (int i = 0; i < 5; i++) el[i] = t[i] + Math.max(0, iq[i]) * 60_000L + GRACE_MS;
+        for (int i = 0; i < 5; i++) {
+            boolean fri = i == PrayerCalc.DHUHR && city != null && PrayerCalc.isFriday(city, t[i]);
+            el[i] = t[i] + Math.max(0, PrayerPrefs.iqamaOf(iq, i, fri)) * 60_000L + GRACE_MS;
+        }
         return el;
     }
 

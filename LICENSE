@@ -1,0 +1,13 @@
+Copyright (c) 2026 Mahmoud Arafa. All rights reserved.
+
+This repository contains "Magiic TV" and "الصلاة خير" (Al-Salah Khair), including their source code, designs,
+images, texts written for the apps and build files ("the Work").
+
+The Work is published so it can be installed and used. Except for that use, no part of it may be copied, modified,
+redistributed, republished, sold, or used to make another app or product, in source or binary form, without the
+owner's prior written permission.
+
+Third-party components keep their own licences and rights, listed in THIRD_PARTY.md (for example adhan-java under MIT,
+Open-Meteo data under CC BY 4.0, OpenStreetMap data under ODbL). Nothing here changes those licences.
+
+The Work is provided "as is", without warranty of any kind.

@@ -74,10 +74,6 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.HOME" />
-        </intent>
     </queries>
 
     <application
@@ -89,8 +85,7 @@
         android:allowBackup="false"
         android:networkSecurityConfig="@xml/network_security">
 
-        <!-- Opens from the apps list, and can also be chosen as the home screen (the HOME filter below). Uninstalling
-             this app is always enough to get the original home screen back. -->
+        <!-- A normal app: it opens from the apps list. The device's own home screen stays the home screen. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -101,18 +96,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
         </activity>
-
-        <activity
-            android:name=".PickFavorite"
-            android:exported="false"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
-            android:screenOrientation="landscape" />
 
         <service
             android:name=".AdhanService"
@@ -131,18 +115,6 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Shows a reminder popup the user scheduled (fasting days and custom reminders)" />
-        </service>
-
-        <service
-            android:name=".RemoteKeys"
-            android:exported="true"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/remote_keys" />
         </service>
 
         <receiver android:name=".AdhanReceiver" android:exported="false" />

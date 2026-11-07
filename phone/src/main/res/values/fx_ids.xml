@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="fx_leaving" type="id" />
+    <style name="FxDialog" parent="@android:style/Animation.Dialog">
+        <item name="android:windowEnterAnimation">@anim/fx_dialog_in</item>
+        <item name="android:windowExitAnimation">@anim/fx_dialog_out</item>
+    </style>
+</resources>

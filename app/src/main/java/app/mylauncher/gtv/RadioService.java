@@ -156,6 +156,15 @@ public class RadioService extends Service {
         return Math.max(0, Math.min(STATIONS.length - 1, i));
     }
 
+    /** The setting "play the radio when the device starts"; off unless the user turns it on. */
+    static boolean playOnBoot(Context c) {
+        return c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("radio_on_boot", false);
+    }
+
+    static void setPlayOnBoot(Context c, boolean on) {
+        c.getSharedPreferences("magiic", MODE_PRIVATE).edit().putBoolean("radio_on_boot", on).apply();
+    }
+
     /** True when the radio was on and nobody stopped it (so a force stop or an update cut it off). */
     static boolean shouldResume(Context c) {
         return c.getSharedPreferences("magiic", MODE_PRIVATE).getBoolean("radio_resume", false);

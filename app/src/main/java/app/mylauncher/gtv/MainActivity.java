@@ -69,6 +69,14 @@ public class MainActivity extends Activity {
     private static final String PREFS = "magiic";
     private static final long WEATHER_EVERY_MS = 30L * 60L * 1000L;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable gateRun = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing()) return;
+            PermGate.resume(MainActivity.this);
+            PermGate.maybeShow(MainActivity.this);
+        }
+    };
     private TextView weatherView;
     private TextView radioBtn;
     /** The radio controls at the top of the settings list: previous, play or stop, next. */
@@ -81,18 +89,21 @@ public class MainActivity extends Activity {
     private TextView noticeChip;
     private TextView noticesRow;
     private java.util.List<Health.Issue> lastIssues = new java.util.ArrayList<>();
-    private Ambience ambience;
     private Sparkle sparkle;
     private FrameLayout rootView;
     private final Runnable ambienceTick = new Runnable() {
         @Override
         public void run() {
-            ambience.update();
+            // Automatic look: when day turns to night (or back) the screen switches by itself.
+            if (Theme.id(MainActivity.this) != lookNow) {
+                recreate();
+                return;
+            }
             handler.postDelayed(this, 60000L);
         }
     };
+    private int lookNow;
     private LinearLayout settingsList;
-    private MihrabHome mih;
     private boolean cityTried;
     private ImageView art;
     private long weatherAt;
@@ -124,13 +135,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        lookNow = Theme.id(this);
         final boolean kids = Theme.kids(this);
         Geo g = Geo.of(this);
-        if (Theme.mihrab(this)) {
-            createMihrab();
-            return;
-        }
-
         final FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Theme.edgeColour(this));
         art = new ImageView(this);
@@ -140,12 +147,6 @@ public class MainActivity extends Activity {
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         rootView = root;
-        // The veil of the day's light sits on the picture, under everything else.
-        View veil = new View(this);
-        root.addView(veil, new FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        ambience = new Ambience(this, veil);
-
         final FrameLayout stage = new FrameLayout(this);
         stage.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         Motion.fadeIn(root, 350L);
@@ -251,8 +252,129 @@ public class MainActivity extends Activity {
         empty.setVisibility(View.GONE);
         Stage.add(stage, empty, g.bar[0], g.bar[1], g.bar[2], g.bar[3]);
         addRadioBg(stage);
+        stageView = stage;
+        new FocusRing(this, stage, root);
 
         setContentView(root);
+        if (state == null) splash(root);
+    }
+
+    // ---------------------------------------------------------------- the opening screen
+    private static final String[] SPLASH_WORDS = {"النوم", "الغفلة", "اللهو", "اللعب", "اللغو", "الكسل", "التأجيل", "المال", "التجارة", "العمل", "الدنيا وما فيها", "الراحة", "السهر"};
+    private FrameLayout stageView;
+    private View splashView;
+    private FrameLayout splashHost;
+    private int splashStep;
+
+    private int dp(int v) {
+        return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics()));
+    }
+
+    /** The opening screen, as on the phone: the background, the icon in the middle, and "الصلاة خير من" with a word that changes. OK or Back skips it. */
+    private void splash(FrameLayout host) {
+        final FrameLayout v = new FrameLayout(this);
+        v.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        // A calm, plain background of its own (a soft gradient and a thin gold frame), so nothing of the screen behind it shows.
+        boolean kidsLook = Theme.kids(this);
+        android.graphics.drawable.GradientDrawable calm = new android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+            kidsLook ? new int[] {0xFFFBD3DE, 0xFFEFA6BB} : new int[] {0xFF0D4220, 0xFF062711});
+        calm.setStroke(dp(2), kidsLook ? 0x99FFF0CC : 0x99D9A93A);
+        v.setBackground(calm);
+        v.setClickable(true);
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER);
+        ImageView icon = new ImageView(this);
+        final View shadow;
+        icon.setImageResource(R.drawable.ic_launcher);
+        FrameLayout iconBox = new FrameLayout(this);
+        iconBox.setClipChildren(false);
+        col.setClipChildren(false);
+        ImageView shadowView = new ImageView(this);
+        shadowView.setImageBitmap(IconShadow.build(getResources(), R.drawable.ic_launcher, dp(150), dp(34), dp(12), dp(10), 120));
+        shadow = shadowView;
+        iconBox.addView(shadow, new FrameLayout.LayoutParams(dp(218), dp(218), Gravity.CENTER));
+        iconBox.addView(icon, new FrameLayout.LayoutParams(dp(150), dp(150), Gravity.CENTER));
+        col.addView(iconBox, new LinearLayout.LayoutParams(dp(150), dp(150)));
+        final TextView phrase = new TextView(this);
+        phrase.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+        phrase.setTypeface(Typeface.DEFAULT_BOLD);
+        phrase.setGravity(Gravity.CENTER);
+        phrase.setTextColor(0xFFFFFFFF);
+        phrase.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
+        phrase.setText("الصلاة خير من");
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
+        rp.topMargin = dp(20);
+        col.addView(phrase, rp);
+        final TextView word = new TextView(this);
+        word.setTypeface(Typeface.DEFAULT_BOLD);
+        word.setGravity(Gravity.CENTER);
+        word.setMaxLines(1);
+        word.setTextColor(0x00FFD54A);
+        word.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
+        word.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40);
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(-2, dp(64));
+        wp.topMargin = dp(8);
+        col.addView(word, wp);
+        v.addView(col, new FrameLayout.LayoutParams(-1, -1));
+        host.addView(v, new FrameLayout.LayoutParams(-1, -1));
+        android.view.animation.PathInterpolator soft = new android.view.animation.PathInterpolator(0.2f, 0.8f, 0.2f, 1f);
+        icon.setScaleX(0.88f);
+        icon.setScaleY(0.88f);
+        icon.setAlpha(0f);
+        icon.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(700L).setInterpolator(soft).start();
+        shadow.setScaleX(0.7f);
+        shadow.setScaleY(0.7f);
+        shadow.setAlpha(0f);
+        shadow.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(150L).setDuration(800L).setInterpolator(soft).start();
+
+        splashView = v;
+        splashHost = host;
+        splashStep = 0;
+        final List<String> pool = new ArrayList<>(java.util.Arrays.asList(SPLASH_WORDS));
+        Collections.shuffle(pool);
+        final List<String> words = pool.subList(0, 3);
+        final Runnable next = new Runnable() {
+            @Override
+            public void run() {
+                if (splashView == null || isFinishing()) return;
+                if (splashStep < words.size()) {
+                    final String w = words.get(splashStep++);
+                    android.animation.ValueAnimator an = android.animation.ValueAnimator.ofInt(0, 255);
+                    an.setDuration(250);
+                    an.addUpdateListener(new android.animation.ValueAnimator.AnimatorUpdateListener() {
+                        @Override
+                        public void onAnimationUpdate(android.animation.ValueAnimator x) {
+                            word.setText(w);
+                            word.setTextColor(((Integer) x.getAnimatedValue() << 24) | 0x00FFD54A);
+                        }
+                    });
+                    an.start();
+                    handler.postDelayed(this, 1500L);
+                } else {
+                    endSplash();
+                }
+            }
+        };
+        handler.postDelayed(next, 200L);
+    }
+
+    private void endSplash() {
+        final View v = splashView;
+        if (v == null) return;
+        splashView = null;
+        if (stageView != null) Motion.stageIn(stageView, sparkle, null);
+        v.animate().alpha(0f).scaleX(1.05f).scaleY(1.05f).setDuration(500).setInterpolator(Motion.SMOOTH).withEndAction(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    splashHost.removeView(v);
+                } catch (RuntimeException ignored) {
+                    // already gone
+                }
+            }
+        }).start();
     }
 
     // ---------------------------------------------------------------- the settings list (left)
@@ -328,7 +450,7 @@ public class MainActivity extends Activity {
         col.addView(buildSettingsList(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 104);
         lp.topMargin = 4;
-        col.addView(buildRadioBar(false), lp);
+        col.addView(buildRadioBar(), lp);
         return col;
     }
 
@@ -338,6 +460,14 @@ public class MainActivity extends Activity {
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
+        if (splashView != null) {
+            // The opening screen: OK or Back skips it; every key is swallowed so nothing behind it is pressed.
+            if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                int k = e.getKeyCode();
+                if (k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER || k == KeyEvent.KEYCODE_BACK) endSplash();
+            }
+            return true;
+        }
         if (e.getAction() == KeyEvent.ACTION_DOWN && settingsList != null && appRow != null) {
             int k = e.getKeyCode();
             View f = getCurrentFocus();
@@ -359,21 +489,13 @@ public class MainActivity extends Activity {
         return super.dispatchKeyEvent(e);
     }
 
-    private static android.graphics.drawable.GradientDrawable mihrabShape(int fill, float r, int line, int w) {
-        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
-        g.setColor(fill);
-        g.setCornerRadius(r);
-        g.setStroke(w, line);
-        return g;
-    }
-
     /** Previous, play or stop, next: one row of three buttons, so the radio starts and stops at once. */
-    private View buildRadioBar(final boolean mihrab) {
+    private View buildRadioBar() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(mihrab ? mihrabShape(0x66000000, 18, 0x80E0B960, 2) : Theme.tile(this, 16));
+        card.setBackground(Theme.tile(this, 16));
         card.setPadding(4, 6, 4, 2);
-        radioName = Stage.text(this, "", 16, mihrab ? 0xFFF4EEDC : Theme.tileLabel(this), true);
+        radioName = Stage.text(this, "", 16, Theme.tileLabel(this), true);
         radioName.setGravity(Gravity.CENTER);
         radioName.setMaxLines(1);
         Stage.fitOneLine(radioName, 10, 16);
@@ -396,17 +518,16 @@ public class MainActivity extends Activity {
         String[] glyph = {"\u25C0\u25C0", "\u25B6", "\u25B6\u25B6"};
         for (int i = 0; i < 3; i++) {
             final int which = i;
-            final TextView b = Stage.text(this, glyph[i], 20, mihrab ? 0xFFE0B960 : Theme.cardText(this), true);
+            final TextView b = Stage.text(this, glyph[i], 20, Theme.cardText(this), true);
             b.setGravity(Gravity.CENTER);
-            b.setBackground(mihrab ? mihrabShape(0x33FFFFFF, 22, 0x80E0B960, 2) : Theme.button(this, 22));
+            b.setBackground(Theme.button(this, 22));
             b.setFocusable(true);
             b.setClickable(true);
-            final Drawable ring = mihrab ? mihrabShape(0x00000000, 22, 0xFFF4EEDC, 4) : Theme.ring(this, 22);
+            final Drawable ring = Theme.ring(this, 22);
             b.setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View v, boolean has) {
-                    v.setForeground(has ? ring : null);
-                    Motion.pop(v, has, 1.05f);
+                        Motion.pop(v, has, 1.05f);
                 }
             });
             b.setOnClickListener(new View.OnClickListener() {
@@ -451,122 +572,27 @@ public class MainActivity extends Activity {
 
     /** Redraws the prayer numbers of whichever look is on. */
     private void refreshBoard() {
-        if (mih != null) mih.refresh();
-        else if (board != null) board.refresh();
+        if (board != null) board.refresh();
     }
 
     private void refreshBoardDates() {
-        if (mih != null) mih.refreshDates();
-        else if (board != null) board.refreshDates();
-    }
-
-    /** The third look (see MihrabHome): its own canvas, with the same dialogs and services behind it. */
-    private void createMihrab() {
-        final FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Theme.edgeColour(this));
-        rootView = root;
-        final FrameLayout stage = new FrameLayout(this);
-        stage.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
-        Motion.fadeIn(root, 350L);
-        root.addView(stage, new FrameLayout.LayoutParams(Stage.W, Stage.H, Gravity.TOP | Gravity.LEFT));
-        root.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
-            @Override
-            public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
-                Stage.fit(root, stage);
-            }
-        });
-        mih = new MihrabHome(this, stage);
-        weatherView = mih.weather;
-        radioBtn = mih.radio;
-        noticeChip = mih.notice;
-        status = new StatusIcons(this, new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                SettingsMenu.launch(MainActivity.this, Settings.ACTION_WIFI_SETTINGS);
-            }
-        });
-        status.view.setFocusable(false);
-        Stage.add(stage, status.view, 128, 40, 248, 92);
-        Stage.add(stage, buildRadioBar(true), 68, 386, 290, 494);
-        addRadioBg(stage);
-        updateRadioButton();
-        setContentView(root);
+        if (board != null) board.refreshDates();
     }
 
     void openTiming() {
         TimingDialogs.open(this, prayerChanged);
     }
 
-    /** The gear of the third look: every setting of the left-hand list, in one dialog. */
-    void showMihrabSettings() {
-        final List<String> names = new ArrayList<>();
-        final List<Runnable> acts = new ArrayList<>();
-        if (!lastIssues.isEmpty()) {
-            names.add(getString(R.string.menu_notices));
-            acts.add(new Runnable() { public void run() { Health.show(MainActivity.this, lastIssues); } });
-        }
-        names.add(getString(R.string.menu_adhan));
-        acts.add(new Runnable() { public void run() { openTiming(); } });
-        names.add(getString(R.string.menu_radio));
-        acts.add(new Runnable() { public void run() { chooseRadio(); } });
-        names.add(getString(R.string.menu_theme));
-        acts.add(new Runnable() { public void run() { chooseLook(); } });
-        names.add(getString(R.string.menu_reminders));
-        acts.add(new Runnable() { public void run() { ReminderDialogs.open(MainActivity.this); } });
-        names.add(getString(R.string.menu_device));
-        acts.add(new Runnable() { public void run() { SettingsMenu.device(MainActivity.this); } });
-        names.add(getString(R.string.menu_update));
-        acts.add(new Runnable() { public void run() { Updater.menu(MainActivity.this); } });
-        if (!Settings.canDrawOverlays(this)) {
-            names.add(getString(R.string.perm_btn));
-            acts.add(new Runnable() { public void run() { askOverlayPermission(); } });
-        }
-        new Menu.Builder(this)
-            .setTitle(R.string.mih_settings)
-            .setItems(names.toArray(new String[0]), new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int which) {
-                    acts.get(which).run();
-                }
-            })
-            .setNegativeButton(R.string.close, null)
-            .show();
-    }
-
-    /** Hold OK on a favourite or a "more" tile: take it off the favourites, see its info, uninstall it. */
-    void favMenu(final AppItem item) {
-        final String pkg = item.component.getPackageName();
-        String[] items = {getString(R.string.fav_remove), getString(R.string.app_info), getString(R.string.app_uninstall)};
-        new Menu.Builder(this)
-            .setTitle(item.label)
-            .setItems(items, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface d, int which) {
-                    if (which == 0) {
-                        if (MihrabHome.isFav(MainActivity.this, pkg)) MihrabHome.toggleFav(MainActivity.this, pkg);
-                        Toast.makeText(MainActivity.this, R.string.fav_removed, Toast.LENGTH_SHORT).show();
-                        applyHidden();
-                    } else if (which == 1) {
-                        SettingsMenu.appInfo(MainActivity.this, pkg);
-                    } else {
-                        SettingsMenu.uninstall(MainActivity.this, pkg);
-                    }
-                }
-            })
-            .setNegativeButton(R.string.close, null)
-            .show();
-    }
-
     /** The two looks, in a list; picking the other one restarts the screen in it. */
     private void chooseLook() {
-        String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids), getString(R.string.theme_mihrab)};
+        String[] names = {getString(R.string.theme_royal), getString(R.string.theme_kids), getString(R.string.theme_auto)};
         new Menu.Builder(this)
             .setTitle(R.string.menu_theme)
-            .setSingleChoiceItems(names, Theme.id(this), new DialogInterface.OnClickListener() {
+            .setSingleChoiceItems(names, Theme.mode(this), new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface d, int which) {
                     d.dismiss();
-                    if (which != Theme.id(MainActivity.this)) {
+                    if (which != Theme.mode(MainActivity.this)) {
                         Theme.set(MainActivity.this, which);
                         // Fade out, switch, and the new look fades in.
                         rootView.animate().alpha(0f).setDuration(220L).withEndAction(new Runnable() {
@@ -610,7 +636,6 @@ public class MainActivity extends Activity {
         row.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean has) {
-                v.setForeground(has ? ring : null);
                 Motion.pop(v, has, 1.03f);
             }
         });
@@ -642,7 +667,6 @@ public class MainActivity extends Activity {
         b.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean has) {
-                v.setForeground(has ? ring : null);
                 Motion.pop(v, has, 1.06f);
             }
         });
@@ -658,17 +682,11 @@ public class MainActivity extends Activity {
 
     // ---------------------------------------------------------------- lifecycle
 
-    /** As the home screen, Back does nothing: leaving it would just bring it straight back. */
-    @Override
-    public void onBackPressed() {
-        // Stay on the home screen.
-    }
-
     @Override
     protected void onResume() {
         super.onResume();
-        if (mih != null) {
-            resumeMihrab();
+        if (Theme.id(this) != lookNow) {
+            recreate();
             return;
         }
         loadApps();
@@ -697,41 +715,11 @@ public class MainActivity extends Activity {
                 Reminders.scheduleNext(app);
             }
         }).start();
-        ambience.update();
         handler.removeCallbacks(ambienceTick);
         handler.postDelayed(ambienceTick, 60000L);
         sparkle.start();
-        refreshNotices();
-        Updater.checkIfDue(this, new Runnable() {
-            @Override
-            public void run() {
-                refreshNotices();
-            }
-        });
-    }
-
-    private void resumeMihrab() {
-        loadApps();
-        RadioService.resumeIfCutOff(this);
-        if (selectedCity() == null && !cityTried) {
-            cityTried = true;
-            autoCity(false);
-        }
-        handler.removeCallbacks(weatherTick);
-        long age = System.currentTimeMillis() - weatherAt;
-        handler.postDelayed(weatherTick, weatherAt == 0L || age >= WEATHER_EVERY_MS ? 0L : WEATHER_EVERY_MS - age);
-        mih.start();
-        status.start();
-        RadioService.listen(radioListener);
-        updateRadioButton();
-        final android.content.Context app = getApplicationContext();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Scheduler.scheduleNext(app);
-                Reminders.scheduleNext(app);
-            }
-        }).start();
+        handler.removeCallbacks(gateRun);
+        handler.postDelayed(gateRun, 1500);
         refreshNotices();
         Updater.checkIfDue(this, new Runnable() {
             @Override
@@ -793,14 +781,8 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onPause() {
+        handler.removeCallbacks(gateRun);
         handler.removeCallbacks(weatherTick);
-        if (mih != null) {
-            mih.stop();
-            status.stop();
-            RadioService.unlisten(radioListener);
-            super.onPause();
-            return;
-        }
         handler.removeCallbacks(ambienceTick);
         sparkle.stop();
         board.stop();
@@ -876,6 +858,8 @@ public class MainActivity extends Activity {
         station.add(-3);
         items.add(getString(R.string.radio_prev));
         station.add(-4);
+        items.add(getString(RadioService.playOnBoot(this) ? R.string.radio_boot_on : R.string.radio_boot_off));
+        station.add(-5);
         for (int pass = 0; pass < 2; pass++) {
             boolean reciters = pass == 1;
             boolean titled = false;
@@ -895,6 +879,7 @@ public class MainActivity extends Activity {
         pics.add(0, null);
         pics.add(0, null);
         pics.add(0, null);
+        pics.add(0, null);
         new Menu.Builder(this)
             .setTitle(R.string.radio_title)
             .setIcons(pics)
@@ -906,6 +891,12 @@ public class MainActivity extends Activity {
                     else if (st == -2) radioKey(1);
                     else if (st == -3) radioKey(2);
                     else if (st == -4) radioKey(0);
+                    else if (st == -5) {
+                        boolean now = !RadioService.playOnBoot(MainActivity.this);
+                        RadioService.setPlayOnBoot(MainActivity.this, now);
+                        Toast.makeText(MainActivity.this, now ? R.string.radio_boot_now_on : R.string.radio_boot_now_off,
+                            Toast.LENGTH_SHORT).show();
+                    }
                 }
             })
             .setNegativeButton(R.string.close, null)
@@ -1135,10 +1126,6 @@ public class MainActivity extends Activity {
                 return ia < ib ? -1 : ia > ib ? 1 : 0;
             }
         });
-        if (mih != null) {
-            mih.setApps(apps, allApps.size());
-            return;
-        }
         rebuildRow();
         empty.setVisibility(apps.isEmpty() ? View.VISIBLE : View.GONE);
     }
@@ -1234,8 +1221,7 @@ public class MainActivity extends Activity {
         tile.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean has) {
-                v.setForeground(has ? ring : null);
-                v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(120).start();
+                Motion.pop(v, has, 1.05f);
             }
         });
         tile.setOnClickListener(new View.OnClickListener() {
@@ -1320,8 +1306,7 @@ public class MainActivity extends Activity {
         tile.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean has) {
-                v.setForeground(has ? ring : null);
-                v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(120).start();
+                Motion.pop(v, has, 1.05f);
             }
         });
         tile.setOnClickListener(new View.OnClickListener() {
@@ -1343,12 +1328,6 @@ public class MainActivity extends Activity {
         return tile;
     }
 
-    /** (name, package) of every app, for the "hide or show apps" list. */
-    private List<String[]> appList() {
-        List<String[]> out = new ArrayList<>();
-        for (AppItem a : allApps) out.add(new String[] {a.label, a.component.getPackageName()});
-        return out;
-    }
 
     /** Hold OK on an app: move it, take it off the screen, uninstall it or see its info. */
     private void appActions(final AppItem item) {

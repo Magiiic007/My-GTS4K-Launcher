@@ -71,14 +71,18 @@ public class PhoneActivity extends Activity {
 
     // ---------------------------------------------------------------- state
     private final Handler h = new Handler(Looper.getMainLooper());
-    // setting up the TV from this phone
-    private int tvStage = 0;
-    private volatile boolean tvBusy = false;
-    private boolean tvSearching = false;
-    private String tvAddr = "", tvCode = "";
-    /** The notes of the TV setup, newest first (kept only while the app is open). */
-    private final java.util.ArrayList<String> tvEntries = new java.util.ArrayList<>();
-    private LinearLayout tvFound;
+    private final Runnable gateRun = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing()) return;
+            if (splashView != null) {
+                h.postDelayed(this, 500);
+                return;
+            }
+            PermGate.resume(PhoneActivity.this);
+            PermGate.maybeShow(PhoneActivity.this);
+        }
+    };
     private SharedPreferences sp;
     private int tab;
     private String sub;
@@ -147,19 +151,299 @@ public class PhoneActivity extends Activity {
     public void onConfigurationChanged(Configuration cfg) {
         super.onConfigurationChanged(cfg);
         int l = lookNow();
-        if (l != look) {
+        boolean ls = cfg.orientation == Configuration.ORIENTATION_LANDSCAPE;
+        if (cfg.screenWidthDp > 0 && cfg.screenHeightDp > 0) {
+            cfgW = cfg.screenWidthDp;
+            cfgH = cfg.screenHeightDp;
+        }
+        if (l != look || ls != land) {
             look = l;
+            land = ls;
+            homeAdj = 1f;
             palette();
             root();
             build();
         }
     }
 
+    // ---- landscape: the same pages, laid out for a wide screen (phones and tablets turned sideways, or tablets upright)
+    private boolean land;
+    private int cfgW, cfgH; // the size of the screen in dp, taken from the newest configuration (the resources can lag behind a rotation)
+
+    // ---- landscape pages: the screen is split in two halves. The main thing of the page (the dial, the counter, the player,
+    // the month) is on one side and the rest on the other; each side scrolls by itself.
+    private int splitAt = -1;
+    private int calSel = -1;
+    private boolean calJump;
+    private String calSelKey;
+    private boolean splitFixed;
+    private int splitCenter; // 1: the main side is centred, 2: both sides
+    private ViewGroup landCols;
+    private View landMenu;
+    private View landHint;
+
+
+    /** The share of the width the fixed right panel of the landscape home takes. */
+    private int landPanelDp() {
+        return Math.max(200, (widthDp() - 30) / 2);
+    }
+
+    /** Height of the mosque picture over the right panel, in dp (it keeps its own shape). */
+    private float landBandDp() {
+        if (artBmp == null) return 0f;
+        return landPanelDp() * (artBmp.getHeight() * ArtBg.TOP_F) / artBmp.getWidth();
+    }
+
+    /**
+     * Landscape home: the right side never moves (the mosque, framed in gold, with the clock and the next prayer under it).
+     * On the left side are the menu, the place and the weather, and under them the six times, which scroll.
+     */
+    private void assembleLandHome(View topRow, LinearLayout rowsBox) {
+        LinearLayout cols = hbox();
+        cols.setBaselineAligned(false);
+        LinearLayout panel = vbox();
+        if (artBmp != null) panel.setBackground(new ArtBg.Panel(artBmp, getResources().getDisplayMetrics().density, gold));
+        else panel.setBackground(shape(card, line, 18));
+        int overlap = Math.round(dp(Math.round(landBandDp())) * 0.82f);
+        panel.addView(new View(this), new LinearLayout.LayoutParams(-1, overlap));
+        LinearLayout rest = vbox();
+        rest.setPadding(dp(12), 0, dp(12), dp(14));
+        // the card fills all the room under the picture
+        rest.addView(landHero, new LinearLayout.LayoutParams(-1, -1));
+        panel.addView(rest, new LinearLayout.LayoutParams(-1, 0, 1f));
+        cols.addView(panel, new LinearLayout.LayoutParams(0, -1, 1f));
+        LinearLayout left = vbox();
+        left.addView(topRow, new LinearLayout.LayoutParams(-1, -2));
+        ScrollView sv = new ScrollView(this);
+        sv.setVerticalScrollBarEnabled(false);
+        sv.addView(rowsBox, new ViewGroup.LayoutParams(-1, -2));
+        left.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
+        LinearLayout.LayoutParams lpL = new LinearLayout.LayoutParams(0, -1, 1f);
+        lpL.setMarginStart(dp(10));
+        cols.addView(left, lpL);
+        FrameLayout wrap = new FrameLayout(this);
+        wrap.addView(cols, new FrameLayout.LayoutParams(-1, -1));
+        if (landMenu != null) {
+            FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(dp(38), dp(38), Gravity.TOP | Gravity.START);
+            mp.setMarginStart(dp(12));
+            mp.topMargin = dp(10);
+            wrap.addView(landMenu, mp);
+        }
+        body.addView(wrap, new LinearLayout.LayoutParams(-1, landHeight()));
+        landCols = wrap;
+    }
+
+    private int landHeight() {
+        int h = scroll.getHeight() - body.getPaddingTop() - body.getPaddingBottom();
+        if (h <= 0) h = dp(heightDp() - 96);
+        return h;
+    }
+
+    private void splitLand() {
+        java.util.ArrayList<View> all = new java.util.ArrayList<>();
+        for (int i = 0; i < body.getChildCount(); i++) all.add(body.getChildAt(i));
+        try {
+            splitLand2();
+        } catch (RuntimeException e) {
+            // never close the app over the layout: show the page in one column instead
+            sp.edit().putString("dbg_crash", android.util.Log.getStackTraceString(e)).apply();
+            landCols = null;
+            landHint = null;
+            body.removeAllViews();
+            for (View v : all) {
+                if (v.getParent() instanceof ViewGroup) ((ViewGroup) v.getParent()).removeView(v);
+                body.addView(v);
+            }
+        }
+    }
+
+    private void splitLand2() {
+        int n = body.getChildCount();
+        java.util.ArrayList<View> kids = new java.util.ArrayList<>();
+        for (int i = 0; i < n; i++) kids.add(body.getChildAt(i));
+        int k = splitAt;
+        boolean main = k > 0 && k < n;
+        // a page of groups: the titles stay on the right, and the open group shows its content on the left
+        boolean master = !main && !accs.isEmpty();
+        if (!main && !master) {
+            int halfW = (dp(widthDp()) - body.getPaddingLeft() - body.getPaddingRight() - dp(20)) / 2;
+            int[] hs = new int[n];
+            int total = 0;
+            for (int i = 0; i < n; i++) {
+                View c = kids.get(i);
+                c.measure(View.MeasureSpec.makeMeasureSpec(halfW, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                int mt = c.getLayoutParams() instanceof LinearLayout.LayoutParams ? ((LinearLayout.LayoutParams) c.getLayoutParams()).topMargin : 0;
+                hs[i] = c.getMeasuredHeight() + mt;
+                total += hs[i];
+            }
+            int cum = 0;
+            k = n - 1;
+            for (int i = 0; i < n; i++) {
+                cum += hs[i];
+                if (cum * 2 >= total) {
+                    k = i + 1;
+                    break;
+                }
+            }
+            k = Math.max(1, Math.min(n - 1, k));
+        }
+        // a group's body stays right after its title
+        while (!master && k >= 0 && k < n - 1 && isAccBox(kids.get(k))) k++;
+        body.removeAllViews();
+        LinearLayout cols = hbox();
+        cols.setBaselineAligned(false);
+        LinearLayout[] side = new LinearLayout[2];
+        for (int j = 0; j < 2; j++) {
+            side[j] = vbox();
+            if (j == 0 && main && splitCenter >= 1) side[j].setGravity(splitCenter == 2 ? Gravity.CENTER : Gravity.CENTER_VERTICAL);
+            if (j == 1 && main && splitCenter == 2) side[j].setGravity(Gravity.CENTER);
+            if (j == 0 && main && splitFixed) {
+                // this side never moves: nothing scrolls in it
+                LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(0, -1, 1f);
+                fp.setMarginStart(dp(4));
+                cols.addView(side[j], fp);
+                View sep0 = new View(this);
+                sep0.setBackgroundColor(line);
+                LinearLayout.LayoutParams ps0 = new LinearLayout.LayoutParams(dp(1), -1);
+                ps0.setMargins(dp(8), dp(10), dp(8), dp(10));
+                cols.addView(sep0, ps0);
+                continue;
+            }
+            ScrollView sv = new ScrollView(this);
+            sv.setFillViewport(true);
+            sv.setVerticalScrollBarEnabled(false);
+            sv.addView(side[j], new ViewGroup.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -1, 1f);
+            if (j == 0) cp.setMarginStart(dp(4));
+            cols.addView(sv, cp);
+            if (j == 0) {
+                View sep = new View(this);
+                sep.setBackgroundColor(line);
+                LinearLayout.LayoutParams ps = new LinearLayout.LayoutParams(dp(1), -1);
+                ps.setMargins(dp(8), dp(10), dp(8), dp(10));
+                cols.addView(sep, ps);
+            }
+        }
+        if (master) {
+            for (Object[] a : accs) {
+                View bx = (View) a[1];
+                if (bx.getParent() instanceof ViewGroup) ((ViewGroup) bx.getParent()).removeView(bx);
+            }
+            for (View c : kids) if (!isAccBox(c)) side[0].addView(c);
+            for (Object[] a : accs) {
+                View bx = (View) a[1];
+                if (bx.getParent() == null) side[1].addView(bx, new LinearLayout.LayoutParams(-1, -2));
+            }
+            TextView hint = tv("اختر من القائمة ليظهر محتواها هنا", 14, dim, false);
+            hint.setGravity(Gravity.CENTER);
+            hint.setPadding(dp(16), dp(40), dp(16), dp(16));
+            hint.setVisibility(accOpen == null ? View.VISIBLE : View.GONE);
+            side[1].addView(hint, new LinearLayout.LayoutParams(-1, -2));
+            landHint = hint;
+            // the groups' titles come first in the list, on the right side of the screen
+        } else {
+            for (int i = 0; i < n; i++) side[i < k ? 0 : 1].addView(kids.get(i));
+        }
+        body.addView(cols, new LinearLayout.LayoutParams(-1, landHeight()));
+        landCols = cols;
+    }
+
+    /** A box whose one child is a square as big as the box allows (the tasbih counter). */
+    private static final class SquareBox extends FrameLayout {
+        SquareBox(Context c) {
+            super(c);
+        }
+
+        @Override
+        protected void onMeasure(int wSpec, int hSpec) {
+            int w = MeasureSpec.getSize(wSpec), h = MeasureSpec.getSize(hSpec);
+            int sq = Math.max(0, Math.min(w, h));
+            setMeasuredDimension(w, h);
+            for (int i = 0; i < getChildCount(); i++) {
+                getChildAt(i).measure(MeasureSpec.makeMeasureSpec(sq, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(sq, MeasureSpec.EXACTLY));
+            }
+        }
+
+        @Override
+        protected void onLayout(boolean changed, int l, int t, int r, int b) {
+            for (int i = 0; i < getChildCount(); i++) {
+                View c = getChildAt(i);
+                int cw = c.getMeasuredWidth(), ch = c.getMeasuredHeight();
+                int x = (r - l - cw) / 2, y = (b - t - ch) / 2;
+                c.layout(x, y, x + cw, y + ch);
+            }
+        }
+    }
+
+    /** Portrait: the first {@code splitAt} items stay put on top and the rest scrolls under them. */
+    private void splitTop() {
+        int n = body.getChildCount();
+        if (splitAt <= 0 || splitAt >= n) return;
+        java.util.ArrayList<View> kids = new java.util.ArrayList<>();
+        for (int i = 0; i < n; i++) kids.add(body.getChildAt(i));
+        try {
+            body.removeAllViews();
+            LinearLayout wrap = vbox();
+            LinearLayout top = vbox();
+            LinearLayout rest = vbox();
+            for (int i = 0; i < n; i++) (i < splitAt ? top : rest).addView(kids.get(i));
+            wrap.addView(top, new LinearLayout.LayoutParams(-1, -2));
+            ScrollView sv = new ScrollView(this);
+            sv.setVerticalScrollBarEnabled(false);
+            sv.addView(rest, new ViewGroup.LayoutParams(-1, -2));
+            wrap.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
+            body.addView(wrap, new LinearLayout.LayoutParams(-1, landHeight()));
+            landCols = wrap;
+        } catch (RuntimeException e) {
+            body.removeAllViews();
+            for (View v : kids) {
+                if (v.getParent() instanceof ViewGroup) ((ViewGroup) v.getParent()).removeView(v);
+                body.addView(v);
+            }
+        }
+    }
+
+    private boolean isAccBox(View v) {
+        for (Object[] a : accs) if (a[1] == v) return true;
+        return false;
+    }
+
+    /** The turn-the-screen option: off keeps the app upright, on follows the phone's own auto-rotate setting. */
+    private void applyRotation() {
+        setRequestedOrientation(sp.getBoolean("rotate_on", true)
+            ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+            : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+    }
+
+    private boolean isLand() {
+        return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+    }
+
+    private int widthDp() {
+        if (cfgW > 0) return cfgW;
+        int w = getResources().getConfiguration().screenWidthDp;
+        return w > 0 ? w : Math.round(getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density);
+    }
+
+    private int heightDp() {
+        if (cfgH > 0) return cfgH;
+        int h = getResources().getConfiguration().screenHeightDp;
+        return h > 0 ? h : Math.round(getResources().getDisplayMetrics().heightPixels / getResources().getDisplayMetrics().density);
+    }
+
+    /** Side space that keeps the page at a readable width on wide screens (0 on a normal portrait phone). */
+    private int sideExtra(int maxDp) {
+        return Math.max(0, (dp(widthDp()) - dp(maxDp)) / 2);
+    }
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         sp = getSharedPreferences(P, MODE_PRIVATE);
+        applyRotation();
         look = lookNow();
+        land = isLand();
         palette();
         root();
         if (Build.VERSION.SDK_INT >= 33) {
@@ -171,23 +455,10 @@ public class PhoneActivity extends Activity {
                     }
                 });
         }
-        // Everything is asked for at once on the first run: two separate requests cancel each other.
+        // The permissions list (PermGate) asks for everything on the first run; the city is then found by address until the location is allowed.
         if (!sp.getBoolean("ph_first", false)) {
-            ArrayList<String> need = new ArrayList<>();
-            if (Build.VERSION.SDK_INT >= 33
-                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                need.add(Manifest.permission.POST_NOTIFICATIONS);
-            }
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                need.add(Manifest.permission.ACCESS_FINE_LOCATION);
-                need.add(Manifest.permission.ACCESS_COARSE_LOCATION);
-            }
-            if (!need.isEmpty()) {
-                locAsked = true;
-                requestPermissions(need.toArray(new String[0]), REQ_NOTIF);
-            } else {
-                sp.edit().putBoolean("ph_first", true).apply();
-            }
+            locAsked = true;
+            sp.edit().putBoolean("ph_first", true).apply();
         }
         Scheduler.scheduleNext(this);
         Reminders.scheduleNext(this);
@@ -215,9 +486,19 @@ public class PhoneActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER);
+        final float sr = land ? Math.max(0.55f, Math.min(1f, (heightDp() - 240) / 150f)) : 1f;
         android.widget.ImageView icon = new android.widget.ImageView(this);
+        final View shadow;
         icon.setImageResource(R.drawable.ic_launcher_phone);
-        col.addView(icon, new LinearLayout.LayoutParams(dp(150), dp(150)));
+        FrameLayout iconBox = new FrameLayout(this);
+        iconBox.setClipChildren(false);
+        col.setClipChildren(false);
+        ImageView shadowView = new ImageView(this);
+        shadowView.setImageBitmap(IconShadow.build(getResources(), R.drawable.ic_launcher_phone, Math.round(dp(150) * sr), Math.round(dp(34) * sr), Math.round(dp(12) * sr), Math.round(dp(10) * sr), 120));
+        shadow = shadowView;
+        iconBox.addView(shadow, new FrameLayout.LayoutParams(Math.round(dp(218) * sr), Math.round(dp(218) * sr), Gravity.CENTER));
+        iconBox.addView(icon, new FrameLayout.LayoutParams(Math.round(dp(150) * sr), Math.round(dp(150) * sr), Gravity.CENTER));
+        col.addView(iconBox, new LinearLayout.LayoutParams(Math.round(dp(150) * sr), Math.round(dp(150) * sr)));
         // the fixed phrase in the middle, and under it the changing word: bigger, but never wider than the phrase
         final TextView phrase = new TextView(this);
         phrase.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
@@ -227,7 +508,7 @@ public class PhoneActivity extends Activity {
         phrase.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
         phrase.setText("الصلاة خير من");
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
-        rp.topMargin = dp(26);
+        rp.topMargin = land ? dp(12) : dp(26);
         col.addView(phrase, rp);
         final TextView word = new TextView(this);
         word.setTypeface(Typeface.DEFAULT_BOLD);
@@ -238,12 +519,21 @@ public class PhoneActivity extends Activity {
         word.setAutoSizeTextTypeUniformWithConfiguration(16, 44, 1, TypedValue.COMPLEX_UNIT_SP);
         android.text.TextPaint tp = new android.text.TextPaint(phrase.getPaint());
         int pw = Math.round(tp.measureText("الصلاة خير من")) + dp(4);
-        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(pw, dp(60));
-        wp.topMargin = dp(8);
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(pw, land ? dp(48) : dp(60));
+        wp.topMargin = land ? dp(2) : dp(8);
         col.addView(word, wp);
-        col.setPadding(0, 0, 0, dp(80)); // lifts the group about 40dp: the eye sees the middle higher than the true middle
+        col.setPadding(0, 0, 0, land ? dp(24) : dp(80)); // lifts the group about 40dp: the eye sees the middle higher than the true middle
         v.addView(col, new FrameLayout.LayoutParams(-1, -1));
         rootFrame.addView(v, new FrameLayout.LayoutParams(-1, -1));
+        android.view.animation.PathInterpolator soft = new android.view.animation.PathInterpolator(0.2f, 0.8f, 0.2f, 1f);
+        icon.setScaleX(0.88f);
+        icon.setScaleY(0.88f);
+        icon.setAlpha(0f);
+        icon.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(700L).setInterpolator(soft).start();
+        shadow.setScaleX(0.7f);
+        shadow.setScaleY(0.7f);
+        shadow.setAlpha(0f);
+        shadow.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(150L).setDuration(800L).setInterpolator(soft).start();
         splashView = v;
         splashStep = 0;
         // no tap or back button closes it: it runs its six seconds (touches are swallowed so nothing behind it is pressed)
@@ -345,9 +635,10 @@ public class PhoneActivity extends Activity {
         OverlayService.sync(this);
         BubbleService.sync(this);
         PrayerNote.refresh(this);
-        if (tab == 8 || tab == 6 || (tab == 0 && sub == null) || tvVisible()) build();
+        if (tab == 8 || tab == 6 || (tab == 0 && sub == null)) build();
         if (tab == 9) qiblaStart();
         h.post(ticker);
+        h.postDelayed(gateRun, 1200);
         if (!autoTried && sp.getBoolean("ph_first", false)
             ) {
             autoTried = true;
@@ -361,30 +652,17 @@ public class PhoneActivity extends Activity {
         if (tab == 6) endTasbihRound();
         RadioService.unlisten(radioListener);
         h.removeCallbacks(ticker);
+        h.removeCallbacks(gateRun);
         PrayerNote.refresh(this);
         qiblaStop();
-        if (tvSearching) {
-            TvSetup.stopDiscovery();
-            tvSearching = false;
-        }
     }
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
-        if (code == REQ_NOTIF) {
-            sp.edit().putBoolean("ph_first", true).apply();
+        if (code == REQ_NOTIF || code == PermGate.REQ) {
             autoTried = true;
             autoCity(false);
-            new Pop(this).title("خطوة أخيرة مهمة")
-                .message("لكي يعمل الأذان والراديو والشاشة مقفولة، افتح صفحة «تأكد أن الأذان يعمل» وفعّل كل بند فيها.")
-                .ok("فتح الصفحة", new Runnable() {
-                    @Override
-                    public void run() {
-                        tab = 3;
-                        sub = "fix";
-                        build();
-                    }
-                }).cancel("لاحقًا").show();
+            if (tab == 3 || tab == 8) build();
             return;
         }
         if (code == REQ_LOC) autoCity(false);
@@ -440,7 +718,6 @@ public class PhoneActivity extends Activity {
         if (s.equals("up")) return "occ";
         if (s.startsWith("txt:") && tab == 3) return "fonts";
         if (s.startsWith("ad:")) return null;
-        if (s.equals("tvkeys")) return "tv";
         if (s.startsWith("item:")) return itemBack;
         if (s.equals("country") || s.equals("cities")) return null;
         return null;
@@ -484,7 +761,8 @@ public class PhoneActivity extends Activity {
 
     /** The home page has the picture; the other pages have the same colours with a gold frame line. */
     private void applyBackground() {
-        int w = getResources().getDisplayMetrics().widthPixels;
+        header.setVisibility(View.VISIBLE);
+        int w = dp(widthDp());
         if (tab == 0) {
             if (artBmp == null || artLook != look) {
                 try {
@@ -495,12 +773,25 @@ public class PhoneActivity extends Activity {
                     artBmp = null;
                 }
             }
+            if (artBmp != null && land) {
+                // landscape: the mosque and lanterns in the middle at the top, the header on both sides of them
+                homeTop = 0;
+                homeBottom = 0;
+                GradientDrawable lg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
+                Deco.Stars lstars = new Deco.Stars((cream & 0x00FFFFFF) | 0x1A000000, dp(56));
+                rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {lg, lstars}));
+                header.setVisibility(View.GONE);
+                header.setPadding(0, 0, 0, 0);
+                body.setPadding(dp(10), dp(8), dp(10), dp(8));
+                return;
+            }
             if (artBmp != null) {
                 homeTop = ArtBg.panelTop(artBmp, w);
                 homeBottom = Math.round(ArtBg.cornerHeight(artBmp, w) * 0.7f);
                 rootFrame.setBackground(new ArtBg(artBmp));
-                header.setPadding(dp(26), homeTop, dp(26), dp(2));
-                body.setPadding(dp(26), dp(8), dp(26), homeBottom);
+                int ex = sideExtra(560);
+                header.setPadding(dp(26) + ex, homeTop, dp(26) + ex, dp(2));
+                body.setPadding(dp(26) + ex, dp(8), dp(26) + ex, homeBottom);
                 return;
             }
         }
@@ -510,8 +801,11 @@ public class PhoneActivity extends Activity {
         Deco.Stars stars = new Deco.Stars((cream & 0x00FFFFFF) | 0x1A000000, dp(56));
         ArtBg.Border border = new ArtBg.Border((gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars, border}));
-        header.setPadding(dp(18), dp(14), dp(18), dp(2));
-        body.setPadding(dp(18), dp(10), dp(18), dp(20));
+        // landscape home uses the full width (two columns); the other pages keep a readable column in the middle
+        int ex = land ? dp(10) : sideExtra(560);
+        int top = land ? dp(6) : dp(14);
+        header.setPadding(dp(18) + ex, top, dp(18) + ex, dp(2));
+        body.setPadding(dp(18) + ex, land ? dp(6) : dp(10), dp(18) + ex, land ? dp(10) : dp(20));
     }
 
     private void addHeader(View v) {
@@ -521,9 +815,39 @@ public class PhoneActivity extends Activity {
     private void root() {
         getWindow().setStatusBarColor(bg1);
         getWindow().setNavigationBarColor(bg2);
+        getWindow().setBackgroundDrawable(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2}));
         FrameLayout f = new FrameLayout(this);
         f.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         rootFrame = f;
+        // safety net: if the real shape of the screen no longer matches the layout in use, the page is drawn again at once
+        f.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                final int w = r - l, hh = b - t;
+                if (w <= 0 || hh <= 0 || v != rootFrame) return;
+                float dn = getResources().getDisplayMetrics().density;
+                boolean sizeOff = Math.abs(w / dn - widthDp()) > 80f;
+                if ((w > hh) != land || sizeOff) {
+                    v.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (rootFrame == null || rootFrame.getWidth() <= 0) return;
+                            boolean nl = rootFrame.getWidth() > rootFrame.getHeight();
+                            float dn2 = getResources().getDisplayMetrics().density;
+                            boolean off = Math.abs(rootFrame.getWidth() / dn2 - widthDp()) > 80f;
+                            if (nl == land && !off) return;
+                            cfgW = Math.round(rootFrame.getWidth() / dn2);
+                            cfgH = Math.round(rootFrame.getHeight() / dn2);
+                            land = nl;
+                            homeAdj = 1f;
+                            palette();
+                            root();
+                            build();
+                        }
+                    });
+                }
+            }
+        });
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         // the title row (with the menu or back button) stays put while the page scrolls under it
@@ -533,6 +857,22 @@ public class PhoneActivity extends Activity {
         col.addView(header, new LinearLayout.LayoutParams(-1, -2));
         scroll = new ScrollView(this);
         scroll.setFillViewport(true);
+        scroll.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                if (landCols == null || b - t == ob - ot) return;
+                final ViewGroup c = landCols;
+                c.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (c != landCols) return;
+                        ViewGroup.LayoutParams p = c.getLayoutParams();
+                        p.height = landHeight();
+                        c.setLayoutParams(p);
+                    }
+                });
+            }
+        });
         body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
         body.setPadding(dp(14), dp(10), dp(14), dp(16));
@@ -583,7 +923,8 @@ public class PhoneActivity extends Activity {
         drawerList.setPadding(dp(12), dp(30), dp(12), dp(16));
         drawerPanel.addView(drawerList, new ViewGroup.LayoutParams(-1, -2));
         // about half of the screen: 48% of its width, but never narrower than the longest menu name needs
-        drawerW = Math.max(dp(190), Math.round(getResources().getDisplayMetrics().widthPixels * 0.48f));
+        drawerW = Math.max(dp(190), Math.round(dp(widthDp()) * (land ? 0.34f : 0.48f)));
+        if (widthDp() >= 600) drawerW = Math.min(drawerW, dp(340));
         drawerLayer.addView(drawerPanel, new FrameLayout.LayoutParams(drawerW, -1, Gravity.START));
         f.addView(drawerLayer, new FrameLayout.LayoutParams(-1, -1));
         setContentView(f);
@@ -637,12 +978,13 @@ public class PhoneActivity extends Activity {
         head.setPadding(dp(14), dp(11), dp(14), dp(11));
         head.setMinimumHeight(dp(52));
         LinearLayout v = vbox();
-        v.addView(tv(ic(name), 16, gold, true));
+        v.addView(itv(name, 16, gold, true));
         if (summary != null && !summary.isEmpty()) v.addView(tv(summary, 12, dim, false));
         head.addView(v, new LinearLayout.LayoutParams(0, -2, 1f));
         final TextView arrow = tv(key.equals(accOpen) ? "▴" : "▾", 18, gold, true);
         head.addView(arrow);
         add(head, 8);
+        pressFx(head);
         final LinearLayout box = vbox();
         box.setVisibility(key.equals(accOpen) ? View.VISIBLE : View.GONE);
         add(box, 0);
@@ -654,10 +996,18 @@ public class PhoneActivity extends Activity {
                 accOpen = opening ? key : null;
                 for (Object[] a : accs) {
                     boolean on = a[0].equals(accOpen);
-                    ((View) a[1]).setVisibility(on ? View.VISIBLE : View.GONE);
+                    View bx = (View) a[1];
+                    boolean was = bx.getVisibility() == View.VISIBLE;
+                    bx.setVisibility(on ? View.VISIBLE : View.GONE);
+                    if (on && !was) {
+                        bx.setAlpha(0f);
+                        bx.setTranslationY(-dp(8));
+                        bx.animate().alpha(1f).translationY(0f).setDuration(200);
+                    }
                     ((TextView) a[2]).setText(on ? "▴" : "▾");
                 }
-                if (opening) {
+                if (landHint != null) landHint.setVisibility(accOpen == null ? View.VISIBLE : View.GONE);
+                if (opening && !land) {
                     final View target = head;
                     scroll.post(new Runnable() {
                         @Override
@@ -681,70 +1031,84 @@ public class PhoneActivity extends Activity {
 
     private static final java.util.HashMap<String, String> ICONS = new java.util.HashMap<>();
     static {
-        ICONS.put("مواقيت الصلاة", "🕌");
-        ICONS.put("الصلاة خير", "🕌");
-        ICONS.put("الأذان والإقامة", "📢");
-        ICONS.put("متابعة وقضاء الصلوات", "✅");
-        ICONS.put("مدن أخرى", "🌍");
-        ICONS.put("التقويم الهجري", "📅");
-        ICONS.put("الأذكار والأدعية", "📖");
-        ICONS.put("السبحة والاستغفار", "📿");
-        ICONS.put("الأذكار فوق التطبيقات", "🪟");
-        ICONS.put("التذكيرات", "⏰");
-        ICONS.put("القبلة", "🧭");
-        ICONS.put("الراديو", "📻");
-        ICONS.put("الإعدادات", "⚙️");
-        ICONS.put("المناسبات القادمة", "🌙");
-        ICONS.put("حجم الخط ولونه", "🔤");
-        ICONS.put("نسخة احتياطية", "💾");
-        ICONS.put("عن التطبيق", "ℹ️");
-        ICONS.put("اختر الدولة", "🌍");
-        ICONS.put("ابحث عن مدينتك", "🔍");
-        ICONS.put("أحاديث بشرحها", "📜");
-        ICONS.put("اللانشر على التلفزيون", "📺");
-        ICONS.put("اختبار أزرار الريموت", "🎮");
-        ICONS.put("تأكد أن الأذان يعمل", "🔔");
-        ICONS.put("الشكل والعرض", "🎨");
-        ICONS.put("التشغيل في الخلفية", "🔋");
-        ICONS.put("التطبيق", "📱");
-        ICONS.put("الأذان والإقامة لكل صلاة", "📢");
-        ICONS.put("المواقيت والتاريخ الهجري", "🧮");
-        ICONS.put("التنبيهات والتذكير", "🔔");
-        ICONS.put("الصامت وقت الصلاة", "🔕");
-        ICONS.put("الصوت", "🔊");
-        ICONS.put("الصيام", "🍽");
-        ICONS.put("الأذكار", "📖");
-        ICONS.put("يوم الجمعة", "🕌");
-        ICONS.put("المناسبات الهجرية", "🌙");
-        ICONS.put("تذكيراتي", "📝");
-        ICONS.put("الإحصائية", "📊");
-        ICONS.put("آخر 7 أيام", "🗓");
-        ICONS.put("قضاء الصلوات", "🔁");
-        ICONS.put("الإظهار والتوقيت", "🎛");
-        ICONS.put("الأذكار المفعّلة", "🟢");
-        ICONS.put("الأذكار غير المفعّلة", "⚪");
-        ICONS.put("وضع الخلاء", "🚿");
-        ICONS.put("الحجم", "📏");
-        ICONS.put("اللون", "🎨");
-        ICONS.put("المصادر", "📚");
-        ICONS.put("التشخيص", "🩺");
-        ICONS.put("الأزرار", "🎮");
-        ICONS.put("اختر المكان", "📍");
-        ICONS.put("آخر ما حدث", "🕘");
-        ICONS.put("حضّر التلفزيون", "🔧");
-        ICONS.put("متصل", "🔗");
-        ICONS.put("اقتران الهاتف بالتلفزيون", "🔗");
-        ICONS.put("وجدت على الشبكة", "📡");
-        ICONS.put("أو اكتب العنوان بنفسك", "⌨️");
-        ICONS.put("تثبيت اللانشر", "📲");
-        ICONS.put("الشاشة الرئيسية", "🏠");
-        ICONS.put("في هذا الشهر", "🗓");
+        ICONS.put("مواقيت الصلاة", "mosque");
+        ICONS.put("الصلاة خير", "mosque");
+        ICONS.put("الأذان والإقامة", "speaker");
+        ICONS.put("متابعة وقضاء الصلوات", "check");
+        ICONS.put("مدن أخرى", "globe");
+        ICONS.put("التقويم الهجري", "calendar");
+        ICONS.put("الأذكار والأدعية", "book");
+        ICONS.put("السبحة والاستغفار", "beads");
+        ICONS.put("الأذكار فوق التطبيقات", "window");
+        ICONS.put("التذكيرات", "clock");
+        ICONS.put("القبلة", "compass");
+        ICONS.put("الراديو", "radio");
+        ICONS.put("الإعدادات", "gear");
+        ICONS.put("المناسبات القادمة", "moon");
+        ICONS.put("حجم الخط ولونه", "text");
+        ICONS.put("نسخة احتياطية", "save");
+        ICONS.put("عن التطبيق", "info");
+        ICONS.put("اختر الدولة", "globe");
+        ICONS.put("ابحث عن مدينتك", "search");
+        ICONS.put("أحاديث بشرحها", "scroll");
+        ICONS.put("اختبار أزرار الريموت", "gamepad");
+        ICONS.put("تأكد أن الأذان يعمل", "bell");
+        ICONS.put("الشكل والعرض", "palette");
+        ICONS.put("التشغيل في الخلفية", "battery");
+        ICONS.put("التطبيق", "phone");
+        ICONS.put("الأذان والإقامة لكل صلاة", "speaker");
+        ICONS.put("المواقيت والتاريخ الهجري", "calc");
+        ICONS.put("التنبيهات والتذكير", "bell");
+        ICONS.put("الصامت وقت الصلاة", "bellOff");
+        ICONS.put("الصوت", "speaker");
+        ICONS.put("الصيام", "plate");
+        ICONS.put("الأذكار", "book");
+        ICONS.put("يوم الجمعة", "mosque");
+        ICONS.put("المناسبات الهجرية", "moon");
+        ICONS.put("تذكيراتي", "note");
+        ICONS.put("الإحصائية", "chart");
+        ICONS.put("آخر 7 أيام", "calendar");
+        ICONS.put("قضاء الصلوات", "repeat");
+        ICONS.put("الإظهار والتوقيت", "sliders");
+        ICONS.put("الأذكار المفعّلة", "dotOn");
+        ICONS.put("الأذكار غير المفعّلة", "dotOff");
+        ICONS.put("وضع الخلاء", "drop");
+        ICONS.put("الحجم", "ruler");
+        ICONS.put("اللون", "palette");
+        ICONS.put("المصادر", "books");
+        ICONS.put("التشخيص", "pulse");
+        ICONS.put("الأزرار", "gamepad");
+        ICONS.put("اختر المكان", "pin");
+        ICONS.put("آخر ما حدث", "clock");
+        ICONS.put("متصل", "link");
+        ICONS.put("وجدت على الشبكة", "wifi");
+        ICONS.put("أو اكتب العنوان بنفسك", "keyboard");
+        ICONS.put("في هذا الشهر", "calendar");
+        ICONS.put("أذكار اليوم والليلة", "sunrise");
+        ICONS.put("الصلاة والمسجد", "mosque");
+        ICONS.put("الطهارة والمنزل واللباس", "drop");
+        ICONS.put("الطعام والصيام", "plate");
+        ICONS.put("الهموم والكروب والحاجات", "cloud");
+        ICONS.put("التحصين والتوبة والوساوس", "shield");
+        ICONS.put("الخوف والأعداء والسلطان", "swords");
+        ICONS.put("المرض والموت والجنائز", "hands");
+        ICONS.put("السفر والحج والعمرة", "plane");
+        ICONS.put("الزواج والمولود والأسرة", "people");
+        ICONS.put("السلام والمجلس وآداب المعاملة", "handshake");
+        ICONS.put("الطقس والمطر والهلال", "rain");
+        ICONS.put("التسبيح والاستغفار وجوامع الخير", "beads");
+        ICONS.put("أبواب أخرى", "book");
     }
 
-    /** Puts the matching picture (all from one emoji set) before a title. */
-    private static String ic(String t) {
-        String e = ICONS.get(t);
-        return e == null ? t : e + "  " + t;
+    /** A text view whose title has its own drawn icon before it (looks the same on every phone). */
+    private TextView itv(String name, int sp, int color, boolean bold) {
+        TextView t = tv(name, sp, color, bold);
+        String k = ICONS.get(name);
+        if (k != null) {
+            t.setCompoundDrawablesRelative(new Ico(k, color, dp(Math.round(sp * 1.25f))), null, null, null);
+            t.setCompoundDrawablePadding(dp(10));
+        }
+        return t;
     }
 
     private void title(String t, boolean back) {
@@ -762,7 +1126,7 @@ public class PhoneActivity extends Activity {
             r.addView(b, new LinearLayout.LayoutParams(dp(38), dp(38)));
         }
         else r.addView(hamburger(), new LinearLayout.LayoutParams(dp(38), dp(38)));
-        TextView t1 = tv(ic(t), 22, gold, true);
+        TextView t1 = itv(t, 22, gold, true);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
         p.setMarginStart(dp(10));
         r.addView(t1, p);
@@ -770,7 +1134,7 @@ public class PhoneActivity extends Activity {
     }
 
     private void section(String t) {
-        TextView s = tv(ic(t), 13, gold, true);
+        TextView s = itv(t, 13, gold, true);
         s.setPadding(dp(4), 0, 0, 0);
         add(s, 14);
     }
@@ -785,7 +1149,10 @@ public class PhoneActivity extends Activity {
         if (subText != null && !subText.isEmpty()) v.addView(tv(subText, 12, dim, false));
         r.addView(v, new LinearLayout.LayoutParams(0, -2, 1f));
         if (action != null) r.addView(tv(action, 16, gold, true));
-        if (click != null) r.setOnClickListener(click);
+        if (click != null) {
+            r.setOnClickListener(click);
+            pressFx(r);
+        }
         add(r, 6);
         return r;
     }
@@ -814,6 +1181,7 @@ public class PhoneActivity extends Activity {
         b.setTextColor(0xFF1B1500);
         b.setBackground(shape(gold, 0, 14));
         b.setOnClickListener(c);
+        pressFx(b);
         return b;
     }
 
@@ -860,11 +1228,46 @@ public class PhoneActivity extends Activity {
     private boolean backNav;
     private boolean toTop;
 
+    private int slideDir;
+
+    /** The new page fades in while sliding a short way from the side it comes from. */
+    private void enter(int dir, boolean withHeader) {
+        float from = dir * dp(34);
+        View[] vs = withHeader ? new View[] {header, body} : new View[] {body};
+        for (View v : vs) {
+            v.animate().cancel();
+            v.setAlpha(0f);
+            v.setTranslationX(from);
+            v.animate().alpha(1f).translationX(0f).setDuration(230)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f));
+        }
+    }
+
+    /** A small press effect: the item shrinks a little under the finger and springs back. */
+    private void pressFx(View v) {
+        v.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View x, android.view.MotionEvent e) {
+                int a = e.getActionMasked();
+                if (a == android.view.MotionEvent.ACTION_DOWN) {
+                    x.animate().scaleX(0.97f).scaleY(0.97f).setDuration(90);
+                } else if (a == android.view.MotionEvent.ACTION_UP || a == android.view.MotionEvent.ACTION_CANCEL) {
+                    x.animate().scaleX(1f).scaleY(1f).setDuration(160)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(2f));
+                }
+                return false;
+            }
+        });
+    }
+
     private void build() {
         palette();
         String key = tab + ":" + sub;
         if (lastKey != null) savedScroll.put(lastKey, scroll.getScrollY());
         final boolean samePage = key.equals(lastKey);
+        // which way the new page slides in (this layout is right-to-left: forward comes from the left)
+        final int slide = slideDir != 0 ? slideDir : (lastKey == null || samePage ? 0 : (backNav ? -1 : 1));
+        slideDir = 0;
         // a new visit to the tasbih starts the round from 0 (the last count and today's totals stay)
         if (tab == 6 && (lastKey == null || !lastKey.startsWith("6:"))) endTasbihRound();
         lastKey = key;
@@ -883,13 +1286,14 @@ public class PhoneActivity extends Activity {
         else getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         clockTv = apTv = nameTv = cdTv = altTv = iqLabel = iqValue = weatherTv = null;
         applyBackground();
+        splitAt = -1;
+        splitFixed = false;
+        splitCenter = 0;
+        landCols = null;
+        landHint = null;
         body.removeAllViews();
         header.removeAllViews();
         if (tab != 9) qiblaStop();
-        if (!(tab == 3 && "tv".equals(sub)) && tvSearching) {
-            TvSetup.stopDiscovery();
-            tvSearching = false;
-        }
         try {
             if (tab == 0) home();
             else if (tab == 1) radio();
@@ -915,6 +1319,8 @@ public class PhoneActivity extends Activity {
             e.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
             add(e, 10);
         }
+        if (!land && tab == 6) splitTop();
+        if (land && tab != 0 && body.getChildCount() > 1 && !(tab == 5 && (sub != null || accs.isEmpty()))) splitLand();
         int y = 0;
         if (!toTop && (samePage || backNav)) {
             Integer v = savedScroll.get(key);
@@ -924,6 +1330,7 @@ public class PhoneActivity extends Activity {
         backNav = false;
         final int fy = y;
         scroll.scrollTo(0, 0);
+        if (slide != 0) enter(slide, !samePage);
         if (fy > 0) {
             scroll.post(new Runnable() {
                 @Override
@@ -944,6 +1351,7 @@ public class PhoneActivity extends Activity {
         final Cities.City city = Cities.selected(this);
         if (city == null) {
             title("الصلاة خير", false);
+            header.setVisibility(View.VISIBLE); // landscape hides the header on the home page, but this page has no panel
             row("اختر مدينتك", "لحساب مواقيت الصلاة", "تلقائي", new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -975,8 +1383,21 @@ public class PhoneActivity extends Activity {
         float f = fit();
         // top row: the menu, the place (down to the neighbourhood when the phone's location is used) and the weather
         LinearLayout top = hbox();
-        top.addView(hamburger(), new LinearLayout.LayoutParams(dp(38), dp(38)));
-        TextView place = chip("📍 " + city.name(true));
+        landMenu = null;
+        if (land) {
+            // landscape: the menu button stays in the top right corner of the screen, over the fixed panel
+            landMenu = hamburger();
+            GradientDrawable mb = new GradientDrawable();
+            mb.setShape(GradientDrawable.OVAL);
+            mb.setColor(0xAA000000);
+            mb.setStroke(dp(1), line);
+            landMenu.setBackground(mb);
+        } else {
+            top.addView(hamburger(), new LinearLayout.LayoutParams(dp(38), dp(38)));
+        }
+        TextView place = chip(city.name(true));
+        place.setCompoundDrawablesRelative(new Ico("pin", cream, dp(15)), null, null, null);
+        place.setCompoundDrawablePadding(dp(6));
         place.setSingleLine(true);
         place.setEllipsize(android.text.TextUtils.TruncateAt.END);
         place.setGravity(Gravity.CENTER);
@@ -991,6 +1412,14 @@ public class PhoneActivity extends Activity {
         LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(0, -2, 1f);
         pp.setMarginStart(dp(8));
         pp.setMarginEnd(dp(8));
+        if (land) {
+            // the picture sits in the middle of this row: the menu on one side, the place and the weather on the other
+            top.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+            place.setMaxWidth(dp(150));
+            pp = new LinearLayout.LayoutParams(-2, -2);
+            pp.setMarginStart(dp(8));
+            pp.setMarginEnd(dp(8));
+        }
         top.addView(place, pp);
         boolean weatherOn = sp.getBoolean("weather_on", true);
         if (weatherOn) {
@@ -999,7 +1428,7 @@ public class PhoneActivity extends Activity {
         } else {
             pp.setMarginEnd(0);
         }
-        addHeader(top);
+        if (!land) addHeader(top);
         if (weatherOn && weather.isEmpty()) {
             Weather.fetch(city, new Weather.Callback() {
                 @Override
@@ -1020,40 +1449,67 @@ public class PhoneActivity extends Activity {
         Deco.Frame frame = new Deco.Frame(false, (gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         hero.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {shape(card, line, 22), frame}));
         hero.setPadding(dp(14), dp(Math.round(10 * f)), dp(14), dp(Math.round(10 * f)));
+        LinearLayout hA = hero, hB = hero;
+        {
+            // the clock and the dates on one side, the next prayer on the other (portrait and landscape)
+            hero = hbox();
+            hero.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {shape(card, line, 22), frame}));
+            hero.setPadding(dp(10), dp(Math.round(10 * f)), dp(10), dp(Math.round(10 * f)));
+            hA = vbox();
+            hA.setGravity(Gravity.CENTER);
+            hB = vbox();
+            hB.setGravity(Gravity.CENTER);
+            hero.setGravity(Gravity.CENTER_VERTICAL);
+            hero.addView(hA, new LinearLayout.LayoutParams(0, land ? -1 : -2, 1f));
+            // a thin gold line between the two halves of the card
+            View div = new View(this);
+            div.setBackgroundColor((gold & 0x00FFFFFF) | 0x55000000);
+            LinearLayout.LayoutParams dvp = new LinearLayout.LayoutParams(dp(1), land ? -1 : dp(110));
+            dvp.setMargins(dp(4), dp(land ? 14 : 0), dp(4), dp(land ? 14 : 0));
+            hero.addView(div, dvp);
+            hero.addView(hB, new LinearLayout.LayoutParams(0, land ? -1 : -2, 1f));
+        }
         // clock and dates
         LinearLayout clock = hbox();
         clock.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         clock.setGravity(Gravity.CENTER);
-        clockTv = tv("--:--", Math.round(62 * f), gold, true);
+        clockTv = tv("--:--", Math.round((land ? 62 : 48) * f), gold, true);
         apTv = tv("", 15, cream, true);
-        apTv.setPadding(dp(8), 0, 0, 0);
-        clock.addView(clockTv);
+        apTv.setPadding(0, 0, dp(8), 0);
+        // the clock is drawn left to right: the AM/PM mark goes on the left of the time
         clock.addView(apTv);
-        hero.addView(clock, lp(-2, -2, 0));
+        clock.addView(clockTv);
+        hA.addView(clock, lp(-2, -2, 0));
         TextView d1 = tv(Hijri.weekdayAr(cal) + "، " + Hijri.gregorianAr(cal), 14, cream, false);
         d1.setGravity(Gravity.CENTER);
-        hero.addView(d1, lp(-2, -2, 0));
+        hA.addView(d1, lp(-2, -2, 0));
         TextView d2 = tv(Hijri.hijriAr(hij), 14, gold, true);
         d2.setGravity(Gravity.CENTER);
-        hero.addView(d2, lp(-2, -2, 0));
+        hA.addView(d2, lp(-2, -2, 0));
 
         // the next prayer
         PrayerCalc.Event ad = PrayerCalc.nextEvent(city, now, adj, new int[5]);
         shownNext = ad == null ? -1 : ad.index;
+        // "the next prayer" and its name share one line
+        LinearLayout nextRow = hbox();
+        nextRow.setGravity(Gravity.CENTER);
+        nextRow.setPadding(0, dp(6), 0, 0);
         TextView l1 = tv("الصلاة القادمة", 12, dim, true);
-        l1.setPadding(0, dp(6), 0, 0);
-        l1.setGravity(Gravity.CENTER);
-        hero.addView(l1);
-        nameTv = tv("", Math.round(30 * f), gold, true);
-        nameTv.setGravity(Gravity.CENTER);
-        hero.addView(nameTv);
-        cdTv = tv("00:00:00", Math.round(44 * f), cream, true);
+        l1.setPadding(0, 0, dp(8), 0);
+        nextRow.addView(l1);
+        nameTv = tv("", Math.round((land ? 30 : 24) * f), gold, true);
+        nameTv.setSingleLine(true);
+        nextRow.addView(nameTv);
+        hB.addView(nextRow, new LinearLayout.LayoutParams(-2, -2));
+        cdTv = tv("00:00:00", Math.round((land ? 44 : 34) * f), cream, true);
         cdTv.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         cdTv.setGravity(Gravity.CENTER);
-        hero.addView(cdTv);
+        hB.addView(cdTv);
         altTv = tv("", 14, cream, true);
         altTv.setGravity(Gravity.CENTER);
-        hero.addView(altTv, lp(-2, -2, 2));
+        altTv.setMaxLines(1);
+        hB.addView(altTv, lp(-1, -2, 2));
+        altTv.setAutoSizeTextTypeUniformWithConfiguration(8, 14, 1, TypedValue.COMPLEX_UNIT_SP);
         LinearLayout iq = hbox();
         iq.setBackground(shape(0x38000000, line, 14));
         iq.setPadding(dp(12), dp(Math.round(6 * Math.max(f, 0.6f))), dp(12), dp(Math.round(6 * Math.max(f, 0.6f))));
@@ -1061,10 +1517,24 @@ public class PhoneActivity extends Activity {
         iqValue = tv("", Math.round(18 * Math.max(f, 0.8f)), gold, true);
         iq.setGravity(Gravity.CENTER);
         iqValue.setPadding(dp(10), 0, 0, 0);
+        // the text never wraps or spills out of the card: it shrinks to fit the room it has
+        iqValue.setMaxLines(1);
+        iqValue.setGravity(Gravity.CENTER);
         iq.addView(iqLabel);
-        iq.addView(iqValue);
-        hero.addView(iq, lp(-2, -2, 6)); // wraps its text: a fixed height cut the letters when the page was squeezed
-        add(hero, 8);
+        iqValue.setAutoSizeTextTypeUniformWithConfiguration(8, Math.round(18 * Math.max(f, 0.8f)), 1, TypedValue.COMPLEX_UNIT_SP);
+        iq.addView(iqValue, new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout.LayoutParams iqp = lp(-1, -2, 6);
+        iqp.setMargins(dp(6), dp(6), dp(6), 0);
+        hB.addView(iq, iqp);
+        LinearLayout rowsBox = null;
+        final LinearLayout topRow = top;
+        if (land) {
+            rowsBox = vbox();
+            landHero = hero;
+        } else {
+            add(hero, 8);
+        }
+        final float rf = land ? 1f : f;
 
         // the six times: they share whatever height is left, so the page fills the screen
         long[] t = PrayerCalc.day(city, now, 0, adj);
@@ -1079,12 +1549,18 @@ public class PhoneActivity extends Activity {
             boolean next = idx >= 0 && idx == shownNext;
             LinearLayout r = hbox();
             r.setBackground(shape(next ? hl : card, next ? gold : 0, 16));
-            r.setPadding(dp(14), dp(Math.round(8 * f)), dp(14), dp(Math.round(8 * f)));
-            LinearLayout v = vbox();
-            v.addView(tv(name, Math.round(18 * f), cream, true));
-            if (idx >= 0 && iqm[idx] > 0) v.addView(tv(getString(R.string.iqama_minutes, iqm[idx]), 11, dim, false));
+            r.setPadding(dp(14), dp(Math.round(8 * rf)), dp(14), dp(Math.round(8 * rf)));
+            // landscape: the name and the iqama on one line, so six rows fit the short screen
+            LinearLayout v = land ? hbox() : vbox();
+            v.addView(tv(name, Math.round(18 * rf), cream, true));
+            int iqv = idx >= 0 ? PrayerPrefs.iqamaOf(iqm, idx, fri && idx == PrayerCalc.DHUHR) : 0;
+            if (idx >= 0 && iqv > 0) {
+                TextView iqt = tv(getString(R.string.iqama_minutes, iqv), 11, dim, false);
+                if (land) iqt.setPadding(dp(10), 0, 0, 0);
+                v.addView(iqt);
+            }
             r.addView(v, new LinearLayout.LayoutParams(0, -2, 1f));
-            TextView tt = tv(ap(PrayerCalc.time(this, city, at)), Math.round(19 * f), gold, true);
+            TextView tt = tv(ap(PrayerCalc.time(this, city, at)), Math.round(19 * rf), gold, true);
             tt.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
             r.addView(tt);
             if (idx >= 0 && at <= now) {
@@ -1107,10 +1583,10 @@ public class PhoneActivity extends Activity {
                 r.addView(ck, kp);
             }
             if (at < now && !next) r.setAlpha(0.6f);
-            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2, 1f);
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, land ? -2 : -2, 1f);
             rp.topMargin = dp(5);
             r.setGravity(Gravity.CENTER_VERTICAL);
-            body.addView(r, rp);
+            (rowsBox != null ? rowsBox : body).addView(r, rp);
         }
 
         // verse of the day (it can be switched off in the settings)
@@ -1129,8 +1605,13 @@ public class PhoneActivity extends Activity {
         v2.setGravity(Gravity.CENTER);
         vc.addView(v1);
         vc.addView(v2);
-        add(vc, 8);
+        if (land) {
+            rowsBox.addView(vc, lp(-1, -2, 8));
+        } else {
+            add(vc, 8);
         }
+        }
+        if (land) assembleLandHome(topRow, rowsBox);
         body.post(new Runnable() {
             @Override
             public void run() {
@@ -1150,13 +1631,18 @@ public class PhoneActivity extends Activity {
     /** 1.0 on a tall screen; smaller on a short one, so the home page fits without scrolling. */
     private float fit() {
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-        float availDp = (dm.heightPixels - homeTop - homeBottom) / dm.density - 50f;
+        float availDp = heightDp() - (homeTop + homeBottom) / dm.density - 50f;
+        if (land) {
+            float remaining = heightDp() - 16f - landBandDp() * 0.82f - 24f;
+            return Math.max(0.5f, Math.min(1f, (remaining - 110f) / 75f));
+        }
         return Math.max(0.45f, Math.min(1f, availDp / 780f) * homeAdj);
     }
 
     // The first estimate in fit() can be off on some screens: after the page is laid out, it is measured, and if it is
     // taller than the screen the text and spacing shrink a little and the page is drawn again (a few times at most).
     private float homeAdj = 1f;
+    private LinearLayout landHero;
     private int homeTries;
     private boolean homeRetry;
 
@@ -1248,6 +1734,18 @@ public class PhoneActivity extends Activity {
         col.setPadding(dp(16), dp(18), dp(16), dp(14));
         ImageView dv = new ImageView(this);
         dv.setImageBitmap(disc);
+        final int discStation = hi;
+        dv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (RadioService.on()) {
+                    RadioService.stop(PhoneActivity.this);
+                    sp.edit().putBoolean("radio_resume", false).apply();
+                } else {
+                    RadioService.play(PhoneActivity.this, discStation);
+                }
+            }
+        });
         col.addView(dv, new LinearLayout.LayoutParams(dp(150), dp(150)));
         if (on) {
             android.animation.ObjectAnimator sp2 = android.animation.ObjectAnimator.ofFloat(dv, "rotation", 0f, 360f);
@@ -1280,6 +1778,7 @@ public class PhoneActivity extends Activity {
             });
         }
         radioHero();
+        splitAt = body.getChildCount();
         int stN = 0, rcN = 0;
         for (RadioService.Station q : RadioService.STATIONS) {
             if (q.url.contains("qurango")) rcN++;
@@ -1764,14 +2263,6 @@ public class PhoneActivity extends Activity {
             backupPage();
             return;
         }
-        if ("tv".equals(sub)) {
-            tvPage();
-            return;
-        }
-        if ("tvkeys".equals(sub)) {
-            tvKeysPage();
-            return;
-        }
         if ("fonts".equals(sub)) {
             title("حجم الخط ولونه", true);
             section("اختر المكان");
@@ -1783,6 +2274,14 @@ public class PhoneActivity extends Activity {
         }
         title("الإعدادات", false);
         acc("st:look", "الشكل والعرض", "الشكل والخط وظلال البطاقات والشاشة الافتتاحية");
+        switchRow("تدوير الشاشة (الوضع الأفقي)", "لو أوقفته يبقى التطبيق رأسياً دائماً حتى لو أدرت الهاتف", sp.getBoolean("rotate_on", true),
+            new CompoundListener() {
+                @Override
+                public void changed(boolean on) {
+                    sp.edit().putBoolean("rotate_on", on).apply();
+                    applyRotation();
+                }
+            });
         switchRow("ظلال وعمق البطاقات", "تعطي إحساس البروز ثلاثي الأبعاد", sp.getBoolean("depth_on", true),
             new CompoundListener() {
                 @Override
@@ -1855,7 +2354,6 @@ public class PhoneActivity extends Activity {
                     PhoneUpdater.check(PhoneActivity.this);
                 }
             });
-            row("اللانشر على التلفزيون", "تثبيته وتعيينه شاشة رئيسية من هذا الهاتف", "›", go("tv"));
         }
         row("نسخة احتياطية", "احفظ إعداداتك وأذكارك في ملف، واستعدها بعد أي حذف", "›", go("backup"));
         row("عن التطبيق", "المصادر والتشخيص", "›", go("about"));
@@ -1910,20 +2408,42 @@ public class PhoneActivity extends Activity {
         add(tv("يتغير حجم الخط ولونه في هذا المكان فقط. الألوان الفاتحة مناسبة للشكل الليلي، وللشكل النهاري جرّب الأبيض أو الأصفر.", 12, dim, false), 10);
     }
 
+    private boolean[] backupPick;
+
+    private void saveBackupFile() {
+        Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+            .setType("application/json")
+            .putExtra(Intent.EXTRA_TITLE, "salat-khair-" + new SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(new Date()) + ".json");
+        try {
+            startActivityForResult(i, REQ_SAVE);
+        } catch (RuntimeException e) {
+            toast("تعذّر فتح اختيار الملفات");
+        }
+    }
+
     private void backupPage() {
         title("نسخة احتياطية", true);
         add(tv("يحفظ كل ما ضبطته في ملف واحد: المدينة، إعدادات الأذان والإقامة والتذكيرات، الأذكار التي أضفتها أو عدّلتها، قائمة الأذكار فوق التطبيقات، العدّادات، والشكل. احفظ الملف في مكان خارج التطبيق (التنزيلات أو Drive أو أرسله لنفسك)، فيبقى حتى لو حذفت التطبيق.", 13, dim, false), 4);
         add(button("حفظ نسخة احتياطية", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
-                    .setType("application/json")
-                    .putExtra(Intent.EXTRA_TITLE, "salat-khair-" + new SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(new Date()) + ".json");
-                try {
-                    startActivityForResult(i, REQ_SAVE);
-                } catch (RuntimeException e) {
-                    toast("تعذّر فتح اختيار الملفات");
-                }
+                // first choose what goes into the file
+                final boolean[] on = new boolean[Backup.GROUPS.length];
+                java.util.Arrays.fill(on, true);
+                new Pop(PhoneActivity.this).title("ماذا تحفظ في النسخة؟").multi(Backup.GROUPS, on)
+                    .ok("متابعة", new Runnable() {
+                        @Override
+                        public void run() {
+                            boolean any = false;
+                            for (boolean b : on) any |= b;
+                            if (!any) {
+                                toast("اختر شيئًا واحدًا على الأقل");
+                                return;
+                            }
+                            backupPick = on;
+                            saveBackupFile();
+                        }
+                    }).cancel("إلغاء").show();
             }
         }), 12);
         add(button("استعادة من نسخة", new View.OnClickListener() {
@@ -1997,7 +2517,7 @@ public class PhoneActivity extends Activity {
         try {
             if (req == REQ_SAVE) {
                 java.io.OutputStream o = getContentResolver().openOutputStream(u, "wt");
-                o.write(Backup.export(this).getBytes("UTF-8"));
+                o.write((backupPick == null ? Backup.export(this) : Backup.export(this, backupPick)).getBytes("UTF-8"));
                 o.close();
                 toast("تم حفظ النسخة الاحتياطية");
             } else if (req == REQ_LOAD) {
@@ -2035,6 +2555,9 @@ public class PhoneActivity extends Activity {
         TextView ver = tv("النسخة " + PhoneUpdater.installedName(this), 13, dim, false);
         ver.setGravity(Gravity.CENTER);
         add(ver, 2);
+        TextView rights = tv("© 2026 Mahmoud Arafa. جميع الحقوق محفوظة.\nلا يجوز نسخ التطبيق أو تعديله أو إعادة نشره أو بيعه دون إذن كتابي من صاحبه.", 12, dim, false);
+        rights.setGravity(Gravity.CENTER);
+        add(rights, 8);
         acc("ab:src", "المصادر", "مكتبات وبيانات التطبيق");
         add(tv("أوقات الصلاة: مكتبة adhan-java (رخصة MIT).\n"
             + "الأذكار: حصن المسلم، من ملف rn0x/Adhkar-json.\n"
@@ -2094,6 +2617,25 @@ public class PhoneActivity extends Activity {
         search.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         search.setBackground(shape(card, line, 14));
         search.setPadding(dp(14), dp(10), dp(14), dp(10));
+        final int sz = dp(20), col = gold, sw = dp(2);
+        android.graphics.drawable.Drawable mag = new android.graphics.drawable.Drawable() {
+            final android.graphics.Paint pt = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+            @Override public void draw(android.graphics.Canvas c) {
+                pt.setStyle(android.graphics.Paint.Style.STROKE);
+                pt.setColor(col);
+                pt.setStrokeWidth(sw);
+                pt.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+                float r = sz * 0.34f;
+                c.drawCircle(sz * 0.42f, sz * 0.42f, r, pt);
+                c.drawLine(sz * 0.42f + r * 0.72f, sz * 0.42f + r * 0.72f, sz * 0.92f, sz * 0.92f, pt);
+            }
+            @Override public void setAlpha(int a) {}
+            @Override public void setColorFilter(android.graphics.ColorFilter f) {}
+            @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+        };
+        mag.setBounds(0, 0, sz, sz);
+        search.setCompoundDrawablesRelative(mag, null, null, null);
+        search.setCompoundDrawablePadding(dp(10));
         return search;
     }
 
@@ -2296,19 +2838,14 @@ public class PhoneActivity extends Activity {
                     }
                 });
         }
-        row("الأذان الأول للجمعة", PrayerPrefs.firstAdhanText(this, PrayerPrefs.firstAdhan(this)), "›",
+        row("الجمعة", "الإقامة: " + PrayerPrefs.iqamaText(this, iq[PrayerPrefs.FRIDAY])
+            + " · التعديل: " + PrayerPrefs.adjustText(this, adj[PrayerPrefs.FRIDAY])
+            + " · الأذان الأول: " + PrayerPrefs.firstAdhanText(this, PrayerPrefs.firstAdhan(this))
+            + " · " + new String[] {"صوت", "اهتزاز", "صامت"}[Math.max(0, Math.min(2, PrayerPrefs.adhanMode(sp, PrayerCalc.DHUHR, true)))], "›",
             new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    numberDialog("دقائق قبل أذان الجمعة (0 = متوقف)", 0, 60, PrayerPrefs.firstAdhan(PhoneActivity.this),
-                        new IntSetter() {
-                            @Override
-                            public void set(int val) {
-                                PrayerPrefs.setFirstAdhan(PhoneActivity.this, val);
-                                Scheduler.scheduleNext(PhoneActivity.this);
-                                build();
-                            }
-                        });
+                    prayerDialog(PrayerPrefs.FRIDAY);
                 }
             });
         row("صوت الأذان", soundText(false), "›", new View.OnClickListener() {
@@ -2511,8 +3048,21 @@ public class PhoneActivity extends Activity {
         c2.addView(b);
         l.addView(c1, new LinearLayout.LayoutParams(0, -2, 1f));
         l.addView(c2, new LinearLayout.LayoutParams(0, -2, 1f));
+        final boolean friday = idx == PrayerPrefs.FRIDAY;
+        final NumberPicker fa = new NumberPicker(this);
+        if (friday) {
+            fa.setMinValue(0);
+            fa.setMaxValue(60);
+            fa.setValue(PrayerPrefs.firstAdhan(this));
+            LinearLayout c3 = vbox();
+            c3.setGravity(Gravity.CENTER);
+            c3.addView(tv("الأذان الأول (دقائق)", 13, dim, false));
+            c3.addView(fa);
+            l.addView(c3, new LinearLayout.LayoutParams(0, -2, 1f));
+        }
         final LinearLayout all = vbox();
         all.addView(l);
+        if (friday) all.addView(tv("الأذان الأول: عدد الدقائق قبل أذان الجمعة (0 = متوقف).", 12, dim, false), lp(-1, -2, 10));
         all.addView(tv("عند الأذان والإقامة", 13, dim, false), lp(-1, -2, 12));
         final RadioGroup modes = new RadioGroup(this);
         String[] mn = {"صوت الأذان", "اهتزاز فقط", "بدون صوت ولا اهتزاز"};
@@ -2524,19 +3074,20 @@ public class PhoneActivity extends Activity {
             rb.setTextSize(15);
             modes.addView(rb);
         }
-        modes.check(1000 + sp.getInt("ad_mode_" + idx, 0));
+        modes.check(1000 + (friday ? PrayerPrefs.adhanMode(sp, PrayerCalc.DHUHR, true) : sp.getInt("ad_mode_" + idx, 0)));
         all.addView(modes);
         final CheckBox ring = new CheckBox(this);
         ring.setText("تشغيل الأذان حتى لو الهاتف على الصامت أو الاهتزاز");
         ring.setTextColor(cream);
         ring.setTextSize(14);
-        ring.setChecked(sp.getBoolean("ad_ring_" + idx, true));
+        ring.setChecked(friday ? PrayerPrefs.adhanRing(sp, PrayerCalc.DHUHR, true) : sp.getBoolean("ad_ring_" + idx, true));
         all.addView(ring);
         new Pop(this).title(PrayerCalc.name(this, idx, false)).view(all).ok("حفظ", new Runnable() {
             @Override
             public void run() {
                 PrayerPrefs.setIqama(PhoneActivity.this, idx, a.getValue());
                 PrayerPrefs.setAdjust(PhoneActivity.this, idx, b.getValue() - 10);
+                if (friday) PrayerPrefs.setFirstAdhan(PhoneActivity.this, fa.getValue());
                 sp.edit().putInt("ad_mode_" + idx, modes.getCheckedRadioButtonId() - 1000).putBoolean("ad_ring_" + idx, ring.isChecked()).apply();
                 Scheduler.scheduleNext(PhoneActivity.this);
                 build();
@@ -2568,7 +3119,7 @@ public class PhoneActivity extends Activity {
     }
 
     private void menuItem(String name, final int t) {
-        TextView it = tv(ic(name), 16, t == tab ? gold : cream, true);
+        TextView it = itv(name, 16, t == tab ? gold : cream, true);
         it.setPadding(dp(12), dp(11), dp(12), dp(11));
         if (t == tab) it.setBackground(shape(hl, 0, 12));
         it.setOnClickListener(new View.OnClickListener() {
@@ -2661,7 +3212,7 @@ public class PhoneActivity extends Activity {
                 int n = 0;
                 for (Adhkar.Category c : all) if (Adhkar.groupOf(this, c.id) == g) n++;
                 if (n == 0) continue;
-                acc("ak:" + g, Adhkar.GROUP_ICONS[g] + "  " + Adhkar.GROUPS[g], bobs(n));
+                acc("ak:" + g, Adhkar.GROUPS[g], bobs(n));
                 for (Adhkar.Category c : all) {
                     if (Adhkar.groupOf(this, c.id) == g) chapterRow(c, false);
                 }
@@ -2816,7 +3367,8 @@ public class PhoneActivity extends Activity {
                         @Override
                         public void onClick(View v) {
                             left[0]--;
-                            buzz();
+                            if (left[0] == 0) buzzDone();
+                            else buzz();
                             Adhkar.bump(PhoneActivity.this);
                             refreshTotal();
                             done.put(key, left[0]);
@@ -2848,22 +3400,8 @@ public class PhoneActivity extends Activity {
         title("الأذكار والأدعية", false);
         add(tv("حصن المسلم كاملًا: " + all.size() + " بابًا.", 13, dim, false), 2);
         totalLine();
-        final EditText search = new EditText(this);
-        search.setHint("ابحث عن ذكر أو دعاء");
-        search.setHintTextColor(dim);
-        search.setTextColor(cream);
-        search.setSingleLine(true);
-        search.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        search.setBackground(null);
-        search.setPadding(dp(8), dp(10), dp(8), dp(10));
-        LinearLayout searchBar = hbox();
-        searchBar.setBackground(shape(card, line, 14));
-        searchBar.setPadding(dp(14), 0, dp(10), 0);
-        searchBar.setGravity(Gravity.CENTER_VERTICAL);
-        TextView mag = tv("🔍", 18, gold, false);
-        searchBar.addView(mag);
-        searchBar.addView(search, new LinearLayout.LayoutParams(0, -2, 1f));
-        add(searchBar, 8);
+        final EditText search = searchBox("ابحث عن ذكر أو دعاء");
+        add(search, 8);
         catList = vbox();
         add(catList, 2);
         fillCategories(all, "");
@@ -3002,6 +3540,17 @@ public class PhoneActivity extends Activity {
         }
     }
 
+    /** A different buzz when a card is finished and the next one starts: two short pulses, then a long one. */
+    private void buzzDone() {
+        if (!sp.getBoolean("tap_buzz", true)) return;
+        try {
+            Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+            if (v != null && v.hasVibrator()) v.vibrate(VibrationEffect.createWaveform(new long[] {0, 40, 70, 40, 70, 170}, -1));
+        } catch (RuntimeException ignored) {
+            // no vibration on this phone
+        }
+    }
+
     private void tasbihPage() {
         title("السبحة والاستغفار", false);
         totalLine();
@@ -3027,13 +3576,25 @@ public class PhoneActivity extends Activity {
                 refreshTasbih();
             }
         });
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(190), dp(190));
-        rp.gravity = Gravity.CENTER_HORIZONTAL;
-        rp.topMargin = dp(10);
-        body.addView(tcBig, rp);
+        if (land) {
+            // the counter takes whatever height is left in its half and stays a circle
+            SquareBox sq = new SquareBox(this);
+            sq.addView(tcBig, new FrameLayout.LayoutParams(-1, -1));
+            LinearLayout.LayoutParams sqp = new LinearLayout.LayoutParams(-1, 0, 1f);
+            sqp.topMargin = dp(6);
+            body.addView(sq, sqp);
+        } else {
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(190), dp(190));
+            rp.gravity = Gravity.CENTER_HORIZONTAL;
+            rp.topMargin = dp(10);
+            body.addView(tcBig, rp);
+        }
         TextView hint = tv("اضغط الدائرة للعدّ", 12, dim, false);
         hint.setGravity(Gravity.CENTER);
         add(hint, 6);
+        splitAt = body.getChildCount();
+        splitFixed = true;
+        splitCenter = 1;
         section("الأذكار");
         tcRows = new TextView[names.length];
         for (int i = 0; i < names.length; i++) {
@@ -3096,510 +3657,6 @@ public class PhoneActivity extends Activity {
     // ---------------------------------------------------------------- Hijri calendar
     private int calOff;
 
-
-    // ---------------------------------------------------------------- the TV
-    private interface TvTask {
-        void run() throws Exception;
-    }
-
-    private boolean tvVisible() {
-        return tab == 3 && ("tv".equals(sub) || "tvkeys".equals(sub));
-    }
-
-    private void tvSay(final String line) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                tvEntries.add(0, line);
-                while (tvEntries.size() > 25) tvEntries.remove(tvEntries.size() - 1);
-                if (tvVisible()) build();
-            }
-        });
-    }
-
-    private String tvWhy(Throwable e) {
-        if (TvSetup.pairingRequired(e)) {
-            return "التلفزيون يطلب الاقتران أولاً (اقتران برمز من شاشة التلفزيون)";
-        }
-        String m = e.getMessage();
-        String n = e.getClass().getSimpleName();
-        return m == null || m.isEmpty() ? n : m + " (" + n + ")";
-    }
-
-    private void tvRun(String label, final TvTask t) {
-        tvRun(label, t, false);
-    }
-
-    /** keepLog: the button tests keep their earlier results to compare; every other new task starts a clean list. */
-    private void tvRun(String label, final TvTask t, boolean keepLog) {
-        if (tvBusy) {
-            toast("انتظر حتى تنتهي الخطوة الحالية");
-            return;
-        }
-        tvBusy = true;
-        if (!keepLog) tvEntries.clear();
-        tvSay(label);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    t.run();
-                } catch (Throwable e) {
-                    tvSay("تعذّر: " + tvWhy(e));
-                } finally {
-                    tvBusy = false;
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (tvVisible()) build();
-                        }
-                    });
-                }
-            }
-        }).start();
-    }
-
-    private EditText tvField(String hint, String value, int type, final boolean isCode) {
-        EditText e = searchBox(hint);
-        e.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
-        e.setInputType(type);
-        e.setText(value);
-        e.addTextChangedListener(new android.text.TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int a, int b, int c) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int a, int b, int c) {
-                if (isCode) tvCode = s.toString();
-                else tvAddr = s.toString();
-            }
-
-            @Override
-            public void afterTextChanged(android.text.Editable s) {
-            }
-        });
-        return e;
-    }
-
-    /** Splits "ip:port"; a missing port becomes def (0 = a port is required). Returns null if it is not an address. */
-    private Object[] tvParse(String a, int def) {
-        a = a.trim();
-        if (a.isEmpty()) return null;
-        int i = a.lastIndexOf(':');
-        String host = i < 0 ? a : a.substring(0, i);
-        int port = def;
-        if (i >= 0) {
-            try {
-                port = Integer.parseInt(a.substring(i + 1).trim());
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        }
-        if (host.isEmpty() || port <= 0 || port > 65535) return null;
-        return new Object[] {host.trim(), port};
-    }
-
-    private void tvPage() {
-        title("اللانشر على التلفزيون", true);
-        String[] names = {"تحضير", "اتصال", "تثبيت", "إعداد"};
-        LinearLayout st = hbox();
-        for (int i = 0; i < 4; i++) {
-            boolean on = i == tvStage;
-            TextView t = tv((i + 1) + " " + names[i], 12, on ? gold : dim, on);
-            t.setGravity(Gravity.CENTER);
-            t.setBackground(shape(on ? hl : 0, on ? gold : 0, 12));
-            t.setPadding(0, dp(7), 0, dp(7));
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
-            p.setMargins(dp(2), 0, dp(2), 0);
-            st.addView(t, p);
-        }
-        add(st, 6);
-        if (tvBusy) {
-            row("خطوة تعمل الآن…", "لو لا تنتهي، اضغط هنا لإلغائها وقطع الاتصال", "إلغاء", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvBusy = false;
-                    TvSetup.disconnect(PhoneActivity.this);
-                    tvSay("أُلغيت الخطوة الحالية وانقطع الاتصال. اتصل من جديد.");
-                }
-            });
-        }
-        if (tvStage == 0) tvPrepare();
-        else if (tvStage == 1) tvConnect();
-        else if (tvStage == 2) tvInstall();
-        else tvHome();
-        tvLogBlock();
-    }
-
-    /** The notes, newest first, at the top of the page. */
-    private void tvLogBlock() {
-        if (tvEntries.isEmpty()) return;
-        section("آخر ما حدث");
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < tvEntries.size() && i < 10; i++) {
-            if (i > 0) sb.append("\n— — —\n");
-            sb.append(tvEntries.get(i));
-        }
-        TextView lg = tv(sb.toString().trim(), 12, cream, false);
-        lg.setTextIsSelectable(true);
-        lg.setBackground(shape(card, line, 14));
-        lg.setPadding(dp(12), dp(10), dp(12), dp(10));
-        add(lg, 4);
-        row("مسح", null, "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvEntries.clear();
-                build();
-            }
-        });
-    }
-
-    private void tvKeysPage() {
-        title("اختبار أزرار الريموت", true);
-        if (!TvSetup.connected(this)) {
-            add(tv("الهاتف غير متصل بالتلفزيون. ارجع واضغط «اتصال» أولاً.", 14, dim, false), 8);
-            tvLogBlock();
-            return;
-        }
-        add(tv("اختر الزر الذي تريد اختباره، وبعدها اضغطه على ريموت التلفزيون خلال 12 ثانية. سنقرأ ما فعله النظام ونعرضه تحت.", 13, dim, false), 6);
-        if (tvBusy) {
-            row("اختبار جارٍ…", "لو لا ينتهي، اضغط هنا لإلغائه", "إلغاء", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvBusy = false;
-                    TvSetup.disconnect(PhoneActivity.this);
-                    tvSay("أُلغي الاختبار وانقطع الاتصال.");
-                }
-            });
-        }
-        row("تفعيل أزرار اليوتيوب والنجمة", "يعمل بعد تحديث اللانشر على التلفزيون (الخطوة 3)", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvRun("تفعيل أزرار الريموت", new TvTask() {
-                    @Override
-                    public void run() throws Exception {
-                        TvSetup.enableKeys(PhoneActivity.this, new TvSetup.Say() {
-                            @Override
-                            public void say(String s) {
-                                tvSay(s);
-                            }
-                        });
-                    }
-                }, true);
-            }
-        });
-        section("الأزرار");
-        String[] keys = {"المساعد الصوتي", "يوتيوب", "النجمة (المفضلة)", "Netflix", "الرئيسية (Home)", "الرجوع",
-            "رفع الصوت", "خفض الصوت", "كتم الصوت", "تشغيل / إيقاف مؤقت", "المدخل (Input)", "القائمة / الإعدادات"};
-        for (final String k : keys) {
-            row(k, null, "اختبر", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvRun("اختبار: " + k, new TvTask() {
-                        @Override
-                        public void run() throws Exception {
-                            TvSetup.keyProbe(PhoneActivity.this, new TvSetup.Say() {
-                                @Override
-                                public void say(String s) {
-                                    tvSay(s);
-                                }
-                            }, k);
-                        }
-                    }, true);
-                }
-            });
-        }
-        tvLogBlock();
-    }
-
-    private void tvPrepare() {
-        section("حضّر التلفزيون");
-        String[] steps = {
-            "افتح على التلفزيون: الإعدادات ← النظام ← حول.",
-            "اضغط OK على «إصدار نظام التشغيل» 7 مرات حتى تظهر رسالة أنك أصبحت مطوّراً.",
-            "ارجع ← النظام ← خيارات المطوّر، وشغّل «تصحيح الأخطاء اللاسلكي».",
-            "الهاتف والتلفزيون لازم يكونا على نفس شبكة الواي فاي."};
-        for (int i = 0; i < steps.length; i++) {
-            LinearLayout r = hbox();
-            r.setBackground(shape(card, line, 14));
-            r.setPadding(dp(12), dp(10), dp(12), dp(10));
-            TextView n = tv(String.valueOf(i + 1), 16, gold, true);
-            n.setPadding(0, 0, dp(10), 0);
-            r.addView(n);
-            r.addView(tv(steps[i], 14, cream, false), new LinearLayout.LayoutParams(0, -2, 1f));
-            add(r, 5);
-        }
-        add(tv("ما سيحدث بعد ذلك: تثبّت التطبيق اللانشر على التلفزيون من هذا الهاتف، ثم تجعله الشاشة الرئيسية. لا حاجة لكمبيوتر.", 12, dim, false), 10);
-        row("جاهز، ابحث عن التلفزيون", null, "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvStage = 1;
-                build();
-            }
-        });
-    }
-
-    private void tvConnect() {
-        if (TvSetup.connected(this)) {
-            section("متصل");
-            add(tv("الهاتف متصل بالتلفزيون ✓", 15, gold, true), 4);
-            row("التالي: تثبيت اللانشر", null, "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvStage = 2;
-                    build();
-                }
-            });
-            row("رجوع إلى الشاشة الأصلية للتلفزيون", "يعيد لانشر Google ويفعّل أزرار الريموت", "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvRun("إرجاع الشاشة الأصلية…", new TvTask() {
-                        @Override
-                        public void run() throws Exception {
-                            TvSetup.restore(PhoneActivity.this, new TvSetup.Say() {
-                                @Override
-                                public void say(String s) {
-                                    tvSay(s);
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-            row("إعداد الشاشة الرئيسية", null, "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvStage = 3;
-                    build();
-                }
-            });
-            row("قطع الاتصال", null, "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    TvSetup.disconnect(PhoneActivity.this);
-                    build();
-                }
-            });
-            return;
-        }
-        if (!tvSearching) {
-            tvSearching = true;
-            TvSetup.startDiscovery(this, new Runnable() {
-                @Override
-                public void run() {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            tvRefreshFound();
-                        }
-                    });
-                }
-            });
-        }
-        section("اقتران الهاتف بالتلفزيون");
-        add(tv("على التلفزيون: خيارات المطوّر ← «تصحيح الأخطاء اللاسلكي» ← «الاقتران بجهاز باستخدام رمز الاقتران». اترك الشاشة التي فيها الرمز مفتوحة، واكتب الرمز هنا:", 13, dim, false), 4);
-        add(tvField("رمز الاقتران (6 أرقام)", tvCode, android.text.InputType.TYPE_CLASS_NUMBER, true), 6);
-        section("وجدت على الشبكة");
-        tvFound = vbox();
-        add(tvFound, 4);
-        tvRefreshFound();
-        section("أو اكتب العنوان بنفسك");
-        add(tv("العنوان والمنفذ كما يظهران على التلفزيون في صفحة التصحيح اللاسلكي (للاقتران: عنوان صفحة الرمز، وللاتصال: العنوان الأعلى).", 12, dim, false), 4);
-        add(tvField("مثال: 192.168.1.50:41234", tvAddr, android.text.InputType.TYPE_CLASS_TEXT, false), 6);
-        row("اقتران بهذا العنوان", "يستخدم الرمز أعلاه", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Object[] a = tvParse(tvAddr, 0);
-                if (a == null) {
-                    toast("اكتب العنوان والمنفذ مثل 192.168.1.50:41234");
-                    return;
-                }
-                tvPair((String) a[0], (Integer) a[1]);
-            }
-        });
-        row("اتصال بهذا العنوان", "بعد الاقتران", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Object[] a = tvParse(tvAddr, 5555);
-                if (a == null) {
-                    toast("اكتب العنوان مثل 192.168.1.50:5555");
-                    return;
-                }
-                tvConnectTo((String) a[0], (Integer) a[1]);
-            }
-        });
-        row("رجوع إلى خطوات التحضير", null, "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvStage = 0;
-                build();
-            }
-        });
-    }
-
-    private void tvRefreshFound() {
-        if (tvFound == null || !tvVisible() || tvStage < 1) return;
-        tvFound.removeAllViews();
-        boolean any = false;
-        if (TvSetup.pairHost != null) {
-            any = true;
-            final String ph = TvSetup.pairHost;
-            final int pp = TvSetup.pairPort;
-            LinearLayout r = row("تلفزيون جاهز للاقتران", ph + ":" + pp, "اقتران", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvPair(ph, pp);
-                }
-            });
-            body.removeView(r);
-            tvFound.addView(r, lp(-1, -2, 5));
-        }
-        if (TvSetup.connHost != null) {
-            any = true;
-            final String ch = TvSetup.connHost;
-            final int cp = TvSetup.connPort;
-            LinearLayout r = row("تلفزيون جاهز للاتصال", ch + ":" + cp, "اتصال", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvConnectTo(ch, cp);
-                }
-            });
-            body.removeView(r);
-            tvFound.addView(r, lp(-1, -2, 5));
-        }
-        if (!any) {
-            tvFound.addView(tv("أبحث عن التلفزيون على الواي فاي… إن لم يظهر خلال دقيقة، اكتب العنوان بنفسك.", 13, dim, false));
-        }
-    }
-
-    private void tvPair(final String host, final int port) {
-        final String code = tvCode.trim();
-        if (code.length() != 6) {
-            toast("اكتب رمز الاقتران المكوّن من 6 أرقام");
-            return;
-        }
-        tvRun("اقتران مع " + host + ":" + port + "…", new TvTask() {
-            @Override
-            public void run() throws Exception {
-                TvSetup.pair(PhoneActivity.this, host, port, code);
-                tvSay("تم الاقتران ✓");
-                // the TV announces the port to connect on once it is paired
-                long end = System.currentTimeMillis() + 10000;
-                while (TvSetup.connHost == null && System.currentTimeMillis() < end) Thread.sleep(500);
-                if (TvSetup.connHost == null) {
-                    tvSay("لم أجد منفذ الاتصال. اكتب العنوان الظاهر في صفحة التصحيح اللاسلكي (فوق) واضغط «اتصال بهذا العنوان».");
-                    return;
-                }
-                TvSetup.connect(PhoneActivity.this, TvSetup.connHost, TvSetup.connPort);
-                tvSay("متصل بالتلفزيون ✓ " + TvSetup.info(PhoneActivity.this));
-                if (tvStage < 2) tvStage = 2;
-            }
-        });
-    }
-
-    private void tvConnectTo(final String host, final int port) {
-        tvRun("اتصال بـ " + host + ":" + port + "…", new TvTask() {
-            @Override
-            public void run() throws Exception {
-                TvSetup.connect(PhoneActivity.this, host, port);
-                tvSay("متصل بالتلفزيون ✓ " + TvSetup.info(PhoneActivity.this));
-                if (tvStage < 2) tvStage = 2;
-            }
-        });
-    }
-
-    private void tvInstall() {
-        if (!TvSetup.connected(this)) {
-            add(tv("انقطع الاتصال بالتلفزيون. اتصل من جديد (تبقى في نفس الخطوة):", 14, gold, true), 8);
-            tvConnect();
-            return;
-        }
-        section("تثبيت اللانشر");
-        add(tv("ينزّل التطبيق آخر نسخة من اللانشر من GitHub ويثبّتها على التلفزيون، ويعطيه الأذونات التي يحتاجها.", 13, dim, false), 4);
-        row("تثبيت اللانشر على التلفزيون", "يحتاج الإنترنت على الهاتف", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvRun("بدء التثبيت…", new TvTask() {
-                    @Override
-                    public void run() throws Exception {
-                        TvSetup.install(PhoneActivity.this, new TvSetup.Say() {
-                            @Override
-                            public void say(String s) {
-                                tvSay(s);
-                            }
-                        });
-                        tvStage = 3;
-                    }
-                });
-            }
-        });
-        row("تخطّ: اللانشر مثبّت بالفعل", null, "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvStage = 3;
-                build();
-            }
-        });
-    }
-
-    private void tvHome() {
-        if (!TvSetup.connected(this)) {
-            add(tv("انقطع الاتصال بالتلفزيون. اتصل من جديد (تبقى في نفس الخطوة):", 14, gold, true), 8);
-            tvConnect();
-            return;
-        }
-        section("الشاشة الرئيسية");
-        add(tv(TvSetup.homeSet(this) ? "الحالة: اللانشر هو الشاشة الرئيسية ✓" : "الحالة: لم يُعيَّن بعد", 15, gold, true), 4);
-        add(tv("عند التعيين يُعطَّل لانشر Google TV الأصلي ويصير هذا اللانشر هو الشاشة الرئيسية. يتأكد التطبيق من ظهوره، وإن لم يظهر يتراجع كل شيء تلقائياً. وبإمكانك الرجوع للأصلية في أي وقت من هنا. وبعد التعيين يبقى على التلفزيون حارس: لو حُذف اللانشر يرجع لانشر Google تلقائياً خلال نصف دقيقة تقريباً. الحارس يتوقف إذا أُعيد تشغيل التلفزيون، ويعود عندما يتصل الهاتف بالتلفزيون مرة أخرى. فالأفضل الرجوع للأصلية من هنا قبل حذف اللانشر.", 13, dim, false), 6);
-        row("تعيين اللانشر كشاشة رئيسية", null, "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new Pop(PhoneActivity.this).title("تعيين الشاشة الرئيسية")
-                    .message("سيُعطَّل لانشر Google TV الأصلي مؤقتاً ويظهر هذا اللانشر على التلفزيون. تابع شاشة التلفزيون. أكمل؟")
-                    .ok("تعيين", new Runnable() {
-                        @Override
-                        public void run() {
-                            tvRun("بدء التعيين…", new TvTask() {
-                                @Override
-                                public void run() throws Exception {
-                                    TvSetup.setHome(PhoneActivity.this, new TvSetup.Say() {
-                                        @Override
-                                        public void say(String s) {
-                                            tvSay(s);
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    }).cancel("إلغاء").show();
-            }
-        });
-        row("رجوع إلى الشاشة الأصلية للتلفزيون", "يعيد لانشر Google TV كما كان", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvRun("إرجاع الشاشة الأصلية…", new TvTask() {
-                    @Override
-                    public void run() throws Exception {
-                        TvSetup.restore(PhoneActivity.this, new TvSetup.Say() {
-                            @Override
-                            public void say(String s) {
-                                tvSay(s);
-                            }
-                        });
-                    }
-                });
-            }
-        });
-        row("اختبار أزرار الريموت", "اختر زرّاً من الهاتف واضغطه على الريموت لنعرف ماذا يحدث", "›", go("tvkeys"));
-        row("العودة إلى خطوة التثبيت", null, "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvStage = 2;
-                build();
-            }
-        });
-    }
 
     // ---------------------------------------------------------------- other cities
     private boolean addingOther;
@@ -3682,6 +3739,7 @@ public class PhoneActivity extends Activity {
                 build();
             }
         });
+        splitAt = body.getChildCount();
         final Cities.City mine = Cities.selected(this);
         List<Cities.City> list = otherCities();
         if (list.isEmpty()) {
@@ -4000,6 +4058,30 @@ public class PhoneActivity extends Activity {
         accEnd();
     }
 
+    private float swipeX, swipeY;
+
+    /** On the Hijri calendar a sideways swipe turns the month: toward the "next" arrow (left) for the next month. */
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent e) {
+        boolean handled = super.dispatchTouchEvent(e);
+        if (tab == 10 && !drawerOpen) {
+            int a = e.getActionMasked();
+            if (a == android.view.MotionEvent.ACTION_DOWN) {
+                swipeX = e.getX();
+                swipeY = e.getY();
+            } else if (a == android.view.MotionEvent.ACTION_UP) {
+                float dx = e.getX() - swipeX, dy = e.getY() - swipeY;
+                if (Math.abs(dx) > dp(70) && Math.abs(dx) > Math.abs(dy) * 1.8f) {
+                    // the layout is right-to-left: the next month is on the left, so dragging to the right brings it
+                    calOff += dx > 0 ? 1 : -1;
+                    slideDir = dx > 0 ? 1 : -1;
+                    build();
+                }
+            }
+        }
+        return handled;
+    }
+
     private void calendarPage() {
         title("التقويم الهجري", false);
         final int adj = Hijri.adjust(this);
@@ -4029,6 +4111,7 @@ public class PhoneActivity extends Activity {
             @Override
             public void onClick(View v) {
                 calOff--;
+                slideDir = -1;
                 build();
             }
         });
@@ -4038,6 +4121,7 @@ public class PhoneActivity extends Activity {
             @Override
             public void onClick(View v) {
                 calOff++;
+                slideDir = 1;
                 build();
             }
         });
@@ -4076,6 +4160,11 @@ public class PhoneActivity extends Activity {
         int cells = lead + len;
         int rows = (cells + 6) / 7;
         final StringBuilder notes = new StringBuilder();
+        String ck = year + "/" + month0;
+        if (!ck.equals(calSelKey)) {
+            calSelKey = ck;
+            calSel = calOff == 0 ? th[2] : -1;
+        }
         for (int r = 0; r < rows; r++) {
             LinearLayout row = hbox();
             for (int d = 0; d < 7; d++) {
@@ -4088,6 +4177,7 @@ public class PhoneActivity extends Activity {
                     boolean isToday = calOff == 0 && day == th[2];
                     boolean white = day >= 13 && day <= 15;
                     final int occ = Reminders.occasion(new int[] {year, month0 + 1, day});
+                    final int dayF = day;
                     boolean fri = g.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY;
                     TextView hd = tv(String.valueOf(day), 17, fri || occ >= 0 ? gold : cream, true);
                     hd.setGravity(Gravity.CENTER);
@@ -4095,24 +4185,65 @@ public class PhoneActivity extends Activity {
                     gd.setGravity(Gravity.CENTER);
                     cell.addView(hd);
                     cell.addView(gd);
-                    cell.setBackground(shape(isToday ? hl : white ? (gold & 0x00FFFFFF) | 0x22000000 : 0, isToday ? gold : occ >= 0 ? line : 0, 12));
+                    cell.setBackground(shape(calSel == day ? (gold & 0x00FFFFFF) | 0x77000000 : isToday ? hl : occ >= 0 ? (gold & 0x00FFFFFF) | 0x66000000 : white ? (gold & 0x00FFFFFF) | 0x22000000 : 0, isToday || calSel == day ? gold : occ >= 0 ? line : 0, 12));
                     if (occ >= 0) notes.append(day).append(" ").append(Hijri.hijriAr(new int[] {year, month0 + 1, day}).replaceFirst("^\\d+ ", "").replaceFirst(" \\d+ هـ$", ""))
                         .append(": ").append(Reminders.occName(this, occ)).append("\n");
                     cell.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            int[] hh = Hijri.of(g, adj);
-                            toast(Hijri.weekdayAr(g) + " " + Hijri.hijriAr(hh) + "\nالموافق " + Hijri.gregorianAr(g)
-                                + (occ >= 0 ? "\n" + Reminders.occName(PhoneActivity.this, occ) : ""));
+                            calSel = dayF;
+                            calJump = !land;
+                            build();
                         }
                     });
                 }
-                cell.setMinimumHeight(dp(52)); // grows with big text instead of cutting it
+                if (!land) cell.setMinimumHeight(dp(52)); // grows with big text instead of cutting it
                 LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -1, 1f);
                 cp.setMargins(dp(1), dp(1), dp(1), dp(1));
                 row.addView(cell, cp);
             }
-            add(row, 0);
+            if (land) body.addView(row, new LinearLayout.LayoutParams(-1, 0, 1f));
+            else add(row, 0);
+        }
+        splitAt = body.getChildCount();
+        splitFixed = true;
+        // landscape: the day that was tapped, with what falls on it
+        {
+            LinearLayout dc = vbox();
+            dc.setBackground(shape(hl, gold, 16));
+            dc.setPadding(dp(14), dp(10), dp(14), dp(10));
+            if (calSel >= 1 && calSel <= len) {
+                Calendar g = (Calendar) first.clone();
+                g.add(Calendar.DAY_OF_MONTH, calSel - 1);
+                int[] hh = {year, month0 + 1, calSel};
+                dc.addView(tv(Hijri.weekdayAr(g) + "، " + Hijri.hijriAr(hh), 16, gold, true));
+                dc.addView(tv("الموافق " + Hijri.gregorianAr(g), 13, cream, false));
+                StringBuilder ev = new StringBuilder();
+                int oc = Reminders.occasion(hh);
+                if (oc >= 0) ev.append("• ").append(Reminders.occName(this, oc)).append("\n");
+                if (month0 == 8) ev.append("• شهر رمضان: صيام الشهر كله\n");
+                if (calSel >= 13 && calSel <= 15) ev.append("• من الأيام البيض: صيام مستحب\n");
+                int dw = g.get(Calendar.DAY_OF_WEEK);
+                if (dw == Calendar.MONDAY || dw == Calendar.THURSDAY) ev.append("• صيام الإثنين والخميس: سنّة\n");
+                if (dw == Calendar.FRIDAY) ev.append("• يوم الجمعة\n");
+                String evs = ev.length() == 0 ? "لا أحداث في هذا اليوم" : ev.substring(0, ev.length() - 1);
+                TextView et = tv(evs, 14, ev.length() == 0 ? dim : cream, false);
+                et.setLineSpacing(0, 1.2f);
+                dc.addView(et, lp(-1, -2, 6));
+            } else {
+                dc.addView(tv("اضغط على يوم لترى ما فيه من أحداث", 14, dim, false));
+            }
+            add(dc, 8);
+            if (calJump) {
+                calJump = false;
+                final View card = dc;
+                scroll.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        scroll.smoothScrollTo(0, Math.max(0, card.getTop() - dp(10)));
+                    }
+                }, 150L);
+            }
         }
         section("في هذا الشهر");
         String extra = month0 == 8 ? "شهر رمضان: صيام الشهر كله.\n" : "";
@@ -4270,10 +4401,13 @@ public class PhoneActivity extends Activity {
         double bearing = Qibla.bearing(city.lat, city.lon);
         dial = new Qibla.Dial(this, gold, cream, dim);
         dial.set(0f, (float) bearing, false);
-        LinearLayout.LayoutParams dp1 = new LinearLayout.LayoutParams(dp(310), dp(380));
+        LinearLayout.LayoutParams dp1 = land ? new LinearLayout.LayoutParams(-1, 0, 1f) : new LinearLayout.LayoutParams(dp(310), dp(380));
         dp1.gravity = Gravity.CENTER_HORIZONTAL;
         dp1.topMargin = dp(6);
         body.addView(dial, dp1);
+        splitAt = body.getChildCount();
+        splitFixed = true;
+        splitCenter = 2;
 
         // the heading of the phone, big, under the dial
         qiblaHead = tv(String.format(Locale.US, "%.0f°", bearing), 46, cream, true);
@@ -4353,7 +4487,22 @@ public class PhoneActivity extends Activity {
             @Override
             public void onSensorChanged(SensorEvent e) {
                 SensorManager.getRotationMatrixFromVector(rot, e.values);
-                SensorManager.getOrientation(rot, ori);
+                // held sideways, the phone's axes are turned: the heading must follow the screen, not the body of the phone
+                int ax = SensorManager.AXIS_X, ay = SensorManager.AXIS_Y;
+                int dr = getWindowManager().getDefaultDisplay().getRotation();
+                if (dr == android.view.Surface.ROTATION_90) {
+                    ax = SensorManager.AXIS_Y;
+                    ay = SensorManager.AXIS_MINUS_X;
+                } else if (dr == android.view.Surface.ROTATION_180) {
+                    ax = SensorManager.AXIS_MINUS_X;
+                    ay = SensorManager.AXIS_MINUS_Y;
+                } else if (dr == android.view.Surface.ROTATION_270) {
+                    ax = SensorManager.AXIS_MINUS_Y;
+                    ay = SensorManager.AXIS_X;
+                }
+                float[] rm = new float[9];
+                SensorManager.remapCoordinateSystem(rot, ax, ay, rm);
+                SensorManager.getOrientation(rm, ori);
                 float az = (float) ((Math.toDegrees(ori[0]) + decl + 360.0) % 360.0);
                 if (first) {
                     heading = az;
