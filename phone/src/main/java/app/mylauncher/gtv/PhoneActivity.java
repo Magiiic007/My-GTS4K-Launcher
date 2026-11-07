@@ -1447,7 +1447,9 @@ public class PhoneActivity extends Activity {
         hB.addView(cdTv);
         altTv = tv("", 14, cream, true);
         altTv.setGravity(Gravity.CENTER);
-        hB.addView(altTv, lp(-2, -2, 2));
+        altTv.setMaxLines(1);
+        hB.addView(altTv, land ? lp(-1, -2, 2) : lp(-2, -2, 2));
+        if (land) altTv.setAutoSizeTextTypeUniformWithConfiguration(8, 14, 1, TypedValue.COMPLEX_UNIT_SP);
         LinearLayout iq = hbox();
         iq.setBackground(shape(0x38000000, line, 14));
         iq.setPadding(dp(12), dp(Math.round(6 * Math.max(f, 0.6f))), dp(12), dp(Math.round(6 * Math.max(f, 0.6f))));
@@ -1455,9 +1457,22 @@ public class PhoneActivity extends Activity {
         iqValue = tv("", Math.round(18 * Math.max(f, 0.8f)), gold, true);
         iq.setGravity(Gravity.CENTER);
         iqValue.setPadding(dp(10), 0, 0, 0);
+        // the text never wraps or spills out of the card: it shrinks to fit the room it has
+        iqValue.setMaxLines(1);
+        iqValue.setGravity(Gravity.CENTER);
         iq.addView(iqLabel);
-        iq.addView(iqValue);
-        hB.addView(iq, lp(-2, -2, 6)); // wraps its text: a fixed height cut the letters when the page was squeezed
+        if (land) {
+            iqValue.setAutoSizeTextTypeUniformWithConfiguration(8, Math.round(18 * Math.max(f, 0.8f)), 1, TypedValue.COMPLEX_UNIT_SP);
+            iq.addView(iqValue, new LinearLayout.LayoutParams(0, -2, 1f));
+            LinearLayout.LayoutParams iqp = lp(-1, -2, 6);
+            iqp.setMargins(dp(6), dp(6), dp(6), 0);
+            hB.addView(iq, iqp);
+        } else {
+            iqValue.setMaxWidth(dp(270));
+            iqValue.setAutoSizeTextTypeUniformWithConfiguration(9, Math.round(18 * Math.max(f, 0.8f)), 1, TypedValue.COMPLEX_UNIT_SP);
+            iq.addView(iqValue);
+            hB.addView(iq, lp(-2, -2, 6)); // wraps its text: a fixed height cut the letters when the page was squeezed
+        }
         LinearLayout rowsBox = null;
         final LinearLayout topRow = top;
         if (land) {
