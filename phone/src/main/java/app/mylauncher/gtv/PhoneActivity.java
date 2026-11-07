@@ -169,6 +169,7 @@ public class PhoneActivity extends Activity {
     // the month) is on one side and the rest on the other; each side scrolls by itself.
     private int splitAt = -1;
     private int calSel = -1;
+    private boolean calJump;
     private String calSelKey;
     private boolean splitFixed;
     private int splitCenter; // 1: the main side is centred, 2: both sides
@@ -289,6 +290,61 @@ public class PhoneActivity extends Activity {
         }
         body.addView(cols, new LinearLayout.LayoutParams(-1, landHeight()));
         landCols = cols;
+    }
+
+    /** A box whose one child is a square as big as the box allows (the tasbih counter). */
+    private static final class SquareBox extends FrameLayout {
+        SquareBox(Context c) {
+            super(c);
+        }
+
+        @Override
+        protected void onMeasure(int wSpec, int hSpec) {
+            int w = MeasureSpec.getSize(wSpec), h = MeasureSpec.getSize(hSpec);
+            int sq = Math.max(0, Math.min(w, h));
+            setMeasuredDimension(w, h);
+            for (int i = 0; i < getChildCount(); i++) {
+                getChildAt(i).measure(MeasureSpec.makeMeasureSpec(sq, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(sq, MeasureSpec.EXACTLY));
+            }
+        }
+
+        @Override
+        protected void onLayout(boolean changed, int l, int t, int r, int b) {
+            for (int i = 0; i < getChildCount(); i++) {
+                View c = getChildAt(i);
+                int cw = c.getMeasuredWidth(), ch = c.getMeasuredHeight();
+                int x = (r - l - cw) / 2, y = (b - t - ch) / 2;
+                c.layout(x, y, x + cw, y + ch);
+            }
+        }
+    }
+
+    /** Portrait: the first {@code splitAt} items stay put on top and the rest scrolls under them. */
+    private void splitTop() {
+        int n = body.getChildCount();
+        if (splitAt <= 0 || splitAt >= n) return;
+        java.util.ArrayList<View> kids = new java.util.ArrayList<>();
+        for (int i = 0; i < n; i++) kids.add(body.getChildAt(i));
+        try {
+            body.removeAllViews();
+            LinearLayout wrap = vbox();
+            LinearLayout top = vbox();
+            LinearLayout rest = vbox();
+            for (int i = 0; i < n; i++) (i < splitAt ? top : rest).addView(kids.get(i));
+            wrap.addView(top, new LinearLayout.LayoutParams(-1, -2));
+            ScrollView sv = new ScrollView(this);
+            sv.setVerticalScrollBarEnabled(false);
+            sv.addView(rest, new ViewGroup.LayoutParams(-1, -2));
+            wrap.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
+            body.addView(wrap, new LinearLayout.LayoutParams(-1, landHeight()));
+            landCols = wrap;
+        } catch (RuntimeException e) {
+            body.removeAllViews();
+            for (View v : kids) {
+                if (v.getParent() instanceof ViewGroup) ((ViewGroup) v.getParent()).removeView(v);
+                body.addView(v);
+            }
+        }
     }
 
     private boolean isAccBox(View v) {
@@ -637,7 +693,7 @@ public class PhoneActivity extends Activity {
             }
             if (artBmp != null && land) {
                 // landscape: the mosque and lanterns in the middle at the top, the header on both sides of them
-                int bh = dp(Math.max(60, Math.min(110, Math.round(heightDp() * 0.24f))));
+                int bh = dp(Math.max(52, Math.min(96, Math.round(heightDp() * 0.19f))));
                 homeTop = Math.max(dp(4), bh - dp(44));
                 homeBottom = 0;
                 rootFrame.setBackground(new ArtBg.Land(artBmp, getResources().getDisplayMetrics().density, bh, gold));
@@ -1130,6 +1186,7 @@ public class PhoneActivity extends Activity {
             e.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
             add(e, 10);
         }
+        if (!land && tab == 6) splitTop();
         if (land && tab != 0 && body.getChildCount() > 1 && !(tab == 5 && (sub != null || accs.isEmpty()))) splitLand();
         int y = 0;
         if (!toTop && (samePage || backNav)) {
@@ -1323,10 +1380,15 @@ public class PhoneActivity extends Activity {
             LinearLayout r = hbox();
             r.setBackground(shape(next ? hl : card, next ? gold : 0, 16));
             r.setPadding(dp(14), dp(Math.round(8 * f)), dp(14), dp(Math.round(8 * f)));
-            LinearLayout v = vbox();
+            // landscape: the name and the iqama on one line, so six rows fit the short screen
+            LinearLayout v = land ? hbox() : vbox();
             v.addView(tv(name, Math.round(18 * f), cream, true));
             int iqv = idx >= 0 ? PrayerPrefs.iqamaOf(iqm, idx, fri && idx == PrayerCalc.DHUHR) : 0;
-            if (idx >= 0 && iqv > 0) v.addView(tv(getString(R.string.iqama_minutes, iqv), 11, dim, false));
+            if (idx >= 0 && iqv > 0) {
+                TextView iqt = tv(getString(R.string.iqama_minutes, iqv), 11, dim, false);
+                if (land) iqt.setPadding(dp(10), 0, 0, 0);
+                v.addView(iqt);
+            }
             r.addView(v, new LinearLayout.LayoutParams(0, -2, 1f));
             TextView tt = tv(ap(PrayerCalc.time(this, city, at)), Math.round(19 * f), gold, true);
             tt.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
@@ -1400,7 +1462,7 @@ public class PhoneActivity extends Activity {
     private float fit() {
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         float availDp = heightDp() - (homeTop + homeBottom) / dm.density - 50f;
-        if (land) return Math.max(0.45f, Math.min(1f, availDp / 330f) * homeAdj);
+        if (land) return Math.max(0.5f, Math.min(1f, (availDp - 24f) / 310f) * homeAdj);
         return Math.max(0.45f, Math.min(1f, availDp / 780f) * homeAdj);
     }
 
@@ -1499,6 +1561,18 @@ public class PhoneActivity extends Activity {
         col.setPadding(dp(16), dp(18), dp(16), dp(14));
         ImageView dv = new ImageView(this);
         dv.setImageBitmap(disc);
+        final int discStation = hi;
+        dv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (RadioService.on()) {
+                    RadioService.stop(PhoneActivity.this);
+                    sp.edit().putBoolean("radio_resume", false).apply();
+                } else {
+                    RadioService.play(PhoneActivity.this, discStation);
+                }
+            }
+        });
         col.addView(dv, new LinearLayout.LayoutParams(dp(150), dp(150)));
         if (on) {
             android.animation.ObjectAnimator sp2 = android.animation.ObjectAnimator.ofFloat(dv, "rotation", 0f, 360f);
@@ -3277,11 +3351,19 @@ public class PhoneActivity extends Activity {
                 refreshTasbih();
             }
         });
-        int cs = land ? Math.max(100, Math.min(190, heightDp() - 185)) : 190;
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(cs), dp(cs));
-        rp.gravity = Gravity.CENTER_HORIZONTAL;
-        rp.topMargin = dp(10);
-        body.addView(tcBig, rp);
+        if (land) {
+            // the counter takes whatever height is left in its half and stays a circle
+            SquareBox sq = new SquareBox(this);
+            sq.addView(tcBig, new FrameLayout.LayoutParams(-1, -1));
+            LinearLayout.LayoutParams sqp = new LinearLayout.LayoutParams(-1, 0, 1f);
+            sqp.topMargin = dp(6);
+            body.addView(sq, sqp);
+        } else {
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(190), dp(190));
+            rp.gravity = Gravity.CENTER_HORIZONTAL;
+            rp.topMargin = dp(10);
+            body.addView(tcBig, rp);
+        }
         TextView hint = tv("اضغط الدائرة للعدّ", 12, dim, false);
         hint.setGravity(Gravity.CENTER);
         add(hint, 6);
@@ -3884,14 +3966,9 @@ public class PhoneActivity extends Activity {
                     cell.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            if (land) {
-                                calSel = dayF;
-                                build();
-                                return;
-                            }
-                            int[] hh = Hijri.of(g, adj);
-                            toast(Hijri.weekdayAr(g) + " " + Hijri.hijriAr(hh) + "\nالموافق " + Hijri.gregorianAr(g)
-                                + (occ >= 0 ? "\n" + Reminders.occName(PhoneActivity.this, occ) : ""));
+                            calSel = dayF;
+                            calJump = !land;
+                            build();
                         }
                     });
                 }
@@ -3904,7 +3981,7 @@ public class PhoneActivity extends Activity {
         }
         splitAt = body.getChildCount();
         // landscape: the day that was tapped, with what falls on it
-        if (land) {
+        {
             LinearLayout dc = vbox();
             dc.setBackground(shape(hl, gold, 16));
             dc.setPadding(dp(14), dp(10), dp(14), dp(10));
@@ -3929,7 +4006,17 @@ public class PhoneActivity extends Activity {
             } else {
                 dc.addView(tv("اضغط على يوم لترى ما فيه من أحداث", 14, dim, false));
             }
-            add(dc, 4);
+            add(dc, 8);
+            if (calJump) {
+                calJump = false;
+                final View card = dc;
+                scroll.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        scroll.smoothScrollTo(0, Math.max(0, card.getTop() - dp(10)));
+                    }
+                }, 150L);
+            }
         }
         section("في هذا الشهر");
         String extra = month0 == 8 ? "شهر رمضان: صيام الشهر كله.\n" : "";
@@ -4087,8 +4174,7 @@ public class PhoneActivity extends Activity {
         double bearing = Qibla.bearing(city.lat, city.lon);
         dial = new Qibla.Dial(this, gold, cream, dim);
         dial.set(0f, (float) bearing, false);
-        int dh = land ? Math.max(180, Math.min(380, heightDp() - 100)) : 380;
-        LinearLayout.LayoutParams dp1 = new LinearLayout.LayoutParams(dp(dh * 310 / 380), dp(dh));
+        LinearLayout.LayoutParams dp1 = land ? new LinearLayout.LayoutParams(-1, 0, 1f) : new LinearLayout.LayoutParams(dp(310), dp(380));
         dp1.gravity = Gravity.CENTER_HORIZONTAL;
         dp1.topMargin = dp(6);
         body.addView(dial, dp1);

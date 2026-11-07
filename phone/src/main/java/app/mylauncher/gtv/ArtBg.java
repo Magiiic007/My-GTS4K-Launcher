@@ -132,6 +132,9 @@ final class ArtBg extends Drawable {
             fade.setShader(new android.graphics.LinearGradient(0, b.top + bannerH * 0.7f, 0, b.top + bannerH,
                 0xFF000000, 0x00000000, android.graphics.Shader.TileMode.CLAMP));
             c.drawRect(left, b.top, left + dw, b.top + bannerH, fade);
+            fade.setShader(new android.graphics.LinearGradient(left, 0, left + dw, 0,
+                new int[] {0x00000000, 0xFF000000, 0xFF000000, 0x00000000}, new float[] {0f, 0.16f, 0.84f, 1f}, android.graphics.Shader.TileMode.CLAMP));
+            c.drawRect(left, b.top, left + dw, b.top + bannerH, fade);
             c.restoreToCount(save);
         }
 
