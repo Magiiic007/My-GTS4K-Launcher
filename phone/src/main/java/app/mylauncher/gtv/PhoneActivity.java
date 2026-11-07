@@ -1391,8 +1391,8 @@ public class PhoneActivity extends Activity {
         hero.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {shape(card, line, 22), frame}));
         hero.setPadding(dp(14), dp(Math.round(10 * f)), dp(14), dp(Math.round(10 * f)));
         LinearLayout hA = hero, hB = hero;
-        if (land) {
-            // wide panel: the clock and the dates on one side, the next prayer on the other
+        {
+            // the clock and the dates on one side, the next prayer on the other (portrait and landscape)
             hero = hbox();
             hero.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {shape(card, line, 22), frame}));
             hero.setPadding(dp(10), dp(Math.round(10 * f)), dp(10), dp(Math.round(10 * f)));
@@ -1413,7 +1413,7 @@ public class PhoneActivity extends Activity {
         LinearLayout clock = hbox();
         clock.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         clock.setGravity(Gravity.CENTER);
-        clockTv = tv("--:--", Math.round(62 * f), gold, true);
+        clockTv = tv("--:--", Math.round((land ? 62 : 48) * f), gold, true);
         apTv = tv("", 15, cream, true);
         apTv.setPadding(0, 0, dp(8), 0);
         // the clock is drawn left to right: the AM/PM mark goes on the left of the time
@@ -1437,19 +1437,19 @@ public class PhoneActivity extends Activity {
         TextView l1 = tv("الصلاة القادمة", 12, dim, true);
         l1.setPadding(0, 0, dp(8), 0);
         nextRow.addView(l1);
-        nameTv = tv("", Math.round(30 * f), gold, true);
+        nameTv = tv("", Math.round((land ? 30 : 24) * f), gold, true);
         nameTv.setSingleLine(true);
         nextRow.addView(nameTv);
         hB.addView(nextRow, new LinearLayout.LayoutParams(-2, -2));
-        cdTv = tv("00:00:00", Math.round(44 * f), cream, true);
+        cdTv = tv("00:00:00", Math.round((land ? 44 : 34) * f), cream, true);
         cdTv.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         cdTv.setGravity(Gravity.CENTER);
         hB.addView(cdTv);
         altTv = tv("", 14, cream, true);
         altTv.setGravity(Gravity.CENTER);
         altTv.setMaxLines(1);
-        hB.addView(altTv, land ? lp(-1, -2, 2) : lp(-2, -2, 2));
-        if (land) altTv.setAutoSizeTextTypeUniformWithConfiguration(8, 14, 1, TypedValue.COMPLEX_UNIT_SP);
+        hB.addView(altTv, lp(-1, -2, 2));
+        altTv.setAutoSizeTextTypeUniformWithConfiguration(8, 14, 1, TypedValue.COMPLEX_UNIT_SP);
         LinearLayout iq = hbox();
         iq.setBackground(shape(0x38000000, line, 14));
         iq.setPadding(dp(12), dp(Math.round(6 * Math.max(f, 0.6f))), dp(12), dp(Math.round(6 * Math.max(f, 0.6f))));
@@ -1461,18 +1461,11 @@ public class PhoneActivity extends Activity {
         iqValue.setMaxLines(1);
         iqValue.setGravity(Gravity.CENTER);
         iq.addView(iqLabel);
-        if (land) {
-            iqValue.setAutoSizeTextTypeUniformWithConfiguration(8, Math.round(18 * Math.max(f, 0.8f)), 1, TypedValue.COMPLEX_UNIT_SP);
-            iq.addView(iqValue, new LinearLayout.LayoutParams(0, -2, 1f));
-            LinearLayout.LayoutParams iqp = lp(-1, -2, 6);
-            iqp.setMargins(dp(6), dp(6), dp(6), 0);
-            hB.addView(iq, iqp);
-        } else {
-            iqValue.setMaxWidth(dp(270));
-            iqValue.setAutoSizeTextTypeUniformWithConfiguration(9, Math.round(18 * Math.max(f, 0.8f)), 1, TypedValue.COMPLEX_UNIT_SP);
-            iq.addView(iqValue);
-            hB.addView(iq, lp(-2, -2, 6)); // wraps its text: a fixed height cut the letters when the page was squeezed
-        }
+        iqValue.setAutoSizeTextTypeUniformWithConfiguration(8, Math.round(18 * Math.max(f, 0.8f)), 1, TypedValue.COMPLEX_UNIT_SP);
+        iq.addView(iqValue, new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout.LayoutParams iqp = lp(-1, -2, 6);
+        iqp.setMargins(dp(6), dp(6), dp(6), 0);
+        hB.addView(iq, iqp);
         LinearLayout rowsBox = null;
         final LinearLayout topRow = top;
         if (land) {
