@@ -25,6 +25,22 @@ final class Deco {
         return s;
     }
 
+    /** The soft cracked-leather texture of the home screen, tiled (mirrored so no seams show) over the whole screen. */
+    static final class Crack extends Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+
+        Crack(android.content.res.Resources res, int color) {
+            android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeResource(res, R.drawable.pattern_crack);
+            if (bmp != null) paint.setShader(new android.graphics.BitmapShader(bmp, android.graphics.Shader.TileMode.MIRROR, android.graphics.Shader.TileMode.MIRROR));
+            paint.setColorFilter(new android.graphics.PorterDuffColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN));
+        }
+
+        @Override public void draw(Canvas c) { if (paint.getShader() != null) c.drawRect(getBounds(), paint); }
+        @Override public void setAlpha(int a) { paint.setAlpha(a); }
+        @Override public void setColorFilter(ColorFilter f) {}
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    }
+
     private static android.graphics.Bitmap panelBmp;
 
     /**

@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.hardware.GeomagneticField;
 import android.hardware.Sensor;
@@ -517,7 +518,7 @@ public class PhoneActivity extends Activity {
         final FrameLayout v = new FrameLayout(this);
         v.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-        Deco.Panel stars = new Deco.Panel(getResources(), (cream & 0x00FFFFFF) | 0x18000000);
+        Drawable stars = new Deco.Crack(getResources(), (cream & 0x00FFFFFF) | 0x66000000);
         ArtBg.Border border = new ArtBg.Border((gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         v.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars, border}));
         v.setClickable(true);
@@ -811,7 +812,7 @@ public class PhoneActivity extends Activity {
                 homeTop = 0;
                 homeBottom = 0;
                 GradientDrawable lg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-                Deco.Panel lstars = new Deco.Panel(getResources(), (cream & 0x00FFFFFF) | 0x18000000);
+                Drawable lstars = new Deco.Crack(getResources(), (cream & 0x00FFFFFF) | 0x66000000);
                 rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {lg, lstars}));
                 header.setVisibility(View.GONE);
                 header.setPadding(0, 0, 0, 0);
@@ -831,7 +832,7 @@ public class PhoneActivity extends Activity {
         homeTop = 0;
         homeBottom = 0;
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-        Deco.Panel stars = new Deco.Panel(getResources(), (cream & 0x00FFFFFF) | 0x18000000);
+        Drawable stars = new Deco.Crack(getResources(), (cream & 0x00FFFFFF) | 0x66000000);
         ArtBg.Border border = new ArtBg.Border((gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars, border}));
         // landscape home uses the full width (two columns); the other pages keep a readable column in the middle
