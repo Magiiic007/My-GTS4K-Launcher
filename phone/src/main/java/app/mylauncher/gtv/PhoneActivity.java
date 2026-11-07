@@ -198,8 +198,23 @@ public class PhoneActivity extends Activity {
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER);
         android.widget.ImageView icon = new android.widget.ImageView(this);
+        final View shadow;
         icon.setImageResource(R.drawable.ic_launcher_phone);
-        col.addView(icon, new LinearLayout.LayoutParams(dp(150), dp(150)));
+        FrameLayout iconBox = new FrameLayout(this);
+        iconBox.setClipChildren(false);
+        col.setClipChildren(false);
+        shadow = new View(this);
+        android.graphics.drawable.GradientDrawable sh = new android.graphics.drawable.GradientDrawable();
+        sh.setGradientType(android.graphics.drawable.GradientDrawable.RADIAL_GRADIENT);
+        sh.setGradientRadius(dp(105));
+        sh.setColors(new int[] {0x70000000, 0x33000000, 0x00000000});
+        sh.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        shadow.setBackground(sh);
+        FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(dp(210), dp(210), Gravity.CENTER);
+        slp.topMargin = dp(14);
+        iconBox.addView(shadow, slp);
+        iconBox.addView(icon, new FrameLayout.LayoutParams(dp(150), dp(150), Gravity.CENTER));
+        col.addView(iconBox, new LinearLayout.LayoutParams(dp(150), dp(150)));
         // the fixed phrase in the middle, and under it the changing word: bigger, but never wider than the phrase
         final TextView phrase = new TextView(this);
         phrase.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
@@ -226,6 +241,15 @@ public class PhoneActivity extends Activity {
         col.setPadding(0, 0, 0, dp(80)); // lifts the group about 40dp: the eye sees the middle higher than the true middle
         v.addView(col, new FrameLayout.LayoutParams(-1, -1));
         rootFrame.addView(v, new FrameLayout.LayoutParams(-1, -1));
+        android.view.animation.PathInterpolator soft = new android.view.animation.PathInterpolator(0.2f, 0.8f, 0.2f, 1f);
+        icon.setScaleX(0.88f);
+        icon.setScaleY(0.88f);
+        icon.setAlpha(0f);
+        icon.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(700L).setInterpolator(soft).start();
+        shadow.setScaleX(0.7f);
+        shadow.setScaleY(0.7f);
+        shadow.setAlpha(0f);
+        shadow.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(150L).setDuration(800L).setInterpolator(soft).start();
         splashView = v;
         splashStep = 0;
         // no tap or back button closes it: it runs its six seconds (touches are swallowed so nothing behind it is pressed)
