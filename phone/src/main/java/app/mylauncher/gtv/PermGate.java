@@ -140,33 +140,24 @@ final class PermGate {
         boolean first = ver == 0;
         boolean due = first || ver != versionCode(a) || now - last > EVERY_MS;
         if (!due) return;
-        if ((!first || upgraded(a)) && missing(a).isEmpty()) return;
         s.edit().putInt("ver", versionCode(a)).putLong("last", now).apply();
+        // only when something is missing, and then only the missing ones are listed
+        if (missing(a).isEmpty()) return;
         show(a);
     }
 
     private static void show(final Activity a) {
-        List<Item> all = items(a);
         StringBuilder sb = new StringBuilder();
-        int miss = 0;
-        for (Item i : all) {
-            sb.append(i.ok ? "✓  " : "✗  ").append(i.name).append("\n    ").append(i.why).append("\n");
-            if (!i.ok) miss++;
-        }
-        Pop p = new Pop(a).title(miss == 0 ? "كل الصلاحيات تمام" : "الصلاحيات التي يحتاجها التطبيق")
-            .message(sb.toString().trim());
-        if (miss == 0) {
-            p.ok("تمام", null).show();
-            return;
-        }
-        p.ok("منح الناقص", new Runnable() {
-            @Override
-            public void run() {
-                flow = true;
-                tried.clear();
-                next(a);
-            }
-        }).cancel("لاحقًا").show();
+        for (Item i : missing(a)) sb.append("•  ").append(i.name).append("\n    ").append(i.why).append("\n");
+        new Pop(a).title("صلاحيات ناقصة").message(sb.toString().trim())
+            .ok("منح الناقص", new Runnable() {
+                @Override
+                public void run() {
+                    flow = true;
+                    tried.clear();
+                    next(a);
+                }
+            }).cancel("لاحقًا").show();
     }
 
     /** Asks for the next missing permission (the runtime ones together, in one request). */

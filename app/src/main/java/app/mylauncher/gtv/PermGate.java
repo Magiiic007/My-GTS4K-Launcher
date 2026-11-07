@@ -123,32 +123,25 @@ final class PermGate {
         boolean due = first || ver != versionCode(a) || now - s.getLong("last", 0L) > EVERY_MS;
         if (!due) return;
         s.edit().putInt("ver", versionCode(a)).putLong("last", now).apply();
-        if ((!first || upgraded(a)) && missing(a).isEmpty()) return;
+        // only when something is missing, and then only the missing ones are listed
+        if (missing(a).isEmpty()) return;
         show(a);
     }
 
     private static void show(final Activity a) {
         StringBuilder sb = new StringBuilder();
-        int miss = 0;
-        for (Item i : items(a)) {
-            sb.append(i.ok ? "\u2713  " : "\u2717  ").append(i.name).append("\n     ").append(i.why).append("\n");
-            if (!i.ok) miss++;
-        }
-        Menu.Builder b = new Menu.Builder(a)
-            .setTitle(miss == 0 ? a.getString(R.string.pg_title_ok) : a.getString(R.string.pg_title))
-            .setMessage(sb.toString().trim());
-        if (miss == 0) {
-            b.setPositiveButton(R.string.pg_ok, null).show();
-            return;
-        }
-        b.setPositiveButton(R.string.pg_grant, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface d, int w) {
-                flow = true;
-                tried.clear();
-                next(a);
-            }
-        }).setNegativeButton(R.string.pg_later, null).show();
+        for (Item i : missing(a)) sb.append("\u2022  ").append(i.name).append("\n     ").append(i.why).append("\n");
+        new Menu.Builder(a)
+            .setTitle(a.getString(R.string.pg_title))
+            .setMessage(sb.toString().trim())
+            .setPositiveButton(R.string.pg_grant, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int w) {
+                    flow = true;
+                    tried.clear();
+                    next(a);
+                }
+            }).setNegativeButton(R.string.pg_later, null).show();
     }
 
     /** Asks for the next missing permission. */
