@@ -147,7 +147,9 @@ final class PrayerBoard {
                 focusable(row, 18, new Runnable() {
                     @Override
                     public void run() {
-                        TimingDialogs.field(ctx, prayer, PrayerBoard.this.changed);
+                        // On a Friday the Dhuhr row is the Friday prayer, with its own settings.
+                        boolean jum = prayer == PrayerCalc.DHUHR && fridayToday;
+                        TimingDialogs.field(ctx, jum ? PrayerPrefs.FRIDAY : prayer, PrayerBoard.this.changed);
                     }
                 });
             }
@@ -355,10 +357,12 @@ final class PrayerBoard {
         for (int d = -1; d <= 1; d++) {
             long[] t = PrayerCalc.day(city, now, d, adjust);
             for (int i = 0; i < 5; i++) {
-                if (iqama[i] <= 0) continue;
-                long q = t[i] + iqama[i] * 60000L;
+                boolean fri = i == PrayerCalc.DHUHR && PrayerCalc.isFriday(city, t[i]);
+                int iq = PrayerPrefs.iqamaOf(iqama, i, fri);
+                if (iq <= 0) continue;
+                long q = t[i] + iq * 60000L;
                 if (q > now && (best == null || q < best.at)) {
-                    best = new PrayerCalc.Event(i, q, i == PrayerCalc.DHUHR && PrayerCalc.isFriday(city, t[i]), true);
+                    best = new PrayerCalc.Event(i, q, fri, true);
                 }
             }
         }
@@ -425,8 +429,9 @@ final class PrayerBoard {
                 rowName[i].setText(rowLabel(i, jumuah));
                 long at = p >= 0 ? shown[p] : sunriseAt;
                 rowTime[i].setText(PrayerCalc.time(ctx, city, at));
-                if (p >= 0 && iqama[p] > 0) {
-                    rowIqama[i].setText(ctx.getString(R.string.iqama_minutes, iqama[p]));
+                int iqv = p >= 0 ? PrayerPrefs.iqamaOf(iqama, p, jumuah) : 0;
+                if (p >= 0 && iqv > 0) {
+                    rowIqama[i].setText(ctx.getString(R.string.iqama_minutes, iqv));
                     rowIqama[i].setVisibility(View.VISIBLE);
                 } else {
                     rowIqama[i].setVisibility(View.GONE);
@@ -474,7 +479,7 @@ final class PrayerBoard {
             }
         }
         // The iqama counter only counts from the adhan to the iqama; the rest of the day it shows a dhikr.
-        iqamaLive = iqamaEvent != null && now >= iqamaEvent.at - iqamaCfg[iqamaEvent.index] * 60000L;
+        iqamaLive = iqamaEvent != null && now >= iqamaEvent.at - PrayerPrefs.iqamaOf(iqamaCfg, iqamaEvent.index, iqamaEvent.friday) * 60000L;
         if (iqamaLive) {
             dhikrShown = "";
             setIfChanged(iqamaLabel, ctx.getString(R.string.count_iqama));

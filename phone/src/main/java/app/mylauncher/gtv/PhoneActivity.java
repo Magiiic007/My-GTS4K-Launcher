@@ -1070,7 +1070,8 @@ public class PhoneActivity extends Activity {
             r.setPadding(dp(14), dp(Math.round(8 * f)), dp(14), dp(Math.round(8 * f)));
             LinearLayout v = vbox();
             v.addView(tv(name, Math.round(18 * f), cream, true));
-            if (idx >= 0 && iqm[idx] > 0) v.addView(tv(getString(R.string.iqama_minutes, iqm[idx]), 11, dim, false));
+            int iqv = idx >= 0 ? PrayerPrefs.iqamaOf(iqm, idx, fri && idx == PrayerCalc.DHUHR) : 0;
+            if (idx >= 0 && iqv > 0) v.addView(tv(getString(R.string.iqama_minutes, iqv), 11, dim, false));
             r.addView(v, new LinearLayout.LayoutParams(0, -2, 1f));
             TextView tt = tv(ap(PrayerCalc.time(this, city, at)), Math.round(19 * f), gold, true);
             tt.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
@@ -2273,19 +2274,13 @@ public class PhoneActivity extends Activity {
                     }
                 });
         }
-        row("الأذان الأول للجمعة", PrayerPrefs.firstAdhanText(this, PrayerPrefs.firstAdhan(this)), "›",
+        row("الجمعة", "الإقامة: " + PrayerPrefs.iqamaText(this, iq[PrayerPrefs.FRIDAY])
+            + " · التعديل: " + PrayerPrefs.adjustText(this, adj[PrayerPrefs.FRIDAY])
+            + " · الأذان الأول: " + PrayerPrefs.firstAdhanText(this, PrayerPrefs.firstAdhan(this)), "›",
             new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    numberDialog("دقائق قبل أذان الجمعة (0 = متوقف)", 0, 60, PrayerPrefs.firstAdhan(PhoneActivity.this),
-                        new IntSetter() {
-                            @Override
-                            public void set(int val) {
-                                PrayerPrefs.setFirstAdhan(PhoneActivity.this, val);
-                                Scheduler.scheduleNext(PhoneActivity.this);
-                                build();
-                            }
-                        });
+                    prayerDialog(PrayerPrefs.FRIDAY);
                 }
             });
         row("صوت الأذان", soundText(false), "›", new View.OnClickListener() {
@@ -2488,9 +2483,22 @@ public class PhoneActivity extends Activity {
         c2.addView(b);
         l.addView(c1, new LinearLayout.LayoutParams(0, -2, 1f));
         l.addView(c2, new LinearLayout.LayoutParams(0, -2, 1f));
+        final boolean friday = idx == PrayerPrefs.FRIDAY;
+        final NumberPicker fa = new NumberPicker(this);
+        if (friday) {
+            fa.setMinValue(0);
+            fa.setMaxValue(60);
+            fa.setValue(PrayerPrefs.firstAdhan(this));
+            LinearLayout c3 = vbox();
+            c3.setGravity(Gravity.CENTER);
+            c3.addView(tv("الأذان الأول (قبل الأذان بـ)", 13, dim, false));
+            c3.addView(fa);
+            l.addView(c3, new LinearLayout.LayoutParams(0, -2, 1f));
+        }
         final LinearLayout all = vbox();
         all.addView(l);
-        all.addView(tv("عند الأذان والإقامة", 13, dim, false), lp(-1, -2, 12));
+        if (friday) all.addView(tv("الأول 0 = متوقف. صوت الأذان واهتزازه كما في الظهر.", 12, dim, false), lp(-1, -2, 10));
+        else all.addView(tv("عند الأذان والإقامة", 13, dim, false), lp(-1, -2, 12));
         final RadioGroup modes = new RadioGroup(this);
         String[] mn = {"صوت الأذان", "اهتزاز فقط", "بدون صوت ولا اهتزاز"};
         for (int i = 0; i < 3; i++) {
@@ -2502,19 +2510,20 @@ public class PhoneActivity extends Activity {
             modes.addView(rb);
         }
         modes.check(1000 + sp.getInt("ad_mode_" + idx, 0));
-        all.addView(modes);
+        if (!friday) all.addView(modes);
         final CheckBox ring = new CheckBox(this);
         ring.setText("تشغيل الأذان حتى لو الهاتف على الصامت أو الاهتزاز");
         ring.setTextColor(cream);
         ring.setTextSize(14);
         ring.setChecked(sp.getBoolean("ad_ring_" + idx, true));
-        all.addView(ring);
+        if (!friday) all.addView(ring);
         new Pop(this).title(PrayerCalc.name(this, idx, false)).view(all).ok("حفظ", new Runnable() {
             @Override
             public void run() {
                 PrayerPrefs.setIqama(PhoneActivity.this, idx, a.getValue());
                 PrayerPrefs.setAdjust(PhoneActivity.this, idx, b.getValue() - 10);
-                sp.edit().putInt("ad_mode_" + idx, modes.getCheckedRadioButtonId() - 1000).putBoolean("ad_ring_" + idx, ring.isChecked()).apply();
+                if (friday) PrayerPrefs.setFirstAdhan(PhoneActivity.this, fa.getValue());
+                else sp.edit().putInt("ad_mode_" + idx, modes.getCheckedRadioButtonId() - 1000).putBoolean("ad_ring_" + idx, ring.isChecked()).apply();
                 Scheduler.scheduleNext(PhoneActivity.this);
                 build();
             }

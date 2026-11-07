@@ -14,16 +14,27 @@ final class PrayerPrefs {
         return c.getSharedPreferences("magiic", Context.MODE_PRIVATE);
     }
 
+    /** Index of the Friday prayer in {@link #adjust} and {@link #iqama} (after the five daily prayers). */
+    static final int FRIDAY = 5;
+
+    /** Minutes added to each of the five prayers, then to the Friday prayer (it starts from Dhuhr's value). */
     static int[] adjust(Context c) {
-        int[] a = new int[5];
+        int[] a = new int[6];
         for (int i = 0; i < 5; i++) a[i] = p(c).getInt("adj_" + i, 0);
+        a[FRIDAY] = p(c).getInt("adj_5", a[1]);
         return a;
     }
 
     static int[] iqama(Context c) {
-        int[] a = new int[5];
+        int[] a = new int[6];
         for (int i = 0; i < 5; i++) a[i] = p(c).getInt("iqama_" + i, 0);
+        a[FRIDAY] = p(c).getInt("iqama_5", a[1]);
         return a;
+    }
+
+    /** The iqama delay of prayer {@code index}; Dhuhr on a Friday uses the Friday prayer's own setting. */
+    static int iqamaOf(int[] iqama, int index, boolean friday) {
+        return friday && index == 1 && iqama.length > FRIDAY ? iqama[FRIDAY] : iqama[index];
     }
 
     /** Minutes before the Friday adhan at which the first adhan rings (0 = off). */

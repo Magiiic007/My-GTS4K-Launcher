@@ -117,7 +117,9 @@ final class PrayerCalc {
         // Umm al-Qura: Isha is 2 hours after Maghrib in Ramadan (1.5 hours otherwise). The evening belongs to the
         // next Hijri day, so this starts on the night before the 1st of Ramadan.
         if (method == CalculationMethod.UMM_AL_QURA && nextHijriDayIsRamadan(cal)) params.ishaInterval = 120;
-        params.adjustments = new PrayerAdjustments(adjust[FAJR], 0, adjust[DHUHR], adjust[ASR],
+        // A Friday has its own setting for the prayer that replaces Dhuhr.
+        int dhuhrAdjust = cal.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY && adjust.length > 5 ? adjust[5] : adjust[DHUHR];
+        params.adjustments = new PrayerAdjustments(adjust[FAJR], 0, dhuhrAdjust, adjust[ASR],
             adjust[MAGHRIB], adjust[ISHA]);
 
         return new PrayerTimes(new Coordinates(city.lat, city.lon), date, params);
@@ -134,8 +136,9 @@ final class PrayerCalc {
             for (int i = 0; i < 5; i++) {
                 boolean friday = i == DHUHR && isFriday(city, t[i]);
                 if (t[i] > now && (best == null || t[i] < best.at)) best = new Event(i, t[i], friday, false);
-                if (iqama[i] > 0) {
-                    long q = t[i] + iqama[i] * 60000L;
+                int iq = PrayerPrefs.iqamaOf(iqama, i, friday);
+                if (iq > 0) {
+                    long q = t[i] + iq * 60000L;
                     if (q > now && (best == null || q < best.at)) best = new Event(i, q, friday, true);
                 }
             }
@@ -172,6 +175,7 @@ final class PrayerCalc {
     }
 
     static String name(Context c, int index, boolean friday) {
+        if (index >= 5) return c.getString(R.string.p_jumuah);
         int[] names = {R.string.p_fajr, R.string.p_dhuhr, R.string.p_asr, R.string.p_maghrib, R.string.p_isha};
         return c.getString(index == DHUHR && friday ? R.string.p_jumuah : names[index]);
     }

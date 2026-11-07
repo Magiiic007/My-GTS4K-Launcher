@@ -81,13 +81,11 @@ public class MainActivity extends Activity {
     private TextView noticeChip;
     private TextView noticesRow;
     private java.util.List<Health.Issue> lastIssues = new java.util.ArrayList<>();
-    private Ambience ambience;
     private Sparkle sparkle;
     private FrameLayout rootView;
     private final Runnable ambienceTick = new Runnable() {
         @Override
         public void run() {
-            ambience.update();
             // Automatic look: when day turns to night (or back) the screen switches by itself.
             if (Theme.id(MainActivity.this) != lookNow) {
                 recreate();
@@ -141,12 +139,6 @@ public class MainActivity extends Activity {
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         rootView = root;
-        // The veil of the day's light sits on the picture, under everything else.
-        View veil = new View(this);
-        root.addView(veil, new FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        ambience = new Ambience(this, veil);
-
         final FrameLayout stage = new FrameLayout(this);
         stage.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         Motion.fadeIn(root, 350L);
@@ -695,7 +687,6 @@ public class MainActivity extends Activity {
                 Reminders.scheduleNext(app);
             }
         }).start();
-        ambience.update();
         handler.removeCallbacks(ambienceTick);
         handler.postDelayed(ambienceTick, 60000L);
         sparkle.start();

@@ -14,15 +14,15 @@ final class TimingDialogs {
         int[] adj = PrayerPrefs.adjust(c);
         int[] iq = PrayerPrefs.iqama(c);
         final boolean home = c instanceof MainActivity;
+        // The five prayers, then the Friday prayer (with its first adhan), then city and Hijri date on the home screen.
         String[] items = new String[home ? 8 : 6];
-        items[5] = c.getString(R.string.first_adhan_item, PrayerPrefs.firstAdhanText(c, PrayerPrefs.firstAdhan(c)));
+        for (int i = 0; i < 6; i++) {
+            items[i] = c.getString(R.string.main_row, PrayerCalc.name(c, i, false),
+                PrayerPrefs.adjustText(c, adj[i]), PrayerPrefs.iqamaText(c, iq[i]));
+        }
         if (home) {
             items[6] = c.getString(R.string.menu_city);
             items[7] = c.getString(R.string.menu_hijri);
-        }
-        for (int i = 0; i < 5; i++) {
-            items[i] = c.getString(R.string.main_row, PrayerCalc.name(c, i, false),
-                PrayerPrefs.adjustText(c, adj[i]), PrayerPrefs.iqamaText(c, iq[i]));
         }
 
         new Menu.Builder(c)
@@ -34,17 +34,6 @@ final class TimingDialogs {
                         ((MainActivity) c).chooseCountry();
                     } else if (which == 7) {
                         ((MainActivity) c).chooseHijri();
-                    } else if (which == 5) {
-                        NumberDialog.show(c, c.getString(R.string.first_adhan_set_title), 0, 90,
-                            PrayerPrefs.firstAdhan(c), false, c.getString(R.string.first_adhan_off),
-                            new NumberDialog.OnSave() {
-                                @Override
-                                public void saved(int value) {
-                                    PrayerPrefs.setFirstAdhan(c, value);
-                                    changed.run();
-                                    open(c, changed);
-                                }
-                            });
                     } else {
                         field(c, which, changed);
                     }
@@ -53,14 +42,16 @@ final class TimingDialogs {
             .show();
     }
 
+    /** One prayer: its time adjustment and iqama delay; the Friday prayer also has the first adhan. */
     static void field(final Context c, final int index, final Runnable changed) {
         final int adj = PrayerPrefs.adjust(c)[index];
         final int iq = PrayerPrefs.iqama(c)[index];
+        final boolean friday = index == PrayerPrefs.FRIDAY;
         final String prayer = PrayerCalc.name(c, index, false);
-        String[] items = {
-            c.getString(R.string.adjust_item, PrayerPrefs.adjustText(c, adj)),
-            c.getString(R.string.iqama_item, PrayerPrefs.iqamaText(c, iq)),
-        };
+        String[] items = new String[friday ? 3 : 2];
+        items[0] = c.getString(R.string.adjust_item, PrayerPrefs.adjustText(c, adj));
+        items[1] = c.getString(R.string.iqama_item, PrayerPrefs.iqamaText(c, iq));
+        if (friday) items[2] = c.getString(R.string.first_adhan_item, PrayerPrefs.firstAdhanText(c, PrayerPrefs.firstAdhan(c)));
         new Menu.Builder(c)
             .setTitle(prayer)
             .setItems(items, new DialogInterface.OnClickListener() {
@@ -73,20 +64,37 @@ final class TimingDialogs {
                                 public void saved(int value) {
                                     PrayerPrefs.setAdjust(c, index, value);
                                     changed.run();
-                                    open(c, changed);
+                                    field(c, index, changed);
                                 }
                             });
-                    } else {
+                    } else if (which == 1) {
                         NumberDialog.show(c, c.getString(R.string.iqama_set_title, prayer), 0, 90, iq, false,
                             c.getString(R.string.iqama_off), new NumberDialog.OnSave() {
                                 @Override
                                 public void saved(int value) {
                                     PrayerPrefs.setIqama(c, index, value);
                                     changed.run();
-                                    open(c, changed);
+                                    field(c, index, changed);
+                                }
+                            });
+                    } else {
+                        NumberDialog.show(c, c.getString(R.string.first_adhan_set_title), 0, 90,
+                            PrayerPrefs.firstAdhan(c), false, c.getString(R.string.first_adhan_off),
+                            new NumberDialog.OnSave() {
+                                @Override
+                                public void saved(int value) {
+                                    PrayerPrefs.setFirstAdhan(c, value);
+                                    changed.run();
+                                    field(c, index, changed);
                                 }
                             });
                     }
+                }
+            })
+            .setNegativeButton(R.string.close, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface d, int w) {
+                    open(c, changed);
                 }
             })
             .show();
