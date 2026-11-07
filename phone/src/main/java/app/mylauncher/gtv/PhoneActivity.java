@@ -168,12 +168,16 @@ public class PhoneActivity extends Activity {
     // ---- landscape pages: the screen is split in two halves. The main thing of the page (the dial, the counter, the player,
     // the month) is on one side and the rest on the other; each side scrolls by itself.
     private int splitAt = -1;
+    private int calSel = -1;
+    private String calSelKey;
+    private boolean splitFixed;
+    private int splitCenter; // 1: the main side is centred, 2: both sides
     private LinearLayout landCols;
     private View landHint;
 
     private int landHeight() {
         int h = scroll.getHeight() - body.getPaddingTop() - body.getPaddingBottom();
-        if (h <= 0) h = getResources().getDisplayMetrics().heightPixels - dp(96);
+        if (h <= 0) h = dp(heightDp() - 96);
         return h;
     }
 
@@ -204,7 +208,7 @@ public class PhoneActivity extends Activity {
         // a page of groups: the titles stay on the right, and the open group shows its content on the left
         boolean master = !main && !accs.isEmpty();
         if (!main && !master) {
-            int halfW = (getResources().getDisplayMetrics().widthPixels - body.getPaddingLeft() - body.getPaddingRight() - dp(20)) / 2;
+            int halfW = (dp(widthDp()) - body.getPaddingLeft() - body.getPaddingRight() - dp(20)) / 2;
             int[] hs = new int[n];
             int total = 0;
             for (int i = 0; i < n; i++) {
@@ -234,7 +238,20 @@ public class PhoneActivity extends Activity {
         LinearLayout[] side = new LinearLayout[2];
         for (int j = 0; j < 2; j++) {
             side[j] = vbox();
-            if (j == 0 && main) side[j].setGravity(Gravity.CENTER_VERTICAL);
+            if (j == 0 && main && splitCenter >= 1) side[j].setGravity(splitCenter == 2 ? Gravity.CENTER : Gravity.CENTER_VERTICAL);
+            if (j == 1 && main && splitCenter == 2) side[j].setGravity(Gravity.CENTER);
+            if (j == 0 && main && splitFixed) {
+                // this side never moves: nothing scrolls in it
+                LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(0, -1, 1f);
+                fp.setMarginStart(dp(4));
+                cols.addView(side[j], fp);
+                View sep0 = new View(this);
+                sep0.setBackgroundColor(line);
+                LinearLayout.LayoutParams ps0 = new LinearLayout.LayoutParams(dp(1), -1);
+                ps0.setMargins(dp(8), dp(10), dp(8), dp(10));
+                cols.addView(sep0, ps0);
+                continue;
+            }
             ScrollView sv = new ScrollView(this);
             sv.setFillViewport(true);
             sv.setVerticalScrollBarEnabled(false);
@@ -251,7 +268,15 @@ public class PhoneActivity extends Activity {
             }
         }
         if (master) {
-            for (View c : kids) side[isAccBox(c) ? 1 : 0].addView(c);
+            for (Object[] a : accs) {
+                View bx = (View) a[1];
+                if (bx.getParent() instanceof ViewGroup) ((ViewGroup) bx.getParent()).removeView(bx);
+            }
+            for (View c : kids) if (!isAccBox(c)) side[0].addView(c);
+            for (Object[] a : accs) {
+                View bx = (View) a[1];
+                if (bx.getParent() == null) side[1].addView(bx, new LinearLayout.LayoutParams(-1, -2));
+            }
             TextView hint = tv("اختر من القائمة ليظهر محتواها هنا", 14, dim, false);
             hint.setGravity(Gravity.CENTER);
             hint.setPadding(dp(16), dp(40), dp(16), dp(16));
@@ -276,17 +301,18 @@ public class PhoneActivity extends Activity {
     }
 
     private int widthDp() {
-        return Math.round(getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density);
+        int w = getResources().getConfiguration().screenWidthDp;
+        return w > 0 ? w : Math.round(getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density);
     }
 
     private int heightDp() {
-        return Math.round(getResources().getDisplayMetrics().heightPixels / getResources().getDisplayMetrics().density);
+        int h = getResources().getConfiguration().screenHeightDp;
+        return h > 0 ? h : Math.round(getResources().getDisplayMetrics().heightPixels / getResources().getDisplayMetrics().density);
     }
 
     /** Side space that keeps the page at a readable width on wide screens (0 on a normal portrait phone). */
     private int sideExtra(int maxDp) {
-        int w = getResources().getDisplayMetrics().widthPixels;
-        return Math.max(0, (w - dp(maxDp)) / 2);
+        return Math.max(0, (dp(widthDp()) - dp(maxDp)) / 2);
     }
 
     @Override
@@ -598,7 +624,7 @@ public class PhoneActivity extends Activity {
 
     /** The home page has the picture; the other pages have the same colours with a gold frame line. */
     private void applyBackground() {
-        int w = getResources().getDisplayMetrics().widthPixels;
+        int w = dp(widthDp());
         if (tab == 0 && !land) {
             if (artBmp == null || artLook != look) {
                 try {
@@ -717,7 +743,7 @@ public class PhoneActivity extends Activity {
         drawerList.setPadding(dp(12), dp(30), dp(12), dp(16));
         drawerPanel.addView(drawerList, new ViewGroup.LayoutParams(-1, -2));
         // about half of the screen: 48% of its width, but never narrower than the longest menu name needs
-        drawerW = Math.max(dp(190), Math.round(getResources().getDisplayMetrics().widthPixels * (land ? 0.34f : 0.48f)));
+        drawerW = Math.max(dp(190), Math.round(dp(widthDp()) * (land ? 0.34f : 0.48f)));
         if (widthDp() >= 600) drawerW = Math.min(drawerW, dp(340));
         drawerLayer.addView(drawerPanel, new FrameLayout.LayoutParams(drawerW, -1, Gravity.START));
         f.addView(drawerLayer, new FrameLayout.LayoutParams(-1, -1));
@@ -1062,6 +1088,8 @@ public class PhoneActivity extends Activity {
         clockTv = apTv = nameTv = cdTv = altTv = iqLabel = iqValue = weatherTv = null;
         applyBackground();
         splitAt = -1;
+        splitFixed = false;
+        splitCenter = 0;
         landCols = null;
         landHint = null;
         body.removeAllViews();
@@ -1092,7 +1120,7 @@ public class PhoneActivity extends Activity {
             e.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
             add(e, 10);
         }
-        if (land && tab != 0 && body.getChildCount() > 1) splitLand();
+        if (land && tab != 0 && body.getChildCount() > 1 && !(tab == 5 && (sub != null || accs.isEmpty()))) splitLand();
         int y = 0;
         if (!toTop && (samePage || backNav)) {
             Integer v = savedScroll.get(key);
@@ -1353,7 +1381,7 @@ public class PhoneActivity extends Activity {
     /** 1.0 on a tall screen; smaller on a short one, so the home page fits without scrolling. */
     private float fit() {
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-        float availDp = (dm.heightPixels - homeTop - homeBottom) / dm.density - 50f;
+        float availDp = heightDp() - (homeTop + homeBottom) / dm.density - 50f;
         if (land) return Math.max(0.45f, Math.min(1f, availDp / 330f) * homeAdj);
         return Math.max(0.45f, Math.min(1f, availDp / 780f) * homeAdj);
     }
@@ -3231,7 +3259,7 @@ public class PhoneActivity extends Activity {
                 refreshTasbih();
             }
         });
-        int cs = land ? Math.max(120, Math.min(190, heightDp() - 175)) : 190;
+        int cs = land ? Math.max(100, Math.min(190, heightDp() - 185)) : 190;
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(dp(cs), dp(cs));
         rp.gravity = Gravity.CENTER_HORIZONTAL;
         rp.topMargin = dp(10);
@@ -3240,6 +3268,8 @@ public class PhoneActivity extends Activity {
         hint.setGravity(Gravity.CENTER);
         add(hint, 6);
         splitAt = body.getChildCount();
+        splitFixed = true;
+        splitCenter = 1;
         section("الأذكار");
         tcRows = new TextView[names.length];
         for (int i = 0; i < names.length; i++) {
@@ -3384,6 +3414,7 @@ public class PhoneActivity extends Activity {
                 build();
             }
         });
+        splitAt = body.getChildCount();
         final Cities.City mine = Cities.selected(this);
         List<Cities.City> list = otherCities();
         if (list.isEmpty()) {
@@ -3804,6 +3835,11 @@ public class PhoneActivity extends Activity {
         int cells = lead + len;
         int rows = (cells + 6) / 7;
         final StringBuilder notes = new StringBuilder();
+        String ck = year + "/" + month0;
+        if (!ck.equals(calSelKey)) {
+            calSelKey = ck;
+            calSel = calOff == 0 ? th[2] : -1;
+        }
         for (int r = 0; r < rows; r++) {
             LinearLayout row = hbox();
             for (int d = 0; d < 7; d++) {
@@ -3816,6 +3852,7 @@ public class PhoneActivity extends Activity {
                     boolean isToday = calOff == 0 && day == th[2];
                     boolean white = day >= 13 && day <= 15;
                     final int occ = Reminders.occasion(new int[] {year, month0 + 1, day});
+                    final int dayF = day;
                     boolean fri = g.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY;
                     TextView hd = tv(String.valueOf(day), 17, fri || occ >= 0 ? gold : cream, true);
                     hd.setGravity(Gravity.CENTER);
@@ -3823,12 +3860,17 @@ public class PhoneActivity extends Activity {
                     gd.setGravity(Gravity.CENTER);
                     cell.addView(hd);
                     cell.addView(gd);
-                    cell.setBackground(shape(isToday ? hl : white ? (gold & 0x00FFFFFF) | 0x22000000 : 0, isToday ? gold : occ >= 0 ? line : 0, 12));
+                    cell.setBackground(shape(isToday ? hl : occ >= 0 ? (gold & 0x00FFFFFF) | 0x66000000 : white ? (gold & 0x00FFFFFF) | 0x22000000 : 0, isToday || (land && calSel == day) ? gold : occ >= 0 ? line : 0, 12));
                     if (occ >= 0) notes.append(day).append(" ").append(Hijri.hijriAr(new int[] {year, month0 + 1, day}).replaceFirst("^\\d+ ", "").replaceFirst(" \\d+ هـ$", ""))
                         .append(": ").append(Reminders.occName(this, occ)).append("\n");
                     cell.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
+                            if (land) {
+                                calSel = dayF;
+                                build();
+                                return;
+                            }
                             int[] hh = Hijri.of(g, adj);
                             toast(Hijri.weekdayAr(g) + " " + Hijri.hijriAr(hh) + "\nالموافق " + Hijri.gregorianAr(g)
                                 + (occ >= 0 ? "\n" + Reminders.occName(PhoneActivity.this, occ) : ""));
@@ -3843,6 +3885,34 @@ public class PhoneActivity extends Activity {
             add(row, 0);
         }
         splitAt = body.getChildCount();
+        // landscape: the day that was tapped, with what falls on it
+        if (land) {
+            LinearLayout dc = vbox();
+            dc.setBackground(shape(hl, gold, 16));
+            dc.setPadding(dp(14), dp(10), dp(14), dp(10));
+            if (calSel >= 1 && calSel <= len) {
+                Calendar g = (Calendar) first.clone();
+                g.add(Calendar.DAY_OF_MONTH, calSel - 1);
+                int[] hh = {year, month0 + 1, calSel};
+                dc.addView(tv(Hijri.weekdayAr(g) + "، " + Hijri.hijriAr(hh), 16, gold, true));
+                dc.addView(tv("الموافق " + Hijri.gregorianAr(g), 13, cream, false));
+                StringBuilder ev = new StringBuilder();
+                int oc = Reminders.occasion(hh);
+                if (oc >= 0) ev.append("• ").append(Reminders.occName(this, oc)).append("\n");
+                if (month0 == 8) ev.append("• شهر رمضان: صيام الشهر كله\n");
+                if (calSel >= 13 && calSel <= 15) ev.append("• من الأيام البيض: صيام مستحب\n");
+                int dw = g.get(Calendar.DAY_OF_WEEK);
+                if (dw == Calendar.MONDAY || dw == Calendar.THURSDAY) ev.append("• صيام الإثنين والخميس: سنّة\n");
+                if (dw == Calendar.FRIDAY) ev.append("• يوم الجمعة\n");
+                String evs = ev.length() == 0 ? "لا أحداث في هذا اليوم" : ev.substring(0, ev.length() - 1);
+                TextView et = tv(evs, 14, ev.length() == 0 ? dim : cream, false);
+                et.setLineSpacing(0, 1.2f);
+                dc.addView(et, lp(-1, -2, 6));
+            } else {
+                dc.addView(tv("اضغط على يوم لترى ما فيه من أحداث", 14, dim, false));
+            }
+            add(dc, 4);
+        }
         section("في هذا الشهر");
         String extra = month0 == 8 ? "شهر رمضان: صيام الشهر كله.\n" : "";
         add(tv(extra + (notes.length() > 0 ? notes.toString() : "") + "13 و14 و15: الأيام البيض (مظلّلة).\nالإثنين والخميس: صيام السنّة.", 13, dim, false), 4);
@@ -3999,12 +4069,14 @@ public class PhoneActivity extends Activity {
         double bearing = Qibla.bearing(city.lat, city.lon);
         dial = new Qibla.Dial(this, gold, cream, dim);
         dial.set(0f, (float) bearing, false);
-        int dh = land ? Math.max(200, Math.min(380, heightDp() - 120)) : 380;
+        int dh = land ? Math.max(180, Math.min(380, heightDp() - 100)) : 380;
         LinearLayout.LayoutParams dp1 = new LinearLayout.LayoutParams(dp(dh * 310 / 380), dp(dh));
         dp1.gravity = Gravity.CENTER_HORIZONTAL;
         dp1.topMargin = dp(6);
         body.addView(dial, dp1);
         splitAt = body.getChildCount();
+        splitFixed = true;
+        splitCenter = 2;
 
         // the heading of the phone, big, under the dial
         qiblaHead = tv(String.format(Locale.US, "%.0f°", bearing), 46, cream, true);
