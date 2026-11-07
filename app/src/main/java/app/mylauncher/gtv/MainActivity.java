@@ -1308,12 +1308,6 @@ public class MainActivity extends Activity {
         return tile;
     }
 
-    /** (name, package) of every app, for the "hide or show apps" list. */
-    private List<String[]> appList() {
-        List<String[]> out = new ArrayList<>();
-        for (AppItem a : allApps) out.add(new String[] {a.label, a.component.getPackageName()});
-        return out;
-    }
 
     /** Hold OK on an app: move it, take it off the screen, uninstall it or see its info. */
     private void appActions(final AppItem item) {
