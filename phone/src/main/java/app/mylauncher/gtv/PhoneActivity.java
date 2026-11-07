@@ -2352,20 +2352,42 @@ public class PhoneActivity extends Activity {
         add(tv("يتغير حجم الخط ولونه في هذا المكان فقط. الألوان الفاتحة مناسبة للشكل الليلي، وللشكل النهاري جرّب الأبيض أو الأصفر.", 12, dim, false), 10);
     }
 
+    private boolean[] backupPick;
+
+    private void saveBackupFile() {
+        Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+            .setType("application/json")
+            .putExtra(Intent.EXTRA_TITLE, "salat-khair-" + new SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(new Date()) + ".json");
+        try {
+            startActivityForResult(i, REQ_SAVE);
+        } catch (RuntimeException e) {
+            toast("تعذّر فتح اختيار الملفات");
+        }
+    }
+
     private void backupPage() {
         title("نسخة احتياطية", true);
         add(tv("يحفظ كل ما ضبطته في ملف واحد: المدينة، إعدادات الأذان والإقامة والتذكيرات، الأذكار التي أضفتها أو عدّلتها، قائمة الأذكار فوق التطبيقات، العدّادات، والشكل. احفظ الملف في مكان خارج التطبيق (التنزيلات أو Drive أو أرسله لنفسك)، فيبقى حتى لو حذفت التطبيق.", 13, dim, false), 4);
         add(button("حفظ نسخة احتياطية", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
-                    .setType("application/json")
-                    .putExtra(Intent.EXTRA_TITLE, "salat-khair-" + new SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(new Date()) + ".json");
-                try {
-                    startActivityForResult(i, REQ_SAVE);
-                } catch (RuntimeException e) {
-                    toast("تعذّر فتح اختيار الملفات");
-                }
+                // first choose what goes into the file
+                final boolean[] on = new boolean[Backup.GROUPS.length];
+                java.util.Arrays.fill(on, true);
+                new Pop(PhoneActivity.this).title("ماذا تحفظ في النسخة؟").multi(Backup.GROUPS, on)
+                    .ok("متابعة", new Runnable() {
+                        @Override
+                        public void run() {
+                            boolean any = false;
+                            for (boolean b : on) any |= b;
+                            if (!any) {
+                                toast("اختر شيئًا واحدًا على الأقل");
+                                return;
+                            }
+                            backupPick = on;
+                            saveBackupFile();
+                        }
+                    }).cancel("إلغاء").show();
             }
         }), 12);
         add(button("استعادة من نسخة", new View.OnClickListener() {
@@ -2439,7 +2461,7 @@ public class PhoneActivity extends Activity {
         try {
             if (req == REQ_SAVE) {
                 java.io.OutputStream o = getContentResolver().openOutputStream(u, "wt");
-                o.write(Backup.export(this).getBytes("UTF-8"));
+                o.write((backupPick == null ? Backup.export(this) : Backup.export(this, backupPick)).getBytes("UTF-8"));
                 o.close();
                 toast("تم حفظ النسخة الاحتياطية");
             } else if (req == REQ_LOAD) {
