@@ -203,16 +203,10 @@ public class PhoneActivity extends Activity {
         FrameLayout iconBox = new FrameLayout(this);
         iconBox.setClipChildren(false);
         col.setClipChildren(false);
-        shadow = new View(this);
-        android.graphics.drawable.GradientDrawable sh = new android.graphics.drawable.GradientDrawable();
-        sh.setGradientType(android.graphics.drawable.GradientDrawable.RADIAL_GRADIENT);
-        sh.setGradientRadius(dp(105));
-        sh.setColors(new int[] {0x70000000, 0x33000000, 0x00000000});
-        sh.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        shadow.setBackground(sh);
-        FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(dp(210), dp(210), Gravity.CENTER);
-        slp.topMargin = dp(14);
-        iconBox.addView(shadow, slp);
+        ImageView shadowView = new ImageView(this);
+        shadowView.setImageBitmap(IconShadow.build(getResources(), R.drawable.ic_launcher_phone, dp(150), dp(34), dp(12), dp(10), 120));
+        shadow = shadowView;
+        iconBox.addView(shadow, new FrameLayout.LayoutParams(dp(218), dp(218), Gravity.CENTER));
         iconBox.addView(icon, new FrameLayout.LayoutParams(dp(150), dp(150), Gravity.CENTER));
         col.addView(iconBox, new LinearLayout.LayoutParams(dp(150), dp(150)));
         // the fixed phrase in the middle, and under it the changing word: bigger, but never wider than the phrase
