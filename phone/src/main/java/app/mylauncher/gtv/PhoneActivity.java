@@ -179,7 +179,7 @@ public class PhoneActivity extends Activity {
 
     /** The share of the width the fixed right panel of the landscape home takes. */
     private int landPanelDp() {
-        return Math.max(220, Math.min(330, Math.round(widthDp() * 0.36f)));
+        return Math.max(200, (widthDp() - 30) / 2);
     }
 
     /** Height of the mosque picture over the right panel, in dp (it keeps its own shape). */
@@ -205,7 +205,7 @@ public class PhoneActivity extends Activity {
         rest.setPadding(dp(10), 0, dp(10), dp(12));
         rest.addView(landHero, new LinearLayout.LayoutParams(-1, -2));
         panel.addView(rest, new LinearLayout.LayoutParams(-1, 0, 1f));
-        cols.addView(panel, new LinearLayout.LayoutParams(dp(landPanelDp()), -1));
+        cols.addView(panel, new LinearLayout.LayoutParams(0, -1, 1f));
         LinearLayout left = vbox();
         left.addView(topRow, new LinearLayout.LayoutParams(-1, -2));
         ScrollView sv = new ScrollView(this);
@@ -1348,6 +1348,19 @@ public class PhoneActivity extends Activity {
         Deco.Frame frame = new Deco.Frame(false, (gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         hero.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {shape(card, line, 22), frame}));
         hero.setPadding(dp(14), dp(Math.round(10 * f)), dp(14), dp(Math.round(10 * f)));
+        LinearLayout hA = hero, hB = hero;
+        if (land) {
+            // wide panel: the clock and the dates on one side, the next prayer on the other
+            hero = hbox();
+            hero.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {shape(card, line, 22), frame}));
+            hero.setPadding(dp(10), dp(Math.round(10 * f)), dp(10), dp(Math.round(10 * f)));
+            hA = vbox();
+            hA.setGravity(Gravity.CENTER_HORIZONTAL);
+            hB = vbox();
+            hB.setGravity(Gravity.CENTER_HORIZONTAL);
+            hero.addView(hA, new LinearLayout.LayoutParams(0, -2, 1f));
+            hero.addView(hB, new LinearLayout.LayoutParams(0, -2, 1f));
+        }
         // clock and dates
         LinearLayout clock = hbox();
         clock.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
@@ -1357,13 +1370,13 @@ public class PhoneActivity extends Activity {
         apTv.setPadding(dp(8), 0, 0, 0);
         clock.addView(clockTv);
         clock.addView(apTv);
-        hero.addView(clock, lp(-2, -2, 0));
+        hA.addView(clock, lp(-2, -2, 0));
         TextView d1 = tv(Hijri.weekdayAr(cal) + "، " + Hijri.gregorianAr(cal), 14, cream, false);
         d1.setGravity(Gravity.CENTER);
-        hero.addView(d1, lp(-2, -2, 0));
+        hA.addView(d1, lp(-2, -2, 0));
         TextView d2 = tv(Hijri.hijriAr(hij), 14, gold, true);
         d2.setGravity(Gravity.CENTER);
-        hero.addView(d2, lp(-2, -2, 0));
+        hA.addView(d2, lp(-2, -2, 0));
 
         // the next prayer
         PrayerCalc.Event ad = PrayerCalc.nextEvent(city, now, adj, new int[5]);
@@ -1371,17 +1384,17 @@ public class PhoneActivity extends Activity {
         TextView l1 = tv("الصلاة القادمة", 12, dim, true);
         l1.setPadding(0, dp(6), 0, 0);
         l1.setGravity(Gravity.CENTER);
-        hero.addView(l1);
+        hB.addView(l1);
         nameTv = tv("", Math.round(30 * f), gold, true);
         nameTv.setGravity(Gravity.CENTER);
-        hero.addView(nameTv);
+        hB.addView(nameTv);
         cdTv = tv("00:00:00", Math.round(44 * f), cream, true);
         cdTv.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         cdTv.setGravity(Gravity.CENTER);
-        hero.addView(cdTv);
+        hB.addView(cdTv);
         altTv = tv("", 14, cream, true);
         altTv.setGravity(Gravity.CENTER);
-        hero.addView(altTv, lp(-2, -2, 2));
+        hB.addView(altTv, lp(-2, -2, 2));
         LinearLayout iq = hbox();
         iq.setBackground(shape(0x38000000, line, 14));
         iq.setPadding(dp(12), dp(Math.round(6 * Math.max(f, 0.6f))), dp(12), dp(Math.round(6 * Math.max(f, 0.6f))));
@@ -1391,7 +1404,7 @@ public class PhoneActivity extends Activity {
         iqValue.setPadding(dp(10), 0, 0, 0);
         iq.addView(iqLabel);
         iq.addView(iqValue);
-        hero.addView(iq, lp(-2, -2, 6)); // wraps its text: a fixed height cut the letters when the page was squeezed
+        hB.addView(iq, lp(-2, -2, 6)); // wraps its text: a fixed height cut the letters when the page was squeezed
         LinearLayout rowsBox = null;
         final LinearLayout topRow = top;
         if (land) {
@@ -1500,7 +1513,7 @@ public class PhoneActivity extends Activity {
         float availDp = heightDp() - (homeTop + homeBottom) / dm.density - 50f;
         if (land) {
             float remaining = heightDp() - 16f - landBandDp() * 0.82f - 24f;
-            return Math.max(0.5f, Math.min(1f, (remaining - 125f) / 184f));
+            return Math.max(0.5f, Math.min(1f, (remaining - 112f) / 120f));
         }
         return Math.max(0.45f, Math.min(1f, availDp / 780f) * homeAdj);
     }
@@ -4011,14 +4024,16 @@ public class PhoneActivity extends Activity {
                         }
                     });
                 }
-                cell.setMinimumHeight(dp(52)); // grows with big text instead of cutting it
+                if (!land) cell.setMinimumHeight(dp(52)); // grows with big text instead of cutting it
                 LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -1, 1f);
                 cp.setMargins(dp(1), dp(1), dp(1), dp(1));
                 row.addView(cell, cp);
             }
-            add(row, 0);
+            if (land) body.addView(row, new LinearLayout.LayoutParams(-1, 0, 1f));
+            else add(row, 0);
         }
         splitAt = body.getChildCount();
+        splitFixed = true;
         // landscape: the day that was tapped, with what falls on it
         {
             LinearLayout dc = vbox();
