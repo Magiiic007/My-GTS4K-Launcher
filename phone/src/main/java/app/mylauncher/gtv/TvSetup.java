@@ -574,6 +574,14 @@ final class TvSetup {
         say.say(has(pk, g) ? "تطبيق Google (المساعد) موجود على التلفزيون" : "تطبيق Google (المساعد) غير موجود على التلفزيون!");
         String off = sh(c, "pm list packages -d").trim();
         say.say("التطبيقات المعطّلة على التلفزيون:\n" + (off.isEmpty() ? "(لا شيء)" : off.replace("package:", "")));
+        // Google's own parts that the voice button and the home screen lean on: if any of them was switched off, switch it on.
+        String[] parts = {"com.google.android.tvrecommendations", STOCK_X, STOCK_T, SETUP, "com.google.android.katniss"};
+        for (String part : parts) {
+            if (off.contains(part)) {
+                sh(c, "pm enable " + part + " 2>&1");
+                say.say("فُعّل: " + part);
+            }
+        }
         // our old accessibility service must not stay in the list: it intercepted the remote's keys
         String cur = sh(c, "settings get secure enabled_accessibility_services").trim();
         say.say("خدمات إمكانية الوصول: " + (cur.isEmpty() ? "(لا شيء)" : cur));
@@ -599,7 +607,7 @@ final class TvSetup {
         stopGuard(c);
         String pk = sh(c, "pm list packages");
         String saved = p(c).getString("tv_disabled", "");
-        StringBuilder all = new StringBuilder(STOCK_X + " " + SETUP + " " + STOCK_T);
+        StringBuilder all = new StringBuilder(STOCK_X + " " + SETUP + " " + STOCK_T + " com.google.android.tvrecommendations");
         if (!saved.isEmpty()) all.append(' ').append(saved);
         for (String x : all.toString().split(" ")) {
             if (has(pk, x)) sh(c, "pm enable " + x);
