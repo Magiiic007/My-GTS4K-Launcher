@@ -178,6 +178,24 @@ public class PhoneActivity extends Activity {
     }
 
     private void splitLand() {
+        java.util.ArrayList<View> all = new java.util.ArrayList<>();
+        for (int i = 0; i < body.getChildCount(); i++) all.add(body.getChildAt(i));
+        try {
+            splitLand2();
+        } catch (RuntimeException e) {
+            // never close the app over the layout: show the page in one column instead
+            sp.edit().putString("dbg_crash", android.util.Log.getStackTraceString(e)).apply();
+            landCols = null;
+            landHint = null;
+            body.removeAllViews();
+            for (View v : all) {
+                if (v.getParent() instanceof ViewGroup) ((ViewGroup) v.getParent()).removeView(v);
+                body.addView(v);
+            }
+        }
+    }
+
+    private void splitLand2() {
         int n = body.getChildCount();
         java.util.ArrayList<View> kids = new java.util.ArrayList<>();
         for (int i = 0; i < n; i++) kids.add(body.getChildAt(i));
@@ -209,7 +227,7 @@ public class PhoneActivity extends Activity {
             k = Math.max(1, Math.min(n - 1, k));
         }
         // a group's body stays right after its title
-        while (k < n - 1 && isAccBox(kids.get(k))) k++;
+        while (!master && k >= 0 && k < n - 1 && isAccBox(kids.get(k))) k++;
         body.removeAllViews();
         LinearLayout cols = hbox();
         cols.setBaselineAligned(false);
