@@ -25,79 +25,40 @@ final class Deco {
         return s;
     }
 
-    /** One cell of the geometric pattern (100 x 100): a twelve-point star in a ring, and small diamonds at the corners. */
-    private static Path latticeCell() {
-        Path p = new Path();
-        float cx = 50f, cy = 50f;
-        // the twelve-point star
-        for (int k = 0; k < 24; k++) {
-            double a = Math.toRadians(k * 15 - 90);
-            float r = k % 2 == 0 ? 31f : 21f;
-            float x = cx + r * (float) Math.cos(a), y = cy + r * (float) Math.sin(a);
-            if (k == 0) p.moveTo(x, y);
-            else p.lineTo(x, y);
-        }
-        p.close();
-        p.addCircle(cx, cy, 10f, Path.Direction.CW);
-        p.addCircle(cx, cy, 47f, Path.Direction.CW);
-        for (int k = 0; k < 12; k++) {
-            double a = Math.toRadians(k * 30 - 90);
-            float vx = cx + 31f * (float) Math.cos(a), vy = cy + 31f * (float) Math.sin(a);
-            for (int d = -1; d <= 1; d += 2) {
-                double b = a + Math.toRadians(15 * d);
-                p.moveTo(vx, vy);
-                p.lineTo(cx + 47f * (float) Math.cos(b), cy + 47f * (float) Math.sin(b));
+    private static android.graphics.Bitmap panelBmp;
+
+    /**
+     * The geometric panel behind every screen: one picture, fitted to the whole screen (cropped a little at the sides if
+     * the proportions differ). On a wide screen (landscape) it is turned 90 degrees so it stays upright along the width.
+     * It is only a mask: it is painted in the given colour (with its own transparency).
+     */
+    static final class Panel extends Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final android.graphics.Bitmap bmp;
+
+        Panel(android.content.res.Resources res, int color) {
+            synchronized (Deco.class) {
+                if (panelBmp == null) panelBmp = android.graphics.BitmapFactory.decodeResource(res, R.drawable.pattern_panel);
+                bmp = panelBmp;
             }
-            double a2 = a + Math.toRadians(15);
-            p.moveTo(cx + 21f * (float) Math.cos(a2), cy + 21f * (float) Math.sin(a2));
-            p.lineTo(cx + 10f * (float) Math.cos(a2), cy + 10f * (float) Math.sin(a2));
-        }
-        float[][] corners = {{0, 0}, {100, 0}, {0, 100}, {100, 100}};
-        for (float[] c : corners) {
-            p.moveTo(c[0], c[1] - 7f);
-            p.lineTo(c[0] + 7f, c[1]);
-            p.lineTo(c[0], c[1] + 7f);
-            p.lineTo(c[0] - 7f, c[1]);
-            p.close();
-        }
-        // a thin line from each rosette to the diamond at the nearest corner
-        for (int k = 0; k < 4; k++) {
-            double a = Math.toRadians(45 + 90 * k);
-            float tx = Math.cos(a) > 0 ? 100f : 0f, ty = Math.sin(a) > 0 ? 100f : 0f;
-            p.moveTo(cx + 47f * (float) Math.cos(a), cy + 47f * (float) Math.sin(a));
-            p.lineTo(tx + (tx > 0 ? -5f : 5f), ty + (ty > 0 ? -5f : 5f));
-        }
-        return p;
-    }
-
-    /** A faint geometric pattern over the whole screen (twelve-point star rosettes), drawn with paths so it stays sharp. */
-    static final class Lattice extends Drawable {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Path cell = latticeCell();
-        private final float tile;
-
-        Lattice(int color, float tilePx) {
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setColor(color);
-            paint.setStrokeJoin(Paint.Join.ROUND);
-            tile = tilePx;
-            // one pixel-ish line whatever the tile size (the path is scaled by tile / 100)
-            paint.setStrokeWidth(Math.max(1f, tilePx / 130f) * 100f / tilePx);
+            paint.setColorFilter(new android.graphics.PorterDuffColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN));
         }
 
         @Override
         public void draw(Canvas c) {
+            if (bmp == null) return;
             Rect b = getBounds();
-            float k = tile / 100f;
-            for (float y = b.top; y < b.bottom; y += tile) {
-                for (float x = b.left; x < b.right; x += tile) {
-                    int n = c.save();
-                    c.translate(x, y);
-                    c.scale(k, k);
-                    c.drawPath(cell, paint);
-                    c.restoreToCount(n);
-                }
-            }
+            boolean wide = b.width() > b.height();
+            float bw = wide ? bmp.getHeight() : bmp.getWidth();
+            float bh = wide ? bmp.getWidth() : bmp.getHeight();
+            float s = Math.max(b.width() / bw, b.height() / bh);
+            int n = c.save();
+            c.clipRect(b);
+            c.translate(b.exactCenterX(), b.exactCenterY());
+            if (wide) c.rotate(90f);
+            c.scale(s, s);
+            c.drawBitmap(bmp, -bmp.getWidth() / 2f, -bmp.getHeight() / 2f, paint);
+            c.restoreToCount(n);
         }
 
         @Override

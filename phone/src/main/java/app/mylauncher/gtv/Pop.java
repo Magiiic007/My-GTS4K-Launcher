@@ -128,7 +128,7 @@ final class Pop {
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
         g.setCornerRadius(radius);
         g.setStroke(dp(1), (gold & 0x00FFFFFF) | 0x99000000);
-        Deco.Lattice stars = new Deco.Lattice((cream & 0x00FFFFFF) | 0x1A000000, dp(150));
+        Deco.Panel stars = new Deco.Panel(a.getResources(), (cream & 0x00FFFFFF) | 0x18000000);
         box.setBackground(new LayerDrawable(new Drawable[] {g, stars}));
         box.setClipToOutline(true);
         box.setOutlineProvider(new ViewOutlineProvider() {

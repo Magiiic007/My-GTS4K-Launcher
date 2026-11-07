@@ -517,7 +517,7 @@ public class PhoneActivity extends Activity {
         final FrameLayout v = new FrameLayout(this);
         v.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-        Deco.Lattice stars = new Deco.Lattice((cream & 0x00FFFFFF) | 0x1A000000, dp(150));
+        Deco.Panel stars = new Deco.Panel(getResources(), (cream & 0x00FFFFFF) | 0x18000000);
         ArtBg.Border border = new ArtBg.Border((gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         v.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars, border}));
         v.setClickable(true);
@@ -811,7 +811,7 @@ public class PhoneActivity extends Activity {
                 homeTop = 0;
                 homeBottom = 0;
                 GradientDrawable lg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-                Deco.Lattice lstars = new Deco.Lattice((cream & 0x00FFFFFF) | 0x1A000000, dp(150));
+                Deco.Panel lstars = new Deco.Panel(getResources(), (cream & 0x00FFFFFF) | 0x18000000);
                 rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {lg, lstars}));
                 header.setVisibility(View.GONE);
                 header.setPadding(0, 0, 0, 0);
@@ -831,7 +831,7 @@ public class PhoneActivity extends Activity {
         homeTop = 0;
         homeBottom = 0;
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-        Deco.Lattice stars = new Deco.Lattice((cream & 0x00FFFFFF) | 0x1A000000, dp(150));
+        Deco.Panel stars = new Deco.Panel(getResources(), (cream & 0x00FFFFFF) | 0x18000000);
         ArtBg.Border border = new ArtBg.Border((gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars, border}));
         // landscape home uses the full width (two columns); the other pages keep a readable column in the middle
