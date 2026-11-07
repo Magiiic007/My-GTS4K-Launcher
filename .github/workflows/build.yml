@@ -133,19 +133,3 @@ jobs:
           gh release delete play-test --yes --cleanup-tag || true
           gh release create play-test my-phone-play-test.apk --prerelease --target "$GITHUB_SHA" \
             --title "Play build, test copy" --notes "Test copy of the Google Play build (package app.alsalatu.khair.test). commit=${GITHUB_SHA::7}"
-
-      # Test copies, each changing one thing that differs between the Play build and the GitHub build (find what makes it close).
-      - name: Build the A/B test APKs
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          ./gradlew :phone:assembleSideloadDebug -PsideloadId=app.alsalatu.khair.va --no-daemon --stacktrace
-          cp phone/build/outputs/apk/sideload/debug/*.apk ab-a-github-with-play-id.apk
-          ./gradlew :phone:assemblePlayDebug -PabId=vb -PplayNoManifest --no-daemon --stacktrace
-          cp phone/build/outputs/apk/play/debug/*.apk ab-b-play-no-manifest.apk
-          ./gradlew :phone:assemblePlayDebug -PabId=vc -PplayNoShortcuts --no-daemon --stacktrace
-          cp phone/build/outputs/apk/play/debug/*.apk ab-c-play-no-shortcuts.apk
-          gh release delete ab-test --yes --cleanup-tag || true
-          gh release create ab-test ab-a-github-with-play-id.apk ab-b-play-no-manifest.apk ab-c-play-no-shortcuts.apk --prerelease --target "$GITHUB_SHA" \
-            --title "A/B test APKs" --notes "a: GitHub build with the Play package name. b: Play build without its manifest edit. c: Play build without its shortcuts file. commit=${GITHUB_SHA::7}"

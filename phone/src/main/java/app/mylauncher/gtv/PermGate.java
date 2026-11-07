@@ -100,9 +100,12 @@ final class PermGate {
         out.add(new Item("البطارية: بدون قيود", "حتى لا يوقف الهاتف التطبيق في الخلفية",
             pm.isIgnoringBatteryOptimizations(a.getPackageName()), false,
             settings(a, Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, true)));
-        out.add(new Item("تثبيت التحديثات", "لتحديث التطبيق من داخله",
-            Build.VERSION.SDK_INT < 26 || a.getPackageManager().canRequestPackageInstalls(), false,
-            settings(a, Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, true)));
+        // not in the Google Play build: the store updates the app, and it does not declare the install permission
+        if (!BuildConfig.PLAY) {
+            out.add(new Item("تثبيت التحديثات", "لتحديث التطبيق من داخله",
+                Build.VERSION.SDK_INT < 26 || a.getPackageManager().canRequestPackageInstalls(), false,
+                settings(a, Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, true)));
+        }
         return out;
     }
 
