@@ -2531,6 +2531,25 @@ public class PhoneActivity extends Activity {
         search.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         search.setBackground(shape(card, line, 14));
         search.setPadding(dp(14), dp(10), dp(14), dp(10));
+        final int sz = dp(20), col = gold, sw = dp(2);
+        android.graphics.drawable.Drawable mag = new android.graphics.drawable.Drawable() {
+            final android.graphics.Paint pt = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+            @Override public void draw(android.graphics.Canvas c) {
+                pt.setStyle(android.graphics.Paint.Style.STROKE);
+                pt.setColor(col);
+                pt.setStrokeWidth(sw);
+                pt.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+                float r = sz * 0.34f;
+                c.drawCircle(sz * 0.42f, sz * 0.42f, r, pt);
+                c.drawLine(sz * 0.42f + r * 0.72f, sz * 0.42f + r * 0.72f, sz * 0.92f, sz * 0.92f, pt);
+            }
+            @Override public void setAlpha(int a) {}
+            @Override public void setColorFilter(android.graphics.ColorFilter f) {}
+            @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+        };
+        mag.setBounds(0, 0, sz, sz);
+        search.setCompoundDrawablesRelative(mag, null, null, null);
+        search.setCompoundDrawablePadding(dp(10));
         return search;
     }
 
@@ -3294,22 +3313,8 @@ public class PhoneActivity extends Activity {
         title("الأذكار والأدعية", false);
         add(tv("حصن المسلم كاملًا: " + all.size() + " بابًا.", 13, dim, false), 2);
         totalLine();
-        final EditText search = new EditText(this);
-        search.setHint("ابحث عن ذكر أو دعاء");
-        search.setHintTextColor(dim);
-        search.setTextColor(cream);
-        search.setSingleLine(true);
-        search.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        search.setBackground(null);
-        search.setPadding(dp(8), dp(10), dp(8), dp(10));
-        LinearLayout searchBar = hbox();
-        searchBar.setBackground(shape(card, line, 14));
-        searchBar.setPadding(dp(14), 0, dp(10), 0);
-        searchBar.setGravity(Gravity.CENTER_VERTICAL);
-        TextView mag = tv("🔍", 18, gold, false);
-        searchBar.addView(mag);
-        searchBar.addView(search, new LinearLayout.LayoutParams(0, -2, 1f));
-        add(searchBar, 8);
+        final EditText search = searchBox("ابحث عن ذكر أو دعاء");
+        add(search, 8);
         catList = vbox();
         add(catList, 2);
         fillCategories(all, "");
