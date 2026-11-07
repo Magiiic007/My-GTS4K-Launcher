@@ -13,6 +13,7 @@ import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.SystemClock;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import java.util.ArrayList;
@@ -279,7 +280,13 @@ final class PrayerNote {
             rv.setOnClickPendingIntent(R.id.w_root, PendingIntent.getActivity(c, 2, new Intent(c, PhoneActivity.class)
                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
-            awm.updateAppWidget(ids, rv);
+            // the widget can be any size (a short strip in landscape, a big tile on a tablet): drop the least important rows when it is short
+            for (int id : ids) {
+                int h = Widgets.heightDp(c, awm, id);
+                rv.setViewVisibility(R.id.w_radio, h > 0 && h < 125 ? View.GONE : View.VISIBLE);
+                rv.setViewVisibility(R.id.w_tiles, h > 0 && h < 80 ? View.GONE : View.VISIBLE);
+                awm.updateAppWidget(id, rv);
+            }
         } catch (RuntimeException ignored) {
             // The home screen may be busy; the next change redraws it.
         }

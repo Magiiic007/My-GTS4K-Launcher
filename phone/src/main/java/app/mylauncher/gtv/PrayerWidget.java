@@ -15,4 +15,9 @@ public class PrayerWidget extends AppWidgetProvider {
     public void onEnabled(Context c) {
         PrayerNote.refresh(c);
     }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context c, AppWidgetManager m, int id, android.os.Bundle o) {
+        PrayerNote.refresh(c);
+    }
 }

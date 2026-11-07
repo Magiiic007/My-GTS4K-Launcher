@@ -44,6 +44,17 @@ final class Widgets {
         return PendingIntent.getBroadcast(c, req, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
+    /** The height this widget has on screen now, in dp (0 when the home screen has not said). Portrait and landscape differ, so it follows the phone's turn. */
+    static int heightDp(Context c, AppWidgetManager m, int id) {
+        try {
+            android.os.Bundle o = m.getAppWidgetOptions(id);
+            boolean land = c.getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+            return o.getInt(land ? AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT : AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
+        } catch (RuntimeException e) {
+            return 0;
+        }
+    }
+
     static void refresh(Context c) {
         try {
             AppWidgetManager m = AppWidgetManager.getInstance(c);

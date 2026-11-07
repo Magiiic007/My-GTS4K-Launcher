@@ -15,4 +15,9 @@ public class TrackWidget extends AppWidgetProvider {
     public void onEnabled(Context c) {
         Widgets.refresh(c);
     }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context c, AppWidgetManager m, int id, android.os.Bundle o) {
+        Widgets.refresh(c);
+    }
 }
