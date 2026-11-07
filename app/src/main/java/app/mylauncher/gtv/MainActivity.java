@@ -836,6 +836,8 @@ public class MainActivity extends Activity {
         station.add(-3);
         items.add(getString(R.string.radio_prev));
         station.add(-4);
+        items.add(getString(RadioService.playOnBoot(this) ? R.string.radio_boot_on : R.string.radio_boot_off));
+        station.add(-5);
         for (int pass = 0; pass < 2; pass++) {
             boolean reciters = pass == 1;
             boolean titled = false;
@@ -855,6 +857,7 @@ public class MainActivity extends Activity {
         pics.add(0, null);
         pics.add(0, null);
         pics.add(0, null);
+        pics.add(0, null);
         new Menu.Builder(this)
             .setTitle(R.string.radio_title)
             .setIcons(pics)
@@ -866,6 +869,12 @@ public class MainActivity extends Activity {
                     else if (st == -2) radioKey(1);
                     else if (st == -3) radioKey(2);
                     else if (st == -4) radioKey(0);
+                    else if (st == -5) {
+                        boolean now = !RadioService.playOnBoot(MainActivity.this);
+                        RadioService.setPlayOnBoot(MainActivity.this, now);
+                        Toast.makeText(MainActivity.this, now ? R.string.radio_boot_now_on : R.string.radio_boot_now_off,
+                            Toast.LENGTH_SHORT).show();
+                    }
                 }
             })
             .setNegativeButton(R.string.close, null)

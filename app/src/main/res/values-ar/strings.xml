@@ -310,4 +310,8 @@
     <string name="rem_in_days">بعد %1$d يوم</string>
     <string name="rem_day_before_occ">قبل المناسبة بيوم</string>
     <string name="rem_same_day_occ">في يوم المناسبة نفسه</string>
+    <string name="radio_boot_on">تشغيل الراديو مع تشغيل الجهاز: مفعّل</string>
+    <string name="radio_boot_off">تشغيل الراديو مع تشغيل الجهاز: مقفول</string>
+    <string name="radio_boot_now_on">سيعمل الراديو عند تشغيل الجهاز</string>
+    <string name="radio_boot_now_off">لن يعمل الراديو عند تشغيل الجهاز</string>
 </resources>

@@ -71,14 +71,6 @@ public class PhoneActivity extends Activity {
 
     // ---------------------------------------------------------------- state
     private final Handler h = new Handler(Looper.getMainLooper());
-    // setting up the TV from this phone
-    private int tvStage = 0;
-    private volatile boolean tvBusy = false;
-    private boolean tvSearching = false;
-    private String tvAddr = "", tvCode = "";
-    /** The notes of the TV setup, newest first (kept only while the app is open). */
-    private final java.util.ArrayList<String> tvEntries = new java.util.ArrayList<>();
-    private LinearLayout tvFound;
     private SharedPreferences sp;
     private int tab;
     private String sub;
@@ -336,7 +328,7 @@ public class PhoneActivity extends Activity {
         OverlayService.sync(this);
         BubbleService.sync(this);
         PrayerNote.refresh(this);
-        if (tab == 8 || tab == 6 || (tab == 0 && sub == null) || tvVisible()) build();
+        if (tab == 8 || tab == 6 || (tab == 0 && sub == null)) build();
         if (tab == 9) qiblaStart();
         h.post(ticker);
         if (!autoTried && sp.getBoolean("ph_first", false)
@@ -354,10 +346,6 @@ public class PhoneActivity extends Activity {
         h.removeCallbacks(ticker);
         PrayerNote.refresh(this);
         qiblaStop();
-        if (tvSearching) {
-            TvSetup.stopDiscovery();
-            tvSearching = false;
-        }
     }
 
     @Override
@@ -426,7 +414,6 @@ public class PhoneActivity extends Activity {
         if (s.equals("up")) return "occ";
         if (s.startsWith("txt:") && tab == 3) return "fonts";
         if (s.startsWith("ad:")) return null;
-        if (s.equals("tvkeys")) return "tv";
         if (s.startsWith("item:")) return itemBack;
         if (s.equals("country") || s.equals("cities")) return null;
         return null;
@@ -663,7 +650,6 @@ public class PhoneActivity extends Activity {
         ICONS.put("اختر الدولة", "🌍");
         ICONS.put("ابحث عن مدينتك", "🔍");
         ICONS.put("أحاديث بشرحها", "📜");
-        ICONS.put("التطبيق على التلفزيون", "📺");
         ICONS.put("اختبار أزرار الريموت", "🎮");
         ICONS.put("تأكد أن الأذان يعمل", "🔔");
         ICONS.put("الشكل والعرض", "🎨");
@@ -693,13 +679,9 @@ public class PhoneActivity extends Activity {
         ICONS.put("الأزرار", "🎮");
         ICONS.put("اختر المكان", "📍");
         ICONS.put("آخر ما حدث", "🕘");
-        ICONS.put("حضّر التلفزيون", "🔧");
         ICONS.put("متصل", "🔗");
-        ICONS.put("اقتران الهاتف بالتلفزيون", "🔗");
         ICONS.put("وجدت على الشبكة", "📡");
         ICONS.put("أو اكتب العنوان بنفسك", "⌨️");
-        ICONS.put("تثبيت اللانشر", "📲");
-        ICONS.put("الشاشة الرئيسية", "🏠");
         ICONS.put("في هذا الشهر", "🗓");
     }
 
@@ -848,10 +830,6 @@ public class PhoneActivity extends Activity {
         body.removeAllViews();
         header.removeAllViews();
         if (tab != 9) qiblaStop();
-        if (!(tab == 3 && "tv".equals(sub)) && tvSearching) {
-            TvSetup.stopDiscovery();
-            tvSearching = false;
-        }
         try {
             if (tab == 0) home();
             else if (tab == 1) radio();
@@ -1726,14 +1704,6 @@ public class PhoneActivity extends Activity {
             backupPage();
             return;
         }
-        if ("tv".equals(sub)) {
-            tvPage();
-            return;
-        }
-        if ("tvkeys".equals(sub)) {
-            tvKeysPage();
-            return;
-        }
         if ("fonts".equals(sub)) {
             title("حجم الخط ولونه", true);
             section("اختر المكان");
@@ -1816,7 +1786,6 @@ public class PhoneActivity extends Activity {
                 PhoneUpdater.check(PhoneActivity.this);
             }
         });
-        row("التطبيق على التلفزيون", "تثبيته وإصلاح المساعد الصوتي من هذا الهاتف", "›", go("tv"));
         row("نسخة احتياطية", "احفظ إعداداتك وأذكارك في ملف، واستعدها بعد أي حذف", "›", go("backup"));
         row("عن التطبيق", "المصادر والتشخيص", "›", go("about"));
         accEnd();
@@ -3056,557 +3025,6 @@ public class PhoneActivity extends Activity {
     // ---------------------------------------------------------------- Hijri calendar
     private int calOff;
 
-
-    // ---------------------------------------------------------------- the TV
-    private interface TvTask {
-        void run() throws Exception;
-    }
-
-    private boolean tvVisible() {
-        return tab == 3 && ("tv".equals(sub) || "tvkeys".equals(sub));
-    }
-
-    private void tvSay(final String line) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                tvEntries.add(0, line);
-                while (tvEntries.size() > 25) tvEntries.remove(tvEntries.size() - 1);
-                if (tvVisible()) build();
-            }
-        });
-    }
-
-    private String tvWhy(Throwable e) {
-        if (e instanceof io.github.muntashirakon.adb.AdbPairingRequiredException) {
-            return "التلفزيون يطلب الاقتران أولاً (اقتران برمز من شاشة التلفزيون)";
-        }
-        String m = e.getMessage();
-        String n = e.getClass().getSimpleName();
-        return m == null || m.isEmpty() ? n : m + " (" + n + ")";
-    }
-
-    private void tvRun(String label, final TvTask t) {
-        tvRun(label, t, false);
-    }
-
-    /** keepLog: the button tests keep their earlier results to compare; every other new task starts a clean list. */
-    private void tvRun(String label, final TvTask t, boolean keepLog) {
-        if (tvBusy) {
-            toast("انتظر حتى تنتهي الخطوة الحالية");
-            return;
-        }
-        tvBusy = true;
-        if (!keepLog) tvEntries.clear();
-        tvSay(label);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    t.run();
-                } catch (Throwable e) {
-                    tvSay("تعذّر: " + tvWhy(e));
-                } finally {
-                    tvBusy = false;
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (tvVisible()) build();
-                        }
-                    });
-                }
-            }
-        }).start();
-    }
-
-    private EditText tvField(String hint, String value, int type, final boolean isCode) {
-        EditText e = searchBox(hint);
-        e.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
-        e.setInputType(type);
-        e.setText(value);
-        e.addTextChangedListener(new android.text.TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int a, int b, int c) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int a, int b, int c) {
-                if (isCode) tvCode = s.toString();
-                else tvAddr = s.toString();
-            }
-
-            @Override
-            public void afterTextChanged(android.text.Editable s) {
-            }
-        });
-        return e;
-    }
-
-    /** Splits "ip:port"; a missing port becomes def (0 = a port is required). Returns null if it is not an address. */
-    private Object[] tvParse(String a, int def) {
-        a = a.trim();
-        if (a.isEmpty()) return null;
-        int i = a.lastIndexOf(':');
-        String host = i < 0 ? a : a.substring(0, i);
-        int port = def;
-        if (i >= 0) {
-            try {
-                port = Integer.parseInt(a.substring(i + 1).trim());
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        }
-        if (host.isEmpty() || port <= 0 || port > 65535) return null;
-        return new Object[] {host.trim(), port};
-    }
-
-    private void tvPage() {
-        title("التطبيق على التلفزيون", true);
-        String[] names = {"تحضير", "اتصال", "تثبيت", "إعداد"};
-        LinearLayout st = hbox();
-        for (int i = 0; i < 4; i++) {
-            boolean on = i == tvStage;
-            TextView t = tv((i + 1) + " " + names[i], 12, on ? gold : dim, on);
-            t.setGravity(Gravity.CENTER);
-            t.setBackground(shape(on ? hl : 0, on ? gold : 0, 12));
-            t.setPadding(0, dp(7), 0, dp(7));
-            final int goTo = i;
-            t.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvStage = goTo;
-                    build();
-                }
-            });
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1f);
-            p.setMargins(dp(2), 0, dp(2), 0);
-            st.addView(t, p);
-        }
-        add(st, 6);
-        if (tvBusy) {
-            row("خطوة تعمل الآن…", "لو لا تنتهي، اضغط هنا لإلغائها وقطع الاتصال", "إلغاء", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvBusy = false;
-                    TvSetup.disconnect(PhoneActivity.this);
-                    tvSay("أُلغيت الخطوة الحالية وانقطع الاتصال. اتصل من جديد.");
-                }
-            });
-        }
-        if (tvStage == 0) tvPrepare();
-        else if (tvStage == 1) tvConnect();
-        else if (tvStage == 2) tvInstall();
-        else tvHome();
-        tvLogBlock();
-    }
-
-    /** The notes, newest first, at the top of the page. */
-    private void tvLogBlock() {
-        if (tvEntries.isEmpty()) return;
-        section("آخر ما حدث");
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < tvEntries.size() && i < 10; i++) {
-            if (i > 0) sb.append("\n— — —\n");
-            sb.append(tvEntries.get(i));
-        }
-        TextView lg = tv(sb.toString().trim(), 12, cream, false);
-        lg.setTextIsSelectable(true);
-        lg.setBackground(shape(card, line, 14));
-        lg.setPadding(dp(12), dp(10), dp(12), dp(10));
-        add(lg, 4);
-        row("مسح", null, "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvEntries.clear();
-                build();
-            }
-        });
-    }
-
-    private void tvKeysPage() {
-        title("اختبار أزرار الريموت", true);
-        if (!TvSetup.connected(this)) {
-            add(tv("الهاتف غير متصل بالتلفزيون. ارجع واضغط «اتصال» أولاً.", 14, dim, false), 8);
-            tvLogBlock();
-            return;
-        }
-        add(tv("اختر الزر الذي تريد اختباره، وبعدها اضغطه على ريموت التلفزيون خلال 12 ثانية. سنقرأ ما فعله النظام ونعرضه تحت.", 13, dim, false), 6);
-        if (tvBusy) {
-            row("اختبار جارٍ…", "لو لا ينتهي، اضغط هنا لإلغائه", "إلغاء", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvBusy = false;
-                    TvSetup.disconnect(PhoneActivity.this);
-                    tvSay("أُلغي الاختبار وانقطع الاتصال.");
-                }
-            });
-        }
-        row("تفعيل أزرار اليوتيوب والنجمة", "يعمل بعد تحديث التطبيق على التلفزيون (الخطوة 3)", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvRun("تفعيل أزرار الريموت", new TvTask() {
-                    @Override
-                    public void run() throws Exception {
-                        TvSetup.enableKeys(PhoneActivity.this, new TvSetup.Say() {
-                            @Override
-                            public void say(String s) {
-                                tvSay(s);
-                            }
-                        });
-                    }
-                }, true);
-            }
-        });
-        section("الأزرار");
-        String[] keys = {"المساعد الصوتي", "يوتيوب", "النجمة (المفضلة)", "Netflix", "الرئيسية (Home)", "الرجوع",
-            "رفع الصوت", "خفض الصوت", "كتم الصوت", "تشغيل / إيقاف مؤقت", "المدخل (Input)", "القائمة / الإعدادات"};
-        for (final String k : keys) {
-            row(k, null, "اختبر", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvRun("اختبار: " + k, new TvTask() {
-                        @Override
-                        public void run() throws Exception {
-                            TvSetup.keyProbe(PhoneActivity.this, new TvSetup.Say() {
-                                @Override
-                                public void say(String s) {
-                                    tvSay(s);
-                                }
-                            }, k);
-                        }
-                    }, true);
-                }
-            });
-        }
-        tvLogBlock();
-    }
-
-    private void tvPrepare() {
-        section("حضّر التلفزيون");
-        String[] steps = {
-            "افتح على التلفزيون: الإعدادات ← النظام ← حول.",
-            "اضغط OK على «إصدار نظام التشغيل» 7 مرات حتى تظهر رسالة أنك أصبحت مطوّراً.",
-            "ارجع ← النظام ← خيارات المطوّر، وشغّل «تصحيح الأخطاء اللاسلكي».",
-            "الهاتف والتلفزيون لازم يكونا على نفس شبكة الواي فاي."};
-        for (int i = 0; i < steps.length; i++) {
-            LinearLayout r = hbox();
-            r.setBackground(shape(card, line, 14));
-            r.setPadding(dp(12), dp(10), dp(12), dp(10));
-            TextView n = tv(String.valueOf(i + 1), 16, gold, true);
-            n.setPadding(0, 0, dp(10), 0);
-            r.addView(n);
-            r.addView(tv(steps[i], 14, cream, false), new LinearLayout.LayoutParams(0, -2, 1f));
-            add(r, 5);
-        }
-        add(tv("ما سيحدث بعد ذلك: تثبّت التطبيق التطبيق على التلفزيون من هذا الهاتف، ثم تجعله الشاشة الرئيسية. لا حاجة لكمبيوتر.", 12, dim, false), 10);
-        row("جاهز، ابحث عن التلفزيون", null, "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvStage = 1;
-                build();
-            }
-        });
-    }
-
-    private void tvConnect() {
-        if (TvSetup.connected(this)) {
-            section("متصل");
-            add(tv("الهاتف متصل بالتلفزيون ✓", 15, gold, true), 4);
-            row("التالي: تثبيت التطبيق على التلفزيون", null, "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvStage = 2;
-                    build();
-                }
-            });
-            row("رجوع إلى الشاشة الأصلية للتلفزيون", "يعيد لانشر Google ويفعّل التطبيقات المعطّلة", "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvRun("إرجاع الشاشة الأصلية…", new TvTask() {
-                        @Override
-                        public void run() throws Exception {
-                            TvSetup.restore(PhoneActivity.this, new TvSetup.Say() {
-                                @Override
-                                public void say(String s) {
-                                    tvSay(s);
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-            row("إصلاح المساعد الصوتي", "يفحص تطبيق Google على التلفزيون ويصلحه (الميكروفون، البيانات، الأزرار)", "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvRun("إصلاح المساعد الصوتي…", new TvTask() {
-                        @Override
-                        public void run() throws Exception {
-                            TvSetup.fixAssistant(PhoneActivity.this, new TvSetup.Say() {
-                                @Override
-                                public void say(String s) {
-                                    tvSay(s);
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-            row("قطع الاتصال", null, "›", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    TvSetup.disconnect(PhoneActivity.this);
-                    build();
-                }
-            });
-            return;
-        }
-        if (!tvSearching) {
-            tvSearching = true;
-            TvSetup.startDiscovery(this, new Runnable() {
-                @Override
-                public void run() {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            tvRefreshFound();
-                        }
-                    });
-                }
-            });
-        }
-        section("اقتران الهاتف بالتلفزيون");
-        add(tv("على التلفزيون: خيارات المطوّر ← «تصحيح الأخطاء اللاسلكي» ← «الاقتران بجهاز باستخدام رمز الاقتران». اترك الشاشة التي فيها الرمز مفتوحة، واكتب الرمز هنا:", 13, dim, false), 4);
-        add(tvField("رمز الاقتران (6 أرقام)", tvCode, android.text.InputType.TYPE_CLASS_NUMBER, true), 6);
-        section("وجدت على الشبكة");
-        tvFound = vbox();
-        add(tvFound, 4);
-        tvRefreshFound();
-        section("أو اكتب العنوان بنفسك");
-        add(tv("العنوان والمنفذ كما يظهران على التلفزيون في صفحة التصحيح اللاسلكي (للاقتران: عنوان صفحة الرمز، وللاتصال: العنوان الأعلى).", 12, dim, false), 4);
-        add(tvField("مثال: 192.168.1.50:41234", tvAddr, android.text.InputType.TYPE_CLASS_TEXT, false), 6);
-        row("اقتران بهذا العنوان", "يستخدم الرمز أعلاه", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Object[] a = tvParse(tvAddr, 0);
-                if (a == null) {
-                    toast("اكتب العنوان والمنفذ مثل 192.168.1.50:41234");
-                    return;
-                }
-                tvPair((String) a[0], (Integer) a[1]);
-            }
-        });
-        row("اتصال بهذا العنوان", "بعد الاقتران", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Object[] a = tvParse(tvAddr, 5555);
-                if (a == null) {
-                    toast("اكتب العنوان مثل 192.168.1.50:5555");
-                    return;
-                }
-                tvConnectTo((String) a[0], (Integer) a[1]);
-            }
-        });
-        row("رجوع إلى خطوات التحضير", null, "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvStage = 0;
-                build();
-            }
-        });
-    }
-
-    private void tvRefreshFound() {
-        if (tvFound == null || !tvVisible() || tvStage < 1) return;
-        tvFound.removeAllViews();
-        boolean any = false;
-        if (TvSetup.pairHost != null) {
-            any = true;
-            final String ph = TvSetup.pairHost;
-            final int pp = TvSetup.pairPort;
-            LinearLayout r = row("تلفزيون جاهز للاقتران", ph + ":" + pp, "اقتران", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvPair(ph, pp);
-                }
-            });
-            body.removeView(r);
-            tvFound.addView(r, lp(-1, -2, 5));
-        }
-        if (TvSetup.connHost != null) {
-            any = true;
-            final String ch = TvSetup.connHost;
-            final int cp = TvSetup.connPort;
-            LinearLayout r = row("تلفزيون جاهز للاتصال", ch + ":" + cp, "اتصال", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tvConnectTo(ch, cp);
-                }
-            });
-            body.removeView(r);
-            tvFound.addView(r, lp(-1, -2, 5));
-        }
-        if (!any) {
-            tvFound.addView(tv("أبحث عن التلفزيون على الواي فاي… إن لم يظهر خلال دقيقة، اكتب العنوان بنفسك.", 13, dim, false));
-        }
-    }
-
-    private void tvPair(final String host, final int port) {
-        final String code = tvCode.trim();
-        if (code.length() != 6) {
-            toast("اكتب رمز الاقتران المكوّن من 6 أرقام");
-            return;
-        }
-        tvRun("اقتران مع " + host + ":" + port + "…", new TvTask() {
-            @Override
-            public void run() throws Exception {
-                TvSetup.pair(PhoneActivity.this, host, port, code);
-                tvSay("تم الاقتران ✓");
-                // the TV announces the port to connect on once it is paired
-                long end = System.currentTimeMillis() + 10000;
-                while (TvSetup.connHost == null && System.currentTimeMillis() < end) Thread.sleep(500);
-                if (TvSetup.connHost == null) {
-                    tvSay("لم أجد منفذ الاتصال. اكتب العنوان الظاهر في صفحة التصحيح اللاسلكي (فوق) واضغط «اتصال بهذا العنوان».");
-                    return;
-                }
-                TvSetup.connect(PhoneActivity.this, TvSetup.connHost, TvSetup.connPort);
-                tvSay("متصل بالتلفزيون ✓ " + TvSetup.info(PhoneActivity.this));
-                if (tvStage < 2) tvStage = 2;
-            }
-        });
-    }
-
-    private void tvConnectTo(final String host, final int port) {
-        tvRun("اتصال بـ " + host + ":" + port + "…", new TvTask() {
-            @Override
-            public void run() throws Exception {
-                TvSetup.connect(PhoneActivity.this, host, port);
-                tvSay("متصل بالتلفزيون ✓ " + TvSetup.info(PhoneActivity.this));
-                if (tvStage < 2) tvStage = 2;
-            }
-        });
-    }
-
-    private void tvInstall() {
-        if (!TvSetup.connected(this)) {
-            add(tv("انقطع الاتصال بالتلفزيون. اتصل من جديد (تبقى في نفس الخطوة):", 14, gold, true), 8);
-            tvConnect();
-            return;
-        }
-        section("تثبيت اللانشر");
-        add(tv("ينزّل التطبيق آخر نسخة من اللانشر من GitHub ويثبّتها على التلفزيون، ويعطيه الأذونات التي يحتاجها.", 13, dim, false), 4);
-        row("تثبيت التطبيق على التلفزيون", "يحتاج الإنترنت على الهاتف", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvRun("بدء التثبيت…", new TvTask() {
-                    @Override
-                    public void run() throws Exception {
-                        TvSetup.install(PhoneActivity.this, new TvSetup.Say() {
-                            @Override
-                            public void say(String s) {
-                                tvSay(s);
-                            }
-                        });
-                        tvStage = 3;
-                    }
-                });
-            }
-        });
-        row("تخطّ: اللانشر مثبّت بالفعل", null, "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvStage = 3;
-                build();
-            }
-        });
-    }
-
-    private void tvHome() {
-        if (!TvSetup.connected(this)) {
-            add(tv("انقطع الاتصال بالتلفزيون. اتصل من جديد (تبقى في نفس الخطوة):", 14, gold, true), 8);
-            tvConnect();
-            return;
-        }
-        section("الشاشة الرئيسية");
-        add(tv("التطبيق صار تطبيقاً عادياً: يُفتح من قائمة التطبيقات، وشاشة Google TV الأصلية تبقى هي الرئيسية. إن كانت الأصلية معطّلة من إعداد قديم فاضغط «رجوع إلى الشاشة الأصلية».", 13, dim, false), 6);
-        row("إصلاح المساعد الصوتي", "يفحص تطبيق Google على التلفزيون ويصلحه (الميكروفون، البيانات، الأزرار)", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvRun("إصلاح المساعد الصوتي…", new TvTask() {
-                    @Override
-                    public void run() throws Exception {
-                        TvSetup.fixAssistant(PhoneActivity.this, new TvSetup.Say() {
-                            @Override
-                            public void say(String s) {
-                                tvSay(s);
-                            }
-                        });
-                    }
-                });
-            }
-        });
-        row("تصفير بيانات Google على التلفزيون", "يمسح بيانات واجهة Google TV وتطبيق Google ويعيد تشغيل التلفزيون", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new Pop(PhoneActivity.this).title("تصفير بيانات Google")
-                    .message("سيمسح بيانات واجهة Google TV وتطبيق Google (ترتيب الشاشة الرئيسية يرجع كالأول، ويبقى حسابك وتطبيقاتك) ثم يعيد تشغيل التلفزيون. أكمل؟")
-                    .ok("تصفير", new Runnable() {
-                        @Override
-                        public void run() {
-                            tvRun("تصفير بيانات Google…", new TvTask() {
-                                @Override
-                                public void run() throws Exception {
-                                    TvSetup.resetGoogle(PhoneActivity.this, new TvSetup.Say() {
-                                        @Override
-                                        public void say(String s) {
-                                            tvSay(s);
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    }).cancel("إلغاء").show();
-            }
-        });
-        row("فتح صفحة تفعيل خدمة التوصيات على التلفزيون", "تفتح لك على شاشة التلفزيون صفحة التطبيق وفيها زر «تفعيل»", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvRun("فتح الصفحة على التلفزيون…", new TvTask() {
-                    @Override
-                    public void run() throws Exception {
-                        TvSetup.openAppInfo(PhoneActivity.this, new TvSetup.Say() {
-                            @Override
-                            public void say(String s) {
-                                tvSay(s);
-                            }
-                        }, "com.google.android.tvrecommendations");
-                    }
-                });
-            }
-        });
-        row("رجوع إلى الشاشة الأصلية للتلفزيون", "يعيد لانشر Google TV كما كان", "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvRun("إرجاع الشاشة الأصلية…", new TvTask() {
-                    @Override
-                    public void run() throws Exception {
-                        TvSetup.restore(PhoneActivity.this, new TvSetup.Say() {
-                            @Override
-                            public void say(String s) {
-                                tvSay(s);
-                            }
-                        });
-                    }
-                });
-            }
-        });
-        row("العودة إلى خطوة التثبيت", null, "›", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tvStage = 2;
-                build();
-            }
-        });
-    }
 
     // ---------------------------------------------------------------- other cities
     private boolean addingOther;

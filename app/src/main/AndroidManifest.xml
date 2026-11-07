@@ -98,12 +98,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".PickFavorite"
-            android:exported="false"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
-            android:screenOrientation="landscape" />
-
         <service
             android:name=".AdhanService"
             android:exported="false"
