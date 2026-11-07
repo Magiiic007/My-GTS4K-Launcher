@@ -2499,6 +2499,9 @@ public class PhoneActivity extends Activity {
         TextView ver = tv("النسخة " + PhoneUpdater.installedName(this), 13, dim, false);
         ver.setGravity(Gravity.CENTER);
         add(ver, 2);
+        TextView rights = tv("© 2026 Mahmoud. جميع الحقوق محفوظة.\nلا يجوز نسخ التطبيق أو تعديله أو إعادة نشره أو بيعه دون إذن كتابي من صاحبه.", 12, dim, false);
+        rights.setGravity(Gravity.CENTER);
+        add(rights, 8);
         acc("ab:src", "المصادر", "مكتبات وبيانات التطبيق");
         add(tv("أوقات الصلاة: مكتبة adhan-java (رخصة MIT).\n"
             + "الأذكار: حصن المسلم، من ملف rn0x/Adhkar-json.\n"

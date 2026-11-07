@@ -220,3 +220,8 @@ app/src/main/res/         layouts, drawables, strings (ar / en), raw audio
 - Radio streams were taken from the original Afnon project; the stations are not affiliated with this app.
 - Audio recordings (adhan, iqama, reminder) were added by the project owner for personal use and their rights are
   **not** verified. See [`THIRD_PARTY.md`](THIRD_PARTY.md) for sources and the takedown note.
+
+## Licence
+
+Copyright (c) 2026 Mahmoud. All rights reserved. See [LICENSE](LICENSE) for what is allowed, and
+[THIRD_PARTY.md](THIRD_PARTY.md) for the third-party material and its licences.
