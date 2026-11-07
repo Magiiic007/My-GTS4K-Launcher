@@ -124,6 +124,16 @@ jobs:
         continue-on-error: true
         run: ./gradlew :phone:assemblePlayDebug -PplayTest --no-daemon --stacktrace
 
+      - name: Publish the Play test APK as release "play-test"
+        if: steps.playtest.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp phone/build/outputs/apk/play/debug/phone-play-debug.apk my-phone-play-test.apk
+          gh release delete play-test --yes --cleanup-tag || true
+          gh release create play-test my-phone-play-test.apk --prerelease --target "$GITHUB_SHA" \
+            --title "Play build, test copy" --notes "Test copy of the Google Play build (package app.alsalatu.khair.test). commit=${GITHUB_SHA::7}"
+
       # Two extra test copies, to tell what makes the Play build close: a fresh install of the GitHub build, and the Play build aimed at Android 14.
       - name: Build the A/B test APKs
         continue-on-error: true
@@ -137,13 +147,3 @@ jobs:
           gh release delete ab-test --yes --cleanup-tag || true
           gh release create ab-test ab-fresh-github.apk ab-play-target34.apk --prerelease --target "$GITHUB_SHA" \
             --title "A/B test APKs" --notes "ab-fresh-github: GitHub build, fresh install. ab-play-target34: Play build aimed at Android 14. commit=${GITHUB_SHA::7}"
-
-      - name: Publish the Play test APK as release "play-test"
-        if: steps.playtest.outcome == 'success'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          cp phone/build/outputs/apk/play/debug/phone-play-debug.apk my-phone-play-test.apk
-          gh release delete play-test --yes --cleanup-tag || true
-          gh release create play-test my-phone-play-test.apk --prerelease --target "$GITHUB_SHA" \
-            --title "Play build, test copy" --notes "Test copy of the Google Play build (package app.alsalatu.khair.test). commit=${GITHUB_SHA::7}"
