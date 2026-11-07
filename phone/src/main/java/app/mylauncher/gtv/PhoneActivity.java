@@ -592,6 +592,7 @@ public class PhoneActivity extends Activity {
         final TextView arrow = tv(key.equals(accOpen) ? "▴" : "▾", 18, gold, true);
         head.addView(arrow);
         add(head, 8);
+        pressFx(head);
         final LinearLayout box = vbox();
         box.setVisibility(key.equals(accOpen) ? View.VISIBLE : View.GONE);
         add(box, 0);
@@ -603,7 +604,14 @@ public class PhoneActivity extends Activity {
                 accOpen = opening ? key : null;
                 for (Object[] a : accs) {
                     boolean on = a[0].equals(accOpen);
-                    ((View) a[1]).setVisibility(on ? View.VISIBLE : View.GONE);
+                    View bx = (View) a[1];
+                    boolean was = bx.getVisibility() == View.VISIBLE;
+                    bx.setVisibility(on ? View.VISIBLE : View.GONE);
+                    if (on && !was) {
+                        bx.setAlpha(0f);
+                        bx.setTranslationY(-dp(8));
+                        bx.animate().alpha(1f).translationY(0f).setDuration(200);
+                    }
                     ((TextView) a[2]).setText(on ? "▴" : "▾");
                 }
                 if (opening) {
@@ -729,7 +737,10 @@ public class PhoneActivity extends Activity {
         if (subText != null && !subText.isEmpty()) v.addView(tv(subText, 12, dim, false));
         r.addView(v, new LinearLayout.LayoutParams(0, -2, 1f));
         if (action != null) r.addView(tv(action, 16, gold, true));
-        if (click != null) r.setOnClickListener(click);
+        if (click != null) {
+            r.setOnClickListener(click);
+            pressFx(r);
+        }
         add(r, 6);
         return r;
     }
@@ -758,6 +769,7 @@ public class PhoneActivity extends Activity {
         b.setTextColor(0xFF1B1500);
         b.setBackground(shape(gold, 0, 14));
         b.setOnClickListener(c);
+        pressFx(b);
         return b;
     }
 
@@ -804,11 +816,46 @@ public class PhoneActivity extends Activity {
     private boolean backNav;
     private boolean toTop;
 
+    private int slideDir;
+
+    /** The new page fades in while sliding a short way from the side it comes from. */
+    private void enter(int dir, boolean withHeader) {
+        float from = dir * dp(34);
+        View[] vs = withHeader ? new View[] {header, body} : new View[] {body};
+        for (View v : vs) {
+            v.animate().cancel();
+            v.setAlpha(0f);
+            v.setTranslationX(from);
+            v.animate().alpha(1f).translationX(0f).setDuration(230)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f));
+        }
+    }
+
+    /** A small press effect: the item shrinks a little under the finger and springs back. */
+    private void pressFx(View v) {
+        v.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View x, android.view.MotionEvent e) {
+                int a = e.getActionMasked();
+                if (a == android.view.MotionEvent.ACTION_DOWN) {
+                    x.animate().scaleX(0.97f).scaleY(0.97f).setDuration(90);
+                } else if (a == android.view.MotionEvent.ACTION_UP || a == android.view.MotionEvent.ACTION_CANCEL) {
+                    x.animate().scaleX(1f).scaleY(1f).setDuration(160)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(2f));
+                }
+                return false;
+            }
+        });
+    }
+
     private void build() {
         palette();
         String key = tab + ":" + sub;
         if (lastKey != null) savedScroll.put(lastKey, scroll.getScrollY());
         final boolean samePage = key.equals(lastKey);
+        // which way the new page slides in (this layout is right-to-left: forward comes from the left)
+        final int slide = slideDir != 0 ? slideDir : (lastKey == null || samePage ? 0 : (backNav ? -1 : 1));
+        slideDir = 0;
         // a new visit to the tasbih starts the round from 0 (the last count and today's totals stay)
         if (tab == 6 && (lastKey == null || !lastKey.startsWith("6:"))) endTasbihRound();
         lastKey = key;
@@ -864,6 +911,7 @@ public class PhoneActivity extends Activity {
         backNav = false;
         final int fy = y;
         scroll.scrollTo(0, 0);
+        if (slide != 0) enter(slide, !samePage);
         if (fy > 0) {
             scroll.post(new Runnable() {
                 @Override
@@ -3441,6 +3489,7 @@ public class PhoneActivity extends Activity {
                 if (Math.abs(dx) > dp(70) && Math.abs(dx) > Math.abs(dy) * 1.8f) {
                     // the layout is right-to-left: the next month is on the left, so dragging to the right brings it
                     calOff += dx > 0 ? 1 : -1;
+                    slideDir = dx > 0 ? 1 : -1;
                     build();
                 }
             }
@@ -3477,6 +3526,7 @@ public class PhoneActivity extends Activity {
             @Override
             public void onClick(View v) {
                 calOff--;
+                slideDir = -1;
                 build();
             }
         });
@@ -3486,6 +3536,7 @@ public class PhoneActivity extends Activity {
             @Override
             public void onClick(View v) {
                 calOff++;
+                slideDir = 1;
                 build();
             }
         });
