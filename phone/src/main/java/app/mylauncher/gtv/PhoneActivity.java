@@ -1409,9 +1409,10 @@ public class PhoneActivity extends Activity {
         clock.setGravity(Gravity.CENTER);
         clockTv = tv("--:--", Math.round(62 * f), gold, true);
         apTv = tv("", 15, cream, true);
-        apTv.setPadding(dp(8), 0, 0, 0);
-        clock.addView(clockTv);
+        apTv.setPadding(0, 0, dp(8), 0);
+        // the clock is drawn left to right: the AM/PM mark goes on the left of the time
         clock.addView(apTv);
+        clock.addView(clockTv);
         hA.addView(clock, lp(-2, -2, 0));
         TextView d1 = tv(Hijri.weekdayAr(cal) + "، " + Hijri.gregorianAr(cal), 14, cream, false);
         d1.setGravity(Gravity.CENTER);
@@ -1423,13 +1424,17 @@ public class PhoneActivity extends Activity {
         // the next prayer
         PrayerCalc.Event ad = PrayerCalc.nextEvent(city, now, adj, new int[5]);
         shownNext = ad == null ? -1 : ad.index;
+        // "the next prayer" and its name share one line
+        LinearLayout nextRow = hbox();
+        nextRow.setGravity(Gravity.CENTER);
+        nextRow.setPadding(0, dp(6), 0, 0);
         TextView l1 = tv("الصلاة القادمة", 12, dim, true);
-        l1.setPadding(0, dp(6), 0, 0);
-        l1.setGravity(Gravity.CENTER);
-        hB.addView(l1);
+        l1.setPadding(0, 0, dp(8), 0);
+        nextRow.addView(l1);
         nameTv = tv("", Math.round(30 * f), gold, true);
-        nameTv.setGravity(Gravity.CENTER);
-        hB.addView(nameTv);
+        nameTv.setSingleLine(true);
+        nextRow.addView(nameTv);
+        hB.addView(nextRow, new LinearLayout.LayoutParams(-2, -2));
         cdTv = tv("00:00:00", Math.round(44 * f), cream, true);
         cdTv.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         cdTv.setGravity(Gravity.CENTER);
