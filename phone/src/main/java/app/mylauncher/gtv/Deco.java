@@ -31,7 +31,7 @@ final class Deco {
 
         Crack(android.content.res.Resources res, int color) {
             android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeResource(res, R.drawable.pattern_crack);
-            if (bmp != null) paint.setShader(new android.graphics.BitmapShader(bmp, android.graphics.Shader.TileMode.MIRROR, android.graphics.Shader.TileMode.MIRROR));
+            if (bmp != null) paint.setShader(new android.graphics.BitmapShader(bmp, android.graphics.Shader.TileMode.REPEAT, android.graphics.Shader.TileMode.REPEAT));
             paint.setColorFilter(new android.graphics.PorterDuffColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN));
         }
 

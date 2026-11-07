@@ -518,7 +518,7 @@ public class PhoneActivity extends Activity {
         final FrameLayout v = new FrameLayout(this);
         v.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-        Drawable stars = new Deco.Crack(getResources(), (cream & 0x00FFFFFF) | 0x66000000);
+        Drawable stars = new Deco.Crack(getResources(), (cream & 0x00FFFFFF) | 0x55000000);
         ArtBg.Border border = new ArtBg.Border((gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         v.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars, border}));
         v.setClickable(true);
@@ -544,7 +544,7 @@ public class PhoneActivity extends Activity {
         phrase.setTypeface(Typeface.DEFAULT_BOLD);
         phrase.setGravity(Gravity.CENTER);
         phrase.setTextColor(0xFFFFFFFF);
-        phrase.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
+        phrase.setShadowLayer(dp(2), 0, dp(1), 0x55000000);
         phrase.setText("الصلاة خير من");
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
         rp.topMargin = land ? dp(12) : dp(26);
@@ -554,7 +554,7 @@ public class PhoneActivity extends Activity {
         word.setGravity(Gravity.CENTER);
         word.setMaxLines(1);
         word.setTextColor(0x00FFD54A);
-        word.setShadowLayer(dp(2), 0, dp(1), 0x66000000);
+        word.setShadowLayer(dp(2), 0, dp(1), 0x55000000);
         word.setAutoSizeTextTypeUniformWithConfiguration(16, 44, 1, TypedValue.COMPLEX_UNIT_SP);
         android.text.TextPaint tp = new android.text.TextPaint(phrase.getPaint());
         int pw = Math.round(tp.measureText("الصلاة خير من")) + dp(4);
@@ -812,7 +812,7 @@ public class PhoneActivity extends Activity {
                 homeTop = 0;
                 homeBottom = 0;
                 GradientDrawable lg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-                Drawable lstars = new Deco.Crack(getResources(), (cream & 0x00FFFFFF) | 0x66000000);
+                Drawable lstars = new Deco.Crack(getResources(), (cream & 0x00FFFFFF) | 0x55000000);
                 rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {lg, lstars}));
                 header.setVisibility(View.GONE);
                 header.setPadding(0, 0, 0, 0);
@@ -832,7 +832,7 @@ public class PhoneActivity extends Activity {
         homeTop = 0;
         homeBottom = 0;
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {bg1, bg2});
-        Drawable stars = new Deco.Crack(getResources(), (cream & 0x00FFFFFF) | 0x66000000);
+        Drawable stars = new Deco.Crack(getResources(), (cream & 0x00FFFFFF) | 0x55000000);
         ArtBg.Border border = new ArtBg.Border((gold & 0x00FFFFFF) | 0x99000000, getResources().getDisplayMetrics().density);
         rootFrame.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[] {g, stars, border}));
         // landscape home uses the full width (two columns); the other pages keep a readable column in the middle
@@ -4193,7 +4193,7 @@ public class PhoneActivity extends Activity {
                     gd.setGravity(Gravity.CENTER);
                     cell.addView(hd);
                     cell.addView(gd);
-                    cell.setBackground(shape(calSel == day ? (gold & 0x00FFFFFF) | 0x77000000 : isToday ? hl : occ >= 0 ? (gold & 0x00FFFFFF) | 0x66000000 : white ? (gold & 0x00FFFFFF) | 0x22000000 : 0, isToday || calSel == day ? gold : occ >= 0 ? line : 0, 12));
+                    cell.setBackground(shape(calSel == day ? (gold & 0x00FFFFFF) | 0x77000000 : isToday ? hl : occ >= 0 ? (gold & 0x00FFFFFF) | 0x55000000 : white ? (gold & 0x00FFFFFF) | 0x22000000 : 0, isToday || calSel == day ? gold : occ >= 0 ? line : 0, 12));
                     if (occ >= 0) notes.append(day).append(" ").append(Hijri.hijriAr(new int[] {year, month0 + 1, day}).replaceFirst("^\\d+ ", "").replaceFirst(" \\d+ هـ$", ""))
                         .append(": ").append(Reminders.occName(this, occ)).append("\n");
                     cell.setOnClickListener(new View.OnClickListener() {
